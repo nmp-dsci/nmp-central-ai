@@ -94,15 +94,21 @@ def main() -> int:
             if exp is not None:
                 exp_ids.append(exp.experiment_id)
 
-        runs = sum(count_runs(client, e, t0) for e in exp_ids) if p.verify in {"runs", "both"} else -1
+        runs = (
+            sum(count_runs(client, e, t0) for e in exp_ids) if p.verify in {"runs", "both"} else -1
+        )
         traces = (
-            sum(count_traces(client, e, t0) for e in exp_ids) if p.verify in {"traces", "both"} else -1
+            sum(count_traces(client, e, t0) for e in exp_ids)
+            if p.verify in {"traces", "both"}
+            else -1
         )
         ok = code == 0 and (runs != 0) and (traces != 0)
         status = "PASS" if ok else "FAIL"
         if not ok:
             failures += 1
-        detail = f"smoke={code} runs={runs if runs >= 0 else '-'} traces={traces if traces >= 0 else '-'}"
+        runs_s = runs if runs >= 0 else "-"
+        traces_s = traces if traces >= 0 else "-"
+        detail = f"smoke={code} runs={runs_s} traces={traces_s}"
         print(f"  {p.id:<3} {p.name:<22} {status}   {detail}")
         if (not ok or args.verbose) and tail:
             print("        " + tail.replace("\n", "\n        "))

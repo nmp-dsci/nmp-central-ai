@@ -37,8 +37,8 @@ services:
 
   minio:
     # MinIO's Docker Hub repo was withdrawn in 2026; images are published on quay.io.
-    # Pinned to the last hotfix build (April 2026). Fallback if this goes away: rustfs/rustfs.
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z.hotfix.7aa24e772
+    # Pinned to the last multi-arch (amd64+arm64) release. Fallback if this goes away: rustfs/rustfs.
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -71,6 +71,8 @@ services:
       echo bucket ready: $$MLFLOW_ARTIFACTS_BUCKET"
 
   mlflow:
+    # Must run under uvicorn (the default): the OTLP ingest route /v1/traces lives in the
+    # FastAPI app; passing --gunicorn-opts silently falls back to the Flask app and 404s it.
     build: ./services/mlflow
     image: nmp-central/mlflow:3.16.1
     command: >
@@ -79,7 +81,7 @@ services:
       --backend-store-uri postgresql://${MLFLOW_DB_USER:-mlflow}:${MLFLOW_DB_PASSWORD:-mlflow}@postgres:5432/mlflow
       --artifacts-destination s3://${MLFLOW_ARTIFACTS_BUCKET:-mlflow-artifacts}
       --serve-artifacts
-      --gunicorn-opts "--timeout 180 --workers 2"
+      --workers 2
     environment:
       # MLflow's DNS-rebinding guard 403s any Host it does not know. Siblings reach us as
       # mlflow:5000 (compose network) or localhost:5000 (host); data-qa hit this once already.

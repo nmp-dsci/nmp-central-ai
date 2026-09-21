@@ -27,7 +27,6 @@ def main() -> int:
     reg = load_registry()
     uri = resolve_uri(args.uri, reg).rstrip("/")
 
-    from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.sdk.trace import TracerProvider

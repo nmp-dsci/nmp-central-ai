@@ -23,18 +23,35 @@ The portfolio has ONE MLflow server. Contract: `~/git/nmp-ai-portfolio/nmp-centr
 2. Log with the project's own tracking module if it has one (ConvFinQA `tracking/mlflow_log.py`, DABStep/tau2 `tracking/mlflow_log.py`); they already set the URI, experiment, tags and artifacts. Otherwise:
    ```python
    import mlflow, subprocess
-   mlflow.set_experiment("<project>/<purpose>")          # new experiments use this naming
+
+   mlflow.set_experiment("<project>/<purpose>")  # new experiments use this naming
    with mlflow.start_run(run_name="...") as run:
-       mlflow.set_tags({"project": "<project>", "git_sha": subprocess.check_output(["git","rev-parse","--short","HEAD"]).decode().strip(), "env": "local"})
-       mlflow.log_params({...}); mlflow.log_metrics({...}); mlflow.log_artifact("path")
+       mlflow.set_tags(
+           {
+               "project": "<project>",
+               "git_sha": subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+               .decode()
+               .strip(),
+               "env": "local",
+           }
+       )
+       mlflow.log_params({...})
+       mlflow.log_metrics({...})
+       mlflow.log_artifact("path")
    ```
 3. Tracing: prefer the framework autolog the project already uses (`mlflow.pydantic_ai.autolog()`, `mlflow.langchain.autolog()`), else `with mlflow.start_span(name, span_type="CHAIN") as s: s.set_inputs(...); s.set_outputs(...)`. Keep span trimming on; never set `MLFLOW_TRACE_FULL=1` on shared runs.
 4. Query:
    ```python
    from mlflow import MlflowClient
-   c = MlflowClient()                                   # honours MLFLOW_TRACKING_URI
+
+   c = MlflowClient()  # honours MLFLOW_TRACKING_URI
    exp = c.get_experiment_by_name("dabstep-loop")
-   runs = c.search_runs([exp.experiment_id], filter_string="tags.env = 'local'", order_by=["attributes.start_time DESC"], max_results=20)
+   runs = c.search_runs(
+       [exp.experiment_id],
+       filter_string="tags.env = 'local'",
+       order_by=["attributes.start_time DESC"],
+       max_results=20,
+   )
    traces = c.search_traces(locations=[exp.experiment_id], max_results=20)
    ```
 5. Registry / prompts: registered models and prompts are global on the shared server. Only touch names that belong to the project you are in (see the registry file). Aliases in use: `champion`, `challenger`.
