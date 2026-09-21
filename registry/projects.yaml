@@ -1,0 +1,151 @@
+# Source of truth for what the platform serves and who uses it.
+# `make mlflow-init` creates every experiment listed here; `make check` verifies
+# each project can log to the central server; PLATFORM.md is generated from it (later).
+#
+# client:  python   -> uses the mlflow Python client (honours MLFLOW_TRACKING_URI)
+#          otlp     -> exports OpenTelemetry spans to <uri>/v1/traces with x-mlflow-experiment-id
+#          external -> managed elsewhere (Databricks); listed for completeness only
+# verify:  runs | traces | both   -> what check_projects.py looks for after the smoke command
+# smoke:   a command run from `path` that must produce >= 1 run/trace with NO paid LLM calls
+# env_ids: env var name -> experiment name; mlflow-init writes the numeric id into .mlflow-ids.env
+
+platform:
+  mlflow_uri: http://localhost:5000
+  mlflow_uri_compose: http://mlflow:5000
+  docker_network: nmp-central
+  experiment_naming: "<project>/<purpose> for new experiments; existing flat names kept as-is in M1"
+
+projects:
+  - id: P1
+    name: convfinqa-agent
+    path: ../ConvFinQA-agent
+    status: migrated           # pending | migrated | deferred | excluded | external
+    mlflow:
+      client: python
+      experiments: [convfinqa, convfinqa-optimization]
+      registered_models: [convfinqa-pipeline]
+      prompts: [convfinqa.triage, convfinqa.preprocess, convfinqa.retriever, convfinqa.calculator]
+      verify: both
+      smoke: |
+        MLFLOW_EXPERIMENT=convfinqa uv run python -c "
+        from convfinqa.tracking import mlflow_log, tracing
+        print(mlflow_log.env_summary())
+        tracing.enable()
+        with mlflow_log.run('central-smoke', kind='smoke', tags={'environment':'dev','source':'central-migration-smoke'}, params={'note':'no-llm smoke'}) as rec:
+            rec.metric('accuracy', 1.0)
+            rec.text_artifact('smoke.txt', 'hello central mlflow')
+            with tracing.span('smoke', span_type='CHAIN', trace_tags={'run_name':'central-smoke','split':'none'}) as s:
+                s.inputs({'q':'ping'}); s.outputs({'a':'pong'})
+            print('run_id', rec.run_id)
+        "
+    notes: >-
+      Settings read ~/.env, not the repo .env. Prompt registry needs a DB-backed store (we have one).
+      Old stores (mlruns/mlflow.db, .mlflow/) are archived read-only, not migrated (D2).
+
+  - id: P2
+    name: dabstep-loop
+    path: ../DABStep-loop
+    status: migrated
+    mlflow:
+      client: python
+      experiments: [dabstep-loop]
+      registered_models: [dabstep-agent]
+      verify: runs
+      smoke: |
+        uv run python -c "
+        from dabstep_loop.config import RUNS_DIR
+        from dabstep_loop.eval.runner import load_run
+        from dabstep_loop.tracking.mlflow_log import log_run
+        rid='20260914T070028Z_v3_dev_haiku'
+        m,r=load_run(rid); print('run_id', log_run(RUNS_DIR/rid,m,r))
+        "
+    notes: >-
+      Re-logs a committed 10-task run folder (params, metrics, artifacts). Do not run `make snapshot`
+      in the project until runs exist on the central server, or the public viewer's snapshot empties.
+
+  - id: P3
+    name: tau2-loop
+    path: ../tau2-loop
+    status: migrated
+    mlflow:
+      client: python
+      experiments: [tau2-loop]
+      registered_models: [tau2-loop-airline, tau2-loop-retail, tau2-loop-telecom, tau2-loop-banking_knowledge]
+      verify: runs
+      smoke: |
+        uv run python -c "
+        from tau2_loop.config import RUNS_DIR
+        from tau2_loop.eval.runner import load_run
+        from tau2_loop.tracking.mlflow_log import log_run
+        rid='20260915T075100Z_airline_v0_custom'
+        m,r=load_run(rid); print('run_id', log_run(RUNS_DIR/rid,m,r))
+        "
+    notes: Same shape as dabstep-loop; same snapshot hazard.
+
+  - id: P4
+    name: transcript-rag-agent
+    path: ../transcript-rag-agent
+    status: deferred           # moves right after M1 (M1b)
+    mlflow:
+      client: python
+      experiments: [yt-agent-v1]
+      verify: both
+      smoke: ""                # filled in M1b; must assert a langchain autolog trace exists
+    notes: Only project still on the deprecated file store (file:.yt-agent/mlruns).
+
+  - id: P5
+    name: data-qa-agent
+    path: ../data-qa-agent
+    status: migrated
+    mlflow:
+      client: otlp
+      experiments: [data-qa/evals]
+      env_ids:
+        MLFLOW_TRACE_EXPERIMENT_ID: data-qa/evals
+        MLFLOW_EVALS_EXPERIMENT_ID: data-qa/evals
+      verify: traces
+      smoke: |
+        set -a; source ../nmp-central-ai/.mlflow-ids.env; set +a
+        services/data-agent/.venv/bin/python - <<'PY'
+        import os
+        from opentelemetry import trace
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        uri = os.environ["MLFLOW_TRACKING_URI"].rstrip("/"); exp = os.environ["MLFLOW_TRACE_EXPERIMENT_ID"]
+        p = TracerProvider()
+        p.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter(endpoint=f"{uri}/v1/traces", headers={"x-mlflow-experiment-id": exp})))
+        trace.set_tracer_provider(p)
+        with trace.get_tracer("smoke").start_as_current_span("central-mlflow-smoke") as s:
+            s.set_attribute("probe", "data-qa-migration")
+        p.shutdown(); print("exported span to", uri, "experiment", exp)
+        PY
+    notes: >-
+      No Python mlflow dependency; spans go to /v1/traces with x-mlflow-experiment-id. Its compose
+      stack joins the external network nmp-central and drops its own mlflow service.
+
+  # ---- not on the platform, listed so the map is complete ----------------
+  - id: X1
+    name: v2v-prod-agent
+    path: ../v2v-prod-agent
+    status: excluded
+    mlflow: { client: external }
+    notes: Keeps its self-hosted Langfuse (OTel). Out of scope by decision.
+  - id: X2
+    name: databricks-propertyiq
+    path: ../databricks-propertyiq
+    status: external
+    mlflow: { client: external }
+    notes: Databricks-managed MLflow (tracking "databricks", registry "databricks-uc").
+  - id: X3
+    name: databricks-sa-coding
+    path: ../databricks-sa-coding
+    status: external
+    mlflow: { client: external }
+    notes: Databricks-managed MLflow.
+  - id: X4
+    name: CUAD-agent
+    path: ../CUAD-agent
+    status: excluded
+    mlflow: { client: external }
+    notes: No MLflow today; static HTML dashboards. Ignore by decision.

@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nmp-central-ai — plan v0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg:#0f1214; --band:#131719; --panel:#171b1e; --panel-2:#1c2124; --line:#2a3034; --line-strong:#3a4146;
+    --ink:#e9ece8; --muted:#9aa39d; --faint:#6f7873;
+    --accent:#5cc8a6; --accent-soft:#163229; --accent-ink:#0d1a15;
+    --amber:#d9a44e; --amber-soft:#3a2c14; --red:#e0716a; --red-soft:#3a1c1a; --blue:#7fa9ff; --blue-soft:#1a2440;
+    --mono:"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:"Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif:"Instrument Serif", Georgia, serif;
+  }
+  html { color-scheme: dark; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.55; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 96px; }
+  :where(.grid, .flex, .cards, .split, .kv) > * { min-width:0; }
+  :where(p, h1, h2, h3, h4, li, td, th, dd, figcaption, .badge, .tag, label) { overflow-wrap:anywhere; }
+  :where(img, svg, video) { max-width:100%; height:auto; }
+  h1 { font-family:var(--serif); font-weight:400; font-size: clamp(34px, 5vw, 54px); line-height:1.05; margin:8px 0 12px; letter-spacing:-0.01em; }
+  h1 em { font-style:italic; color:var(--accent); }
+  h2 { font-family:var(--serif); font-weight:400; font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; }
+  h3 { font-size:16px; font-weight:600; margin:0 0 8px; }
+  h4 { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 8px; }
+  p { margin: 0 0 12px; }
+  a { color:var(--blue); }
+  code, pre { font-family:var(--mono); font-size:13px; }
+  code { background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+  pre { background:#0b0d0f; border:1px solid var(--line); border-radius:8px; padding:14px 16px; overflow-x:auto; margin:0 0 12px; line-height:1.5; }
+  pre code { background:none; border:0; padding:0; }
+  .eyebrow { font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .lede { font-size:18px; color:var(--muted); max-width:70ch; }
+  section { margin-top:56px; padding-top:24px; border-top:1px solid var(--line); }
+  section > .eyebrow { margin-bottom:4px; }
+  .sub { color:var(--muted); margin-bottom:18px; max-width:78ch; }
+  .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card.rec { border-color:var(--accent); box-shadow: 0 0 0 1px var(--accent-soft) inset; }
+  .card .cost { font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:8px; }
+  .split { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:18px; }
+  .badge { display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:0.04em; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--muted); white-space:nowrap; }
+  .badge.ok { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .badge.warn { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); }
+  .badge.bad { color:var(--red); border-color:var(--red); background:var(--red-soft); }
+  .badge.info { color:var(--blue); border-color:var(--blue); background:var(--blue-soft); }
+  .badge.rec { color:var(--accent-ink); background:var(--accent); border-color:var(--accent); font-weight:600; }
+  .tag { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .verdict { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin: 22px 0 0; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .stat .n { font-family:var(--serif); font-size:38px; line-height:1; color:var(--ink); }
+  .stat .l { font-size:13px; color:var(--muted); margin-top:6px; }
+  .stat.accent .n { color:var(--accent); } .stat.amber .n { color:var(--amber); } .stat.red .n { color:var(--red); }
+  .callout { border-left:3px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .callout.warn { border-left-color:var(--amber); } .callout.bad { border-left-color:var(--red); } .callout.info { border-left-color:var(--blue); }
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; background:var(--band); position:sticky; top:0; }
+  tr:last-child td { border-bottom:0; }
+  td .path { font-family:var(--mono); font-size:12px; color:var(--muted); display:block; margin-top:3px; }
+  figure { margin:0 0 12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  figure svg { width:100%; height:auto; display:block; color:var(--ink); }
+  figcaption { font-size:13px; color:var(--muted); margin-top:10px; }
+  .svg-box { fill:var(--panel-2); stroke:var(--line-strong); stroke-width:1; }
+  .svg-box.hot { stroke:var(--amber); fill:var(--amber-soft); }
+  .svg-box.bad { stroke:var(--red); fill:var(--red-soft); }
+  .svg-box.good { stroke:var(--accent); fill:var(--accent-soft); }
+  .svg-box.blue { stroke:var(--blue); fill:var(--blue-soft); }
+  .svg-t { fill:var(--ink); font-family:var(--sans); font-size:12px; }
+  .svg-t.b { font-weight:600; }
+  .svg-t.m { fill:var(--muted); font-family:var(--mono); font-size:10.5px; }
+  .svg-t.s { font-size:10.5px; fill:var(--muted); }
+  .svg-e { stroke:var(--line-strong); stroke-width:1.4; fill:none; }
+  .svg-e.good { stroke:var(--accent); } .svg-e.bad { stroke:var(--red); stroke-dasharray:4 3; } .svg-e.blue { stroke:var(--blue); }
+  .svg-region { fill:none; stroke:var(--line); stroke-dasharray:5 4; rx:10; }
+  .steps { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap:12px; counter-reset: step; }
+  .step { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; position:relative; }
+  .step::before { counter-increment: step; content: "M" counter(step, decimal); font-family:var(--mono); font-size:12px; color:var(--accent); }
+  .step.zero::before { content:"M0"; }
+  .step h3 { margin-top:4px; }
+  .step ul { padding-left:18px; margin:6px 0 0; font-size:13.5px; color:var(--muted); }
+  .step .done { font-family:var(--mono); font-size:11.5px; color:var(--accent); margin-top:8px; display:block; }
+  ul.tight { padding-left:20px; margin:0 0 10px; } ul.tight li { margin-bottom:5px; }
+  .q { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .q h3 { display:flex; gap:10px; align-items:baseline; }
+  .q label { display:flex; gap:10px; align-items:flex-start; padding:8px 10px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; cursor:pointer; font-size:14px; }
+  .q label:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+  .q label input { margin-top:3px; flex:0 0 auto; }
+  .q label small { display:block; color:var(--muted); }
+  .q textarea, .q input[type=text] { width:100%; background:#0b0d0f; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-family:var(--sans); font-size:14px; }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:8px 14px; font-weight:600; font-size:13.5px; cursor:pointer; font-family:var(--sans); }
+  .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line-strong); }
+  .queued { font-family:var(--mono); font-size:11.5px; color:var(--accent); margin-left:10px; display:none; }
+  .q.is-queued .queued { display:inline; }
+  .kv { display:grid; grid-template-columns: max-content minmax(0,1fr); gap:6px 16px; font-size:14px; }
+  .kv dt { color:var(--muted); font-family:var(--mono); font-size:12.5px; } .kv dd { margin:0; }
+  .toast { position:fixed; right:18px; bottom:18px; background:var(--panel-2); border:1px solid var(--accent); color:var(--ink); padding:10px 14px; border-radius:8px; font-size:13px; display:none; z-index:50; max-width:min(90vw, 420px); }
+  .toc { display:flex; flex-wrap:wrap; gap:8px 14px; font-size:13px; margin-top:18px; }
+  .toc a { color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--line-strong); } .toc a:hover { color:var(--ink); }
+  .tree { font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--muted); }
+  .tree b { color:var(--ink); font-weight:500; }
+  .tree i { color:var(--faint); font-style:normal; }
+  @media (max-width: 640px) { th, td { padding:8px; } h2 { font-size:26px; } }
+</style>
+</head>
+<body>
+<main>
+
+<div class="eyebrow">nmp-ai-portfolio / nmp-central-ai · plan v1 · 2026-09-21 · decided</div>
+<h1>One <em>platform repo</em> for the shared services<br>every sibling project keeps re-inventing.</h1>
+<p class="lede">Your thinking checks out. The survey of the 19 sibling folders shows the same services rebuilt over and over, most sharply for MLflow: six projects, five incompatible tracking schemes, four separate servers on four hand-picked ports. This plan bootstraps <code>nmp-central-ai</code> as a public repo, stands up a central MLflow stack locally with the same shape it will have on AWS, and makes milestone 1 the migration of the four core MLflow projects onto it, verified one by one, with transcript-rag following straight after. It also makes the platform legible to the coding agents working in each sibling, which is where most of the day-to-day usage will come from.</p>
+
+<div class="verdict">
+  <div class="stat amber"><div class="n">6</div><div class="l">projects configure MLflow, in 5 mutually incompatible ways</div></div>
+  <div class="stat red"><div class="n">4</div><div class="l">separate single-user MLflow servers on ports 5000 / 5500 / 5600 / 5601</div></div>
+  <div class="stat"><div class="n">6</div><div class="l">near-identical App Runner Terraform stacks, on a service AWS closed to new customers in April 2026</div></div>
+  <div class="stat accent"><div class="n">4</div><div class="l">projects in milestone-1 scope; transcript-rag follows right after; v2v, Databricks and CUAD excluded</div></div>
+</div>
+
+<nav class="toc">
+  <a href="#validate">1 · Is centralising right?</a>
+  <a href="#today">2 · What exists today</a>
+  <a href="#target">3 · Target shape</a>
+  <a href="#candidates">4 · What else to centralise</a>
+  <a href="#repo">5 · Repo bootstrap</a>
+  <a href="#milestones">6 · Milestones</a>
+  <a href="#m1">7 · Milestone 1 project map</a>
+  <a href="#aws">8 · AWS</a>
+  <a href="#risks">9 · Risks</a>
+  <a href="#agents">10 · Agents in sibling repos</a>
+  <a href="#bestinclass">11 · Best in class?</a>
+  <a href="#decisions">12 · Decisions for you</a>
+</nav>
+
+<!-- ============================================================ -->
+<section id="validate">
+  <div class="eyebrow">1 · Validation</div>
+  <h2>Is centralising the right move? Yes, with two guardrails.</h2>
+  <p class="sub">The case is not theoretical. The compose files in the sibling repos already narrate the problem in their own comments.</p>
+
+  <div class="split">
+    <div class="card">
+      <h4>Evidence for</h4>
+      <ul class="tight">
+        <li><b>Port allocation is collision-driven.</b> data-qa's compose says it moved to 5500 "because ConvFinQA's MLflow owns 5000 on this machine"; DABStep took 5600, tau2 5601. Four stores, no shared registry, no cross-project comparison.</li>
+        <li><b>Non-portable state has already crept in.</b> ConvFinQA's compose bind-mounts an absolute laptop path so old runs still show artifacts. That file cannot run on another machine. <span class="path">ConvFinQA-agent/docker-compose.yml:61</span></li>
+        <li><b>Deprecated store still in use.</b> transcript-rag-agent defaults to <code>file:.yt-agent/mlruns</code>, which ConvFinQA's own code comments call deprecated as of Feb 2026.</li>
+        <li><b>Accidental local stores.</b> databricks-propertyiq has a stray <code>mlflow.db</code> and <code>mlruns/</code> despite pointing at Databricks, the exact failure databricks-sa-coding warns about in <span class="path">scripts/deploy_endpoint.py:41</span>.</li>
+        <li><b>The same tracking module is copy-pasted.</b> DABStep-loop and tau2-loop carry byte-similar <code>tracking/mlflow_log.py</code>, <code>snapshot.py</code>, <code>registry.py</code>.</li>
+        <li><b>It is what you told the portfolio site you do.</b> nmp-dsci.github.io promises "per-request traces and cost caps" across four live systems. A platform repo is the credible backing for that claim.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Guardrails, or this becomes a liability</h4>
+      <ul class="tight">
+        <li><b>Keep the coupling to one env var.</b> Nobody clones a single project standalone in practice, so this costs nothing: <code>MLFLOW_TRACKING_URI</code> is the only contract, and platform code stays out of each project's hot path in M1. Agreed in review.</li>
+        <li><b>Local mirrors AWS in shape, not just in URL.</b> Postgres backend and S3-compatible artifacts from day one (MinIO locally, RDS + S3 in AWS). Confirmed in review: this is a production-systems portfolio, so parity is the point. No longer an open decision.</li>
+        <li><b>Databricks projects are out of scope.</b> databricks-propertyiq and databricks-sa-coding use Databricks-managed MLflow by design. Excluded, not a priority; no cleanup work planned.</li>
+      </ul>
+      <div class="callout info"><b>The enterprise analogy holds.</b> This is a platform team with an internal service catalogue, onboarding runbook, and a per-project registry. The discipline you want is: a project declares what it needs in one YAML entry; it never spins up its own copy.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="today">
+  <div class="eyebrow">2 · Current state</div>
+  <h2>Where MLflow lives today, verified at the source.</h2>
+  <p class="sub">Each row was checked at the cited file and line. "Scheme" is what the project defaults to when no env var is set.</p>
+
+  <figure>
+    <svg viewBox="0 0 980 250" role="img" aria-labelledby="fig1t">
+      <title id="fig1t">Today: each project owns its own MLflow store</title>
+      <!-- columns -->
+      <g id="col-convfinqa">
+        <rect class="svg-box" x="10" y="20" width="150" height="46" rx="8"/><title>ConvFinQA-agent</title>
+        <text class="svg-t b" x="85" y="40" text-anchor="middle">ConvFinQA-agent</text>
+        <text class="svg-t m" x="85" y="56" text-anchor="middle">mlflow ≥3.11</text>
+        <path class="svg-e" d="M85 66 V110"/>
+        <rect class="svg-box hot" x="10" y="110" width="150" height="58" rx="8"/>
+        <text class="svg-t" x="85" y="130" text-anchor="middle">sqlite file</text>
+        <text class="svg-t m" x="85" y="146" text-anchor="middle">mlruns/mlflow.db</text>
+        <text class="svg-t m" x="85" y="160" text-anchor="middle">+ compose :5000</text>
+      </g>
+      <g id="col-dabstep">
+        <rect class="svg-box" x="175" y="20" width="150" height="46" rx="8"/><title>DABStep-loop</title>
+        <text class="svg-t b" x="250" y="40" text-anchor="middle">DABStep-loop</text>
+        <text class="svg-t m" x="250" y="56" text-anchor="middle">mlflow ≥3.5</text>
+        <path class="svg-e" d="M250 66 V110"/>
+        <rect class="svg-box hot" x="175" y="110" width="150" height="58" rx="8"/>
+        <text class="svg-t" x="250" y="130" text-anchor="middle">own server</text>
+        <text class="svg-t m" x="250" y="146" text-anchor="middle">127.0.0.1:5600</text>
+        <text class="svg-t m" x="250" y="160" text-anchor="middle">.mlflow/mlflow.db</text>
+      </g>
+      <g id="col-tau2">
+        <rect class="svg-box" x="340" y="20" width="150" height="46" rx="8"/><title>tau2-loop</title>
+        <text class="svg-t b" x="415" y="40" text-anchor="middle">tau2-loop</text>
+        <text class="svg-t m" x="415" y="56" text-anchor="middle">mlflow ≥3.5</text>
+        <path class="svg-e" d="M415 66 V110"/>
+        <rect class="svg-box hot" x="340" y="110" width="150" height="58" rx="8"/>
+        <text class="svg-t" x="415" y="130" text-anchor="middle">own server</text>
+        <text class="svg-t m" x="415" y="146" text-anchor="middle">127.0.0.1:5601</text>
+        <text class="svg-t m" x="415" y="160" text-anchor="middle">.mlflow/mlflow.db</text>
+      </g>
+      <g id="col-transcript">
+        <rect class="svg-box" x="505" y="20" width="150" height="46" rx="8"/><title>transcript-rag-agent</title>
+        <text class="svg-t b" x="580" y="40" text-anchor="middle">transcript-rag</text>
+        <text class="svg-t m" x="580" y="56" text-anchor="middle">moves after M1</text>
+        <path class="svg-e bad" d="M580 66 V110"/>
+        <rect class="svg-box bad" x="505" y="110" width="150" height="58" rx="8"/>
+        <text class="svg-t" x="580" y="130" text-anchor="middle">file store (deprecated)</text>
+        <text class="svg-t m" x="580" y="146" text-anchor="middle">file:.yt-agent/mlruns</text>
+      </g>
+      <g id="col-dataqa">
+        <rect class="svg-box" x="670" y="20" width="150" height="46" rx="8"/><title>data-qa-agent</title>
+        <text class="svg-t b" x="745" y="40" text-anchor="middle">data-qa-agent</text>
+        <text class="svg-t m" x="745" y="56" text-anchor="middle">OTLP spans only</text>
+        <path class="svg-e" d="M745 66 V110"/>
+        <rect class="svg-box hot" x="670" y="110" width="150" height="58" rx="8"/>
+        <text class="svg-t" x="745" y="130" text-anchor="middle">compose sink</text>
+        <text class="svg-t m" x="745" y="146" text-anchor="middle">host :5500</text>
+        <text class="svg-t m" x="745" y="160" text-anchor="middle">x-mlflow-experiment-id</text>
+      </g>
+      <g id="col-v2v">
+        <rect class="svg-box" x="835" y="20" width="135" height="46" rx="8"/><title>v2v-prod-agent</title>
+        <text class="svg-t b" x="902" y="40" text-anchor="middle">v2v-prod-agent</text>
+        <text class="svg-t m" x="902" y="56" text-anchor="middle">Langfuse · excluded</text>
+        <path class="svg-e blue" d="M902 66 V110"/>
+        <rect class="svg-box blue" x="835" y="110" width="135" height="58" rx="8"/>
+        <text class="svg-t" x="902" y="130" text-anchor="middle">Langfuse + PG</text>
+        <text class="svg-t m" x="902" y="146" text-anchor="middle">own compose</text>
+      </g>
+      <!-- databricks strip -->
+      <rect class="svg-region" x="10" y="190" width="960" height="48"/>
+      <text class="svg-t s" x="24" y="219">Excluded from this plan: v2v-prod-agent (Langfuse), databricks-propertyiq and databricks-sa-coding (Databricks-managed MLflow), CUAD-agent (no MLflow).</text>
+    </svg>
+    <figcaption>Five stores on this laptop, none talking to each other. Amber is a working-but-isolated server; red is a deprecated store; blue is a different tool and is excluded.</figcaption>
+  </figure>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Project</th><th>Scheme (default)</th><th>Experiment</th><th>Set where</th><th>Uses</th><th>M1</th></tr></thead>
+      <tbody>
+        <tr><td><b>ConvFinQA-agent</b></td><td>sqlite file, plus compose server on host 5000<span class="path">docker-compose.yml:47-61</span></td><td><code>convfinqa</code></td><td><span class="path">src/convfinqa/tracking/mlflow_log.py:38-41</span></td><td>runs, <code>start_span</code> tracing, <code>mlflow.genai</code> prompt registry, registered model</td><td><span class="badge ok">migrate</span></td></tr>
+        <tr><td><b>DABStep-loop</b></td><td><code>http://127.0.0.1:5600</code><span class="path">src/dabstep_loop/config.py:48</span></td><td><code>dabstep-loop</code></td><td><span class="path">tracking/mlflow_log.py:25, snapshot.py:21, registry.py:80</span></td><td>runs, registry, snapshots; server from <code>make mlflow-up</code></td><td><span class="badge ok">migrate</span></td></tr>
+        <tr><td><b>tau2-loop</b></td><td><code>http://127.0.0.1:5601</code><span class="path">src/tau2_loop/config.py:60</span></td><td><code>tau2-loop</code></td><td><span class="path">tracking/mlflow_log.py:25, snapshot.py:23, registry.py:98</span></td><td>same three files as DABStep</td><td><span class="badge ok">migrate</span></td></tr>
+        <tr><td><b>transcript-rag-agent</b></td><td><code>file:.yt-agent/mlruns</code> <span class="badge bad">deprecated</span><span class="path">src/config.py:271</span></td><td><code>yt-agent-v1</code></td><td><span class="path">src/observability.py:24-27</span></td><td><code>mlflow.langchain.autolog()</code>, transcript artifacts</td><td><span class="badge warn">after M1</span></td></tr>
+        <tr><td><b>data-qa-agent</b></td><td>OTLP sink; compose mlflow on host 5500<span class="path">docker-compose.yml:117-125, :370</span></td><td><code>data-qa/evals</code> (by numeric id)</td><td><span class="path">services/backend-api/app/tracing.py:115-119</span></td><td>OTel spans with <code>x-mlflow-experiment-id</code>; eval runs; no Python mlflow dep</td><td><span class="badge ok">migrate</span></td></tr>
+        <tr><td><b>v2v-prod-agent</b></td><td>OTel → self-hosted Langfuse<span class="path">src/v2v_agent/monitoring/tracing.py</span></td><td>n/a</td><td>compose <code>langfuse</code>, <code>langfuse-db</code></td><td>guardrail-verdict spans, promptfoo red-team</td><td><span class="badge">excluded</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub" style="margin-top:10px">Ignored by decision: databricks-propertyiq and databricks-sa-coding (Databricks-managed MLflow) and CUAD-agent (no MLflow). Not using MLflow at all today: value-invest-agent, productivity-tracker, DataAgentBench, floor-plan-reviewer, propertyiq_getdata, chronicle. Candidates for onboarding later, not M1 work.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="target">
+  <div class="eyebrow">3 · Target</div>
+  <h2>One stack, one URL, one env var.</h2>
+  <p class="sub">The central repo runs Postgres, MinIO and one MLflow server on a named Docker network. Projects reach it either from the host (<code>http://localhost:5000</code>) or, if they run in compose, by joining the <code>nmp-central</code> network and using <code>http://mlflow:5000</code>. Nothing else about a project changes in M1. Backend store and artifact layout are settled: Postgres and S3-compatible, locally and in AWS.</p>
+
+  <figure>
+    <svg viewBox="0 0 980 330" role="img" aria-labelledby="fig2t">
+      <title id="fig2t">Target: projects point one env var at a central MLflow stack</title>
+      <!-- projects row -->
+      <g id="t-projects">
+        <rect class="svg-box" x="10" y="16" width="140" height="40" rx="8"/><text class="svg-t b" x="80" y="40" text-anchor="middle">ConvFinQA</text>
+        <rect class="svg-box" x="160" y="16" width="140" height="40" rx="8"/><text class="svg-t b" x="230" y="40" text-anchor="middle">DABStep-loop</text>
+        <rect class="svg-box" x="310" y="16" width="140" height="40" rx="8"/><text class="svg-t b" x="380" y="40" text-anchor="middle">tau2-loop</text>
+        <rect class="svg-box" x="460" y="16" width="140" height="40" rx="8" stroke-dasharray="4 3"/><text class="svg-t b" x="530" y="40" text-anchor="middle">transcript-rag</text>
+        <rect class="svg-box" x="610" y="16" width="140" height="40" rx="8"/><text class="svg-t b" x="680" y="40" text-anchor="middle">data-qa (OTLP)</text>
+        <rect class="svg-box" x="760" y="16" width="140" height="40" rx="8" stroke-dasharray="4 3"/><text class="svg-t b" x="830" y="40" text-anchor="middle">later: others</text>
+      </g>
+      <!-- edges to bus -->
+      <path class="svg-e good" d="M80 56 V96"/><path class="svg-e good" d="M230 56 V96"/><path class="svg-e good" d="M380 56 V96"/><path class="svg-e good" stroke-dasharray="4 3" d="M530 56 V96"/><path class="svg-e good" d="M680 56 V96"/><path class="svg-e good" stroke-dasharray="4 3" d="M830 56 V96"/>
+      <rect class="svg-box good" x="10" y="96" width="890" height="34" rx="8"/><title>MLFLOW_TRACKING_URI</title>
+      <text class="svg-t m" x="455" y="117" text-anchor="middle">MLFLOW_TRACKING_URI=http://localhost:5000   ·   inside compose: http://mlflow:5000 on network "nmp-central"   ·   OTLP: /v1/traces</text>
+      <path class="svg-e good" d="M455 130 V166"/>
+      <!-- central region -->
+      <rect class="svg-region" x="10" y="166" width="890" height="150"/>
+      <text class="svg-t m" x="24" y="186">nmp-central-ai / docker-compose.yml   (AWS: same shape, see §8)</text>
+      <g id="t-mlflow"><rect class="svg-box good" x="330" y="200" width="250" height="56" rx="8"/><title>MLflow server</title>
+        <text class="svg-t b" x="455" y="222" text-anchor="middle">mlflow server 3.16 (pinned)</text>
+        <text class="svg-t m" x="455" y="240" text-anchor="middle">experiments · traces · prompts · registry</text></g>
+      <path class="svg-e" d="M330 228 H270"/><path class="svg-e" d="M580 228 H640"/>
+      <g id="t-pg"><rect class="svg-box" x="40" y="200" width="230" height="56" rx="8"/><title>Postgres 16 + pgvector</title>
+        <text class="svg-t b" x="155" y="222" text-anchor="middle">Postgres 16 + pgvector</text>
+        <text class="svg-t m" x="155" y="240" text-anchor="middle">db mlflow now · project schemas M3</text></g>
+      <g id="t-minio"><rect class="svg-box" x="640" y="200" width="230" height="56" rx="8"/><title>MinIO (S3 API)</title>
+        <text class="svg-t b" x="755" y="222" text-anchor="middle">MinIO (S3 API)</text>
+        <text class="svg-t m" x="755" y="240" text-anchor="middle">bucket mlflow-artifacts → S3</text></g>
+      <text class="svg-t s" x="24" y="300">Backend store = Postgres, artifacts = S3 API from day one, so the AWS deploy is a config change, not a rewrite.</text>
+    </svg>
+    <figcaption>Green is the only contract a project has with the platform: one env var. Dashed boxes join after M1: transcript-rag first, then any sibling that adopts MLflow.</figcaption>
+  </figure>
+
+  <div class="split">
+    <div class="card">
+      <h4>Conventions the platform imposes</h4>
+      <dl class="kv">
+        <dt>experiment</dt><dd><code>&lt;project&gt;/&lt;purpose&gt;</code>, e.g. <code>convfinqa/evals</code>, <code>dabstep-loop/loop</code>. data-qa already does this (<code>data-qa/evals</code>). Existing flat names are kept as aliases in M1 to avoid churn; renaming is a follow-up.</dd>
+        <dt>tags</dt><dd><code>project</code>, <code>git_sha</code>, <code>env</code> (local / aws), <code>billing</code>. Set by each project's existing tracking module; a shared helper comes later (D3 decided: env var only in M1).</dd>
+        <dt>ids</dt><dd><code>make mlflow-init</code> in the central repo creates every experiment from <code>registry/projects.yaml</code> idempotently and prints the numeric ids data-qa's OTLP header needs.</dd>
+        <dt>ports</dt><dd>Central MLflow on 5000, Postgres on 5432, MinIO on 9000 / 9001. Sibling projects delete their own mlflow services and stop squatting 5500 / 5600 / 5601.</dd>
+        <dt>fallback</dt><dd>If the server is unreachable a project's <code>make eval</code> should fail fast with a message that names <code>make -C ../nmp-central-ai up</code>, not silently create a local sqlite store.</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h4>Local compose, in short</h4>
+<pre><code>services:
+  postgres:  pgvector/pgvector:pg16    # 5432, volume pgdata
+  minio:     minio/minio               # 9000 api, 9001 console
+  mlflow:    build: services/mlflow    # 5000
+    command: mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri postgresql://mlflow:***@postgres/mlflow
+      --artifacts-destination s3://mlflow-artifacts
+      --serve-artifacts
+    environment: MLFLOW_S3_ENDPOINT_URL=http://minio:9000
+    depends_on: postgres (healthy), minio-init (bucket)
+networks:
+  default: { name: nmp-central }      # external-joinable by siblings</code></pre>
+      <p class="tag">Profiles reserved for later milestones: <code>--profile gateway</code> (LiteLLM), <code>--profile metrics</code> (Prometheus + Grafana, lifted from data-qa).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="candidates">
+  <div class="eyebrow">4 · Service catalogue</div>
+  <h2>What else is worth centralising, ranked by how often you rebuilt it.</h2>
+  <p class="sub">Counts come from the survey. Only the first row is in this plan's build scope; the rest are the platform's backlog and go into their own plans.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>#</th><th>Service</th><th>Duplicated in</th><th>Central form (local → AWS)</th><th>When</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td><b>Experiment tracking, traces, prompt registry, model registry</b></td><td>6 projects, 5 schemes</td><td>MLflow server → App Runner / ECS + RDS + S3</td><td><span class="badge rec">this plan · M1</span></td></tr>
+        <tr><td>2</td><td><b>Relational + vector database</b></td><td>Postgres ×3, DuckDB ×4, Chroma ×2, Neo4j ×1, sqlite everywhere</td><td>One Postgres 16 + pgvector, one schema per project, Alembic per schema → RDS. DuckDB stays local for file-analytics; Neo4j stays in transcript-rag unless a second graph user appears.</td><td>next plan · M3</td></tr>
+        <tr><td>3</td><td><b>LLM gateway + spend caps</b></td><td>anthropic / openai / deepseek / litellm across 8 projects; <code>BILLING</code> guard hand-rolled ×4</td><td>LiteLLM proxy with per-project virtual keys, budgets, model aliases, one place for provider keys → App Runner</td><td>M4</td></tr>
+        <tr><td>4</td><td><b>Deploy infrastructure</b></td><td>6 copies of <code>infra/terraform/{bootstrap,demo}</code> + <code>deploy-aws.yml</code></td><td>Terraform modules (<code>compose-host</code>, <code>rds-postgres</code>, <code>github-oidc</code>, later <code>ecs-express-service</code>) plus a GitHub reusable workflow. App Runner's retirement makes this a required migration, not a tidy-up</td><td>M5</td></tr>
+        <tr><td>5</td><td><b>Secrets</b></td><td>3 projects lack <code>.env.example</code>; keys scattered in per-repo <code>.env</code></td><td>Local: one <code>~/.env</code> loaded by every Makefile (already your convention). AWS: Secrets Manager / SSM, read by App Runner, never baked into images</td><td>M2 (AWS side), M4</td></tr>
+        <tr><td>6</td><td><b>Object storage</b></td><td>CUAD 2.6 GB <code>outputs/</code>, data-qa 1.3 GB <code>infra/</code>, eval artifacts in-repo</td><td>MinIO buckets per project → S3 with lifecycle rules; repos stop carrying bulk outputs</td><td>M2 / M3</td></tr>
+        <tr><td>7</td><td><b>Metrics + dashboards</b></td><td>Prometheus + Grafana only in data-qa</td><td>Lift data-qa's <code>ops/grafana</code> into a compose profile; scrape any sibling that exposes <code>/metrics</code></td><td>M4</td></tr>
+        <tr><td>8</td><td><b>Eval harness + judges + red-team</b></td><td>promptfoo ×2, ragas ×1, custom judges ×4, golden sets everywhere</td><td>A shared <code>nmp-evals</code> package: MLflow GenAI scorers, judge prompts, promptfoo base config. Datasets in object storage</td><td>M5+</td></tr>
+        <tr><td>9</td><td><b>Project template</b></td><td>AGENTS.md + CLAUDE.md pair ×14, Makefile ×7, <code>design_lint.mjs</code> ×5, no-mistakes mirror ×11</td><td>A real cookiecutter here (replacing the mostly-empty <code>ai-project-template/</code>) that wires a new project to the platform on day one</td><td>M5</td></tr>
+        <tr><td>10</td><td><b>Agent context</b></td><td>14 AGENTS.md + CLAUDE.md pairs, each re-explaining how to log, eval and deploy</td><td>One <code>PLATFORM.md</code> inherited via the portfolio-level CLAUDE.md, plus a plugin with skills and later an MCP server (§10)</td><td><span class="badge rec">M0 / M1</span></td></tr>
+        <tr><td>11</td><td><b>Queues / cache</b></td><td>Redis only in data-qa</td><td>Redis in compose profile → ElastiCache or Valkey later, only if a second user appears</td><td>backlog</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout warn" style="margin-top:14px"><b>Deliberately not centralised:</b> frontends (10× React + Vite). They are the product surface of each project and belong with it. A shared UI kit is the most you should extract, and not yet.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="repo">
+  <div class="eyebrow">5 · Repo bootstrap (M0)</div>
+  <h2>Set the repo up like your other fourteen, then make it public.</h2>
+  <p class="sub">The folder is empty and not a git repo. M0 produces the skeleton below, pushes it to <code>github.com/nmp-dsci/nmp-central-ai</code> as public, and adds the no-mistakes mirror remote like the siblings have.</p>
+
+  <div class="split">
+    <div class="card">
+      <h4>Layout</h4>
+<div class="tree">
+<b>nmp-central-ai/</b>
+├── README.md            <i>what this is, quickstart, service catalogue</i>
+├── AGENTS.md            <i>decisions log (D1…), layout, runbooks</i>
+├── CLAUDE.md            <i>pointer to AGENTS.md + the rules that bite</i>
+├── PLATFORM.md          <i>the agent-facing contract: URLs, env vars, rules, make targets (§10)</i>
+├── LICENSE              <i>MIT</i>
+├── Makefile             <i>up · down · logs · mlflow-init · check · fmt · lint · test</i>
+├── docker-compose.yml   <i>postgres · minio · mlflow (+ profiles)</i>
+├── .env.example         <i>names only, local defaults</i>
+├── .gitignore           <i>.env, volumes/, .terraform/, *.tfstate — never .lavish/</i>
+├── <b>services/</b>
+│   └── mlflow/Dockerfile      <i>mlflow==3.16.x + psycopg2-binary + boto3</i>
+├── <b>.claude-plugin/</b>       <i>marketplace.json: this repo is a Claude Code plugin marketplace (§10)</i>
+├── <b>plugins/nmp-platform/</b> <i>skills/platform-mlflow, skills/platform-onboard, later mcp server</i>
+├── <b>agent/</b>
+│   └── portfolio.CLAUDE.md    <i>installed as ../CLAUDE.md so every sibling inherits the platform contract</i>
+├── <b>registry/</b>
+│   └── projects.yaml          <i>the project map: path, experiments, status, owner</i>
+├── <b>scripts/</b>
+│   ├── mlflow_init.py         <i>create experiments idempotently, print ids</i>
+│   └── check_projects.py      <i>M1 verifier: smoke each project, assert a run/trace landed</i>
+├── <b>infra/terraform/</b>
+│   ├── bootstrap/             <i>state bucket, ECR, GitHub OIDC role (sibling pattern)</i>
+│   ├── central/               <i>vpc, rds, s3, app runner or ecs, secrets</i>
+│   └── modules/               <i>reusable pieces siblings adopt in M5</i>
+├── <b>packages/</b>
+│   └── nmp-central-py/        <i>optional client helper (D4), empty until decided</i>
+├── <b>docs/</b>
+│   └── onboarding.md          <i>how a project joins the platform, step by step</i>
+├── <b>ai_specs/</b>              <i>plan of record: s00_project_plan.md</i>
+├── <b>.github/workflows/</b>      <i>ci.yml (compose up + smoke), deploy-aws.yml</i>
+└── <b>.lavish/</b>               <i>this artifact and its successors</i>
+</div>
+    </div>
+    <div class="card">
+      <h4>Public-repo checklist</h4>
+      <ul class="tight">
+        <li><code>gh repo create nmp-dsci/nmp-central-ai --public --source . --push</code> after the first commit; add the no-mistakes mirror remote.</li>
+        <li>No real secret ever committed: <code>.env.example</code> carries names and local-only defaults (MinIO <code>minioadmin</code> is fine locally, rotated in AWS).</li>
+        <li>MLflow basic-auth credentials and the RDS password live in AWS Secrets Manager; Terraform reads them, never writes them to state in plain text where avoidable.</li>
+        <li>Terraform state in the bootstrap S3 bucket, GitHub Actions authenticates with OIDC, no long-lived AWS keys in repo secrets. Same as your six sibling stacks.</li>
+        <li>Account id and SSO URL never appear in code; region <code>ap-southeast-2</code> is a variable.</li>
+        <li>Bulk data and volumes are gitignored; <code>.lavish/</code> is tracked (workspace rule).</li>
+        <li>README states the standalone rule so a reader knows sibling projects still run without this repo.</li>
+      </ul>
+      <h4 style="margin-top:14px">registry/projects.yaml (shape)</h4>
+<pre><code>- name: dabstep-loop
+  path: ../DABStep-loop
+  mlflow:
+    experiments: [dabstep-loop]     # aliases kept in M1
+    client: python                  # python | otlp | external
+    smoke: make eval EVAL_LIMIT=1   # produces ≥1 run
+  status: pending                   # pending | migrated | external
+- name: databricks-propertyiq
+  mlflow: { client: external, note: "databricks-managed" }
+  status: external</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="milestones">
+  <div class="eyebrow">6 · Milestones</div>
+  <h2>Small gates. Each one ends with something you can see in a UI.</h2>
+  <div class="steps">
+    <div class="step zero">
+      <h3>Repo + local stack</h3>
+      <ul><li>Skeleton above, docs, compose with Postgres + MinIO + MLflow</li><li><code>make up</code>, <code>make mlflow-init</code></li><li><code>PLATFORM.md</code> + portfolio-level <code>CLAUDE.md</code> so agents in every sibling see the platform</li><li>Public repo, CI runs compose smoke</li></ul>
+      <span class="done">done when: http://localhost:5000 lists 5 empty experiments</span>
+    </div>
+    <div class="step">
+      <h3>Migrate every MLflow project</h3>
+      <ul><li>4 projects switch default URI, delete own mlflow service / target</li><li>data-qa joins <code>nmp-central</code> network, gets experiment ids</li><li><code>make check</code> proves one run or trace per project</li><li>Plugin <code>nmp-platform</code> with the <code>platform-mlflow</code> skill, validated with <code>claude plugin eval</code></li><li>M1b straight after: transcript-rag off the file store</li></ul>
+      <span class="done">done when: check_projects.py is all green and the old ports are free</span>
+    </div>
+    <div class="step">
+      <h3>Same stack on AWS</h3>
+      <ul><li>Terraform: RDS t4g.micro, S3 artifacts, one t4g.small EC2 (AL2023, Docker, SSM), Caddy HTTPS + basic-auth, no ALB, no NAT</li><li>Deploy via GitHub OIDC + SSM <code>compose up</code>; <code>make aws-sleep</code> / <code>aws-wake</code></li><li>One project (DABStep) logs a demo eval to AWS from CI to prove the path</li></ul>
+      <span class="done">done when: an AWS-hosted run is visible and the first week's bill is under USD 15</span>
+    </div>
+    <div class="step">
+      <h3>Central database (separate plan)</h3>
+      <ul><li>Per-project schemas on the same Postgres</li><li>data-qa and floor-plan first (already Postgres)</li><li>Chroma → pgvector where it fits</li></ul>
+      <span class="done">done when: two projects share the instance with isolated schemas</span>
+    </div>
+    <div class="step">
+      <h3>Gateway + secrets + metrics</h3>
+      <ul><li>LiteLLM proxy with per-project keys and budgets</li><li>Secrets Manager wiring</li><li>Prometheus + Grafana profile</li><li>MCP server <code>nmp-central</code>: status, experiments, traces, registry</li></ul>
+      <span class="done">done when: a project runs with no provider key of its own</span>
+    </div>
+    <div class="step">
+      <h3>Modules + template</h3>
+      <ul><li>Terraform modules and reusable workflow</li><li>Six sibling demos move from App Runner to the shared ALB</li><li>Cookiecutter replaces ai-project-template</li><li>Shared evals package</li></ul>
+      <span class="done">done when: a new project is on the platform in under an hour</span>
+    </div>
+  </div>
+  <p class="sub" style="margin-top:14px">Effort guess for what this plan covers: M0 one working session, M1 about two sessions (data-qa is the fiddly one), M1b for transcript-rag one session, M2 one to two sessions plus SSO login and cost review.</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="m1">
+  <div class="eyebrow">7 · Milestone 1</div>
+  <h2>Project-by-project migration map.</h2>
+  <p class="sub">What changes in each repo, how it is verified, and what could go wrong. Four projects are in M1; transcript-rag is listed unticked because it follows immediately after. Excluded by review: v2v-prod-agent, both Databricks projects, CUAD-agent. Queue the set to confirm; every ticked ID gets an item-by-item receipt when the work is done.</p>
+
+  <form class="q" data-lavish-question="m1-scope" onsubmit="return submitBatch(event)">
+    <h3>M1 scope <span class="queued">queued ✓</span></h3>
+    <div class="tablewrap" style="margin-bottom:12px">
+      <table>
+        <thead><tr><th></th><th>ID</th><th>Project</th><th>Changes</th><th>Verify</th><th>Watch out</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><input type="checkbox" name="items" value="P1" data-label="ConvFinQA-agent → central MLflow" data-disposition="migrate" checked></td>
+            <td><code>P1</code></td><td><b>ConvFinQA-agent</b></td>
+            <td>Default URI in <code>mlflow_log.py</code> becomes central; drop the <code>mlflow</code> compose service and the absolute-path bind mount; keep sqlite path as documented standalone fallback.</td>
+            <td><code>make eval EVAL_MANIFEST=…</code> small run; <code>search_runs</code> in <code>convfinqa</code>; prompt-ledger round-trip.</td>
+            <td>Prompt registry + registered model must exist on the new server. Pre-Sep-2 runs are not migrated (D2 decided: fresh start, old stores archived read-only).</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" name="items" value="P2" data-label="DABStep-loop → central MLflow" data-disposition="migrate" checked></td>
+            <td><code>P2</code></td><td><b>DABStep-loop</b></td>
+            <td><code>config.py:48</code> default → central; <code>make mlflow-up</code> becomes a shim to the central repo; delete compose mlflow.</td>
+            <td><code>make eval</code> limited; run tagged <code>project=dabstep-loop</code> lands; registry/snapshot targets still work.</td>
+            <td>Registry helpers assume a server they own; check model-name collisions with tau2.</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" name="items" value="P3" data-label="tau2-loop → central MLflow" data-disposition="migrate" checked></td>
+            <td><code>P3</code></td><td><b>tau2-loop</b></td>
+            <td>Same as P2 at <code>config.py:60</code>.</td><td>Same as P2.</td>
+            <td>Shares copy-pasted tracking code with DABStep: fix both together, a shared module is a later option (D3 decided: env var only in M1).</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" name="items" value="P4" data-label="transcript-rag-agent → central MLflow (after M1)" data-disposition="defer"></td>
+            <td><code>P4</code></td><td><b>transcript-rag-agent</b> <span class="badge warn">after M1</span></td>
+            <td><code>src/config.py:271</code>, <code>.env.example:104</code>, <code>Dockerfile:66</code>, <code>readme.md:283</code> all move off <code>file:</code>; artifacts go to MinIO.</td>
+            <td>Ingest one transcript; a run plus langchain autolog trace lands in <code>yt-agent-v1</code>; artifact downloadable via the UI.</td>
+            <td>Deferred by decision: moves onto the service once M1 is green. Only project on the file store; largest artifact volume; autolog is wrapped in try/except so a silent failure looks like success. The check must assert a trace exists.</td>
+          </tr>
+          <tr>
+            <td><input type="checkbox" name="items" value="P5" data-label="data-qa-agent OTLP → central MLflow" data-disposition="migrate" checked></td>
+            <td><code>P5</code></td><td><b>data-qa-agent</b></td>
+            <td>Remove its <code>mlflow</code> service (14 → 13); join network <code>nmp-central</code>; <code>OTLP_ENDPOINT=http://mlflow:5000</code>; experiment ids from <code>mlflow-init</code> into <code>.env</code>.</td>
+            <td><code>make eval</code> one case; the run's Traces tab is non-empty in <code>data-qa/evals</code>.</td>
+            <td>Its own comments warn: traces only show under a run when they share the run's experiment. Numeric id changes with the store, so the id must come from the registry, never hardcoded.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="btn" type="submit">Queue selected scope</button>
+  </form>
+
+  <div class="callout" style="margin-top:16px"><b>Verification protocol.</b> <code>scripts/check_projects.py</code> reads the registry, runs each project's <code>smoke</code> command with <code>MLFLOW_TRACKING_URI</code> forced to the central server, then queries the server for a run or trace created after the smoke started, tagged with the project. It prints one row per project and exits non-zero on any miss. M1 is done when it is all green and <code>lsof -i :5500,:5600,:5601</code> shows nothing.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="aws">
+  <div class="eyebrow">8 · AWS (M2)</div>
+  <h2>Same three boxes, hosted small: one Graviton box runs the compose file.</h2>
+  <p class="sub">Framing agreed in review: real runs happen on the laptop against the local stack; AWS hosts a lightweight demo with no live data, sized as small as it can go. Region ap-southeast-2. Backend store RDS Postgres db.t4g.micro (D5 decided), artifacts S3, the same MLflow image as local. Decided (D4): a single <b>t4g.small Graviton EC2</b> running the same <code>docker-compose.yml</code> as the laptop, with Caddy for HTTPS, pointed at RDS and real S3. ECS Express Mode, AWS's successor to the now-closed App Runner, stays documented as the upgrade path if the demo ever needs more than one box.</p>
+
+  <figure>
+    <svg viewBox="0 0 980 300" role="img" aria-labelledby="fig3t">
+      <title id="fig3t">AWS topology for the central MLflow demo stack: one Graviton EC2 running compose</title>
+      <rect class="svg-region" x="230" y="14" width="740" height="272"/>
+      <text class="svg-t m" x="244" y="34">AWS account · ap-southeast-2 · Terraform in infra/terraform/central</text>
+      <!-- laptop and CI -->
+      <g id="a-laptop"><rect class="svg-box" x="10" y="60" width="180" height="50" rx="8"/><title>Laptop / sibling project</title>
+        <text class="svg-t b" x="100" y="81" text-anchor="middle">laptop · sibling project</text><text class="svg-t m" x="100" y="98" text-anchor="middle">MLFLOW_TRACKING_URI=https://…</text></g>
+      <g id="a-ci"><rect class="svg-box" x="10" y="200" width="180" height="50" rx="8"/><title>GitHub Actions</title>
+        <text class="svg-t b" x="100" y="221" text-anchor="middle">GitHub Actions (OIDC)</text><text class="svg-t m" x="100" y="238" text-anchor="middle">build → ECR → SSM: compose up</text></g>
+      <!-- app runner -->
+      <g id="a-compute"><rect class="svg-box good" x="330" y="60" width="240" height="72" rx="8"/><title>EC2 t4g.small running docker compose with Caddy and MLflow</title>
+        <text class="svg-t b" x="450" y="83" text-anchor="middle">EC2 t4g.small · docker compose</text>
+        <text class="svg-t m" x="450" y="100" text-anchor="middle">caddy (HTTPS, basic-auth) → mlflow</text>
+        <text class="svg-t m" x="450" y="116" text-anchor="middle">public subnet · SG 443 only · 2 vCPU</text></g>
+      <path class="svg-e good" d="M190 85 H330"/>
+      <g id="a-ecr"><rect class="svg-box" x="330" y="200" width="120" height="50" rx="8"/><title>ECR</title><text class="svg-t b" x="390" y="229" text-anchor="middle">ECR</text></g>
+      <path class="svg-e" d="M190 225 H330"/><path class="svg-e" d="M450 200 V132"/>
+      <!-- vpc connector -->
+      <g id="a-vpc"><rect class="svg-box" x="620" y="72" width="110" height="48" rx="8"/><title>Security group: only the task reaches RDS</title>
+        <text class="svg-t b" x="675" y="92" text-anchor="middle">SG</text><text class="svg-t m" x="675" y="108" text-anchor="middle">box → 5432 only</text></g>
+      <path class="svg-e" d="M570 96 H620"/>
+      <g id="a-rds"><rect class="svg-box" x="780" y="60" width="180" height="72" rx="8"/><title>RDS Postgres, private subnet</title>
+        <text class="svg-t b" x="870" y="83" text-anchor="middle">RDS Postgres 16</text>
+        <text class="svg-t m" x="870" y="100" text-anchor="middle">t4g.micro (D5) · 20 GB gp3</text>
+        <text class="svg-t m" x="870" y="116" text-anchor="middle">stoppable between demos</text></g>
+      <path class="svg-e" d="M730 96 H780"/>
+      <g id="a-s3"><rect class="svg-box" x="780" y="200" width="180" height="50" rx="8"/><title>S3 artifacts bucket</title>
+        <text class="svg-t b" x="870" y="221" text-anchor="middle">S3 · mlflow-artifacts</text><text class="svg-t m" x="870" y="238" text-anchor="middle">lifecycle → IA at 30 d</text></g>
+      <path class="svg-e" d="M570 120 C 640 200, 700 225, 780 225"/>
+      <g id="a-secrets"><rect class="svg-box" x="620" y="200" width="120" height="50" rx="8"/><title>Secrets Manager</title>
+        <text class="svg-t b" x="680" y="221" text-anchor="middle">Secrets Mgr</text><text class="svg-t m" x="680" y="238" text-anchor="middle">db pw · basic-auth</text></g>
+      <path class="svg-e" d="M570 128 L 620 205"/>
+      <text class="svg-t s" x="244" y="272">Later services (LiteLLM, Grafana) are extra compose services and Caddy routes on the same box. No ALB, no NAT.</text>
+    </svg>
+    <figcaption>The compose file is the same one as on the laptop with a <code>compose.aws.yml</code> override that drops the postgres and minio services and points MLflow at RDS and S3. Deploys go through SSM Run Command, so no SSH keys or open port 22.</figcaption>
+  </figure>
+
+  <h4>Monthly cost, Sydney, always-on vs stopped (USD, estimates from list prices; verify in Cost Explorer after week one)</h4>
+  <div class="tablewrap" style="margin-bottom:16px">
+    <table>
+      <thead><tr><th>Component</th><th>Sizing</th><th>On</th><th>Stopped</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>EC2 t4g.small (Graviton)</td><td>2 vCPU / 2 GB, 20 GB gp3</td><td>≈ 16</td><td>≈ 2</td><td><code>make aws-sleep</code> stops the instance; only the EBS volume is billed. Elastic IP is free while attached to a running instance, ≈ 3.6 while stopped unless released.</td></tr>
+        <tr><td>Load balancer / NAT</td><td>none</td><td>0</td><td>0</td><td>Caddy on the box terminates HTTPS with a Let's Encrypt cert. No ALB (≈ 19) and no NAT (≈ 43).</td></tr>
+        <tr><td>RDS Postgres</td><td>db.t4g.micro, 20 GB gp3, single-AZ</td><td>≈ 18</td><td>≈ 3</td><td>Stop between demos (AWS restarts it after 7 days; a scheduled Lambda re-stops it). Storage still billed.</td></tr>
+        <tr><td>S3 artifacts + ECR</td><td>a few GB</td><td>≈ 1</td><td>≈ 1</td><td>Lifecycle to Infrequent Access at 30 days.</td></tr>
+        <tr><td><b>Total</b></td><td></td><td><b>≈ 35</b></td><td><b>≈ 6</b></td><td>Roughly AUD 53 / 9. Budget alarm at USD 45.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h3>B · ECS Express Mode + RDS + S3 <span class="badge">upgrade path</span></h3>
+      <p>AWS's named successor to App Runner. Fargate task, shared ALB, auto HTTPS domain, deployed with the same Terraform + GitHub OIDC pattern you already use. Matches MLflow's reference architecture.</p>
+      <ul class="tight"><li>Smallest Fargate size is enough for a demo with no live data.</li><li>The shared ALB becomes the front door for every later central service and for the six sibling demos that must leave App Runner anyway.</li><li>Sleep and wake are two Make targets.</li></ul>
+      <div class="cost">≈ USD 46 / month always on · ≈ 23 asleep. Move here only if the demo needs more than one box.</div>
+    </div>
+    <div class="card rec">
+      <h3>E · One Graviton EC2 running the compose file <span class="badge rec">decided</span></h3>
+      <p>A t4g.small with Docker, running the same <code>docker-compose.yml</code> as your laptop plus Caddy for HTTPS, pointed at RDS and real S3.</p>
+      <ul class="tight"><li>Cheapest credible option and the purest dev/prod parity story: the demo runs the file you develop against.</li><li>Later services are extra compose services plus a Caddy route; no ALB to pay for.</li><li>You patch a VM: Amazon Linux 2023 with SSM, unattended security updates, and a rebuild-from-Terraform runbook so it never has to be nursed.</li></ul>
+      <div class="cost">≈ USD 35 / month always on (EC2 ≈ 16, RDS ≈ 18, S3 ≈ 1) · ≈ 6 stopped.</div>
+    </div>
+    <div class="card">
+      <h3>C · Databricks-managed MLflow</h3>
+      <p>Zero ops, GenAI tracing and evaluate built in, workspace profile already configured.</p>
+      <ul class="tight"><li>Not "your AWS": weakens the platform story.</li><li>Free Edition limits; experiments live under workspace user paths.</li></ul>
+      <div class="cost">USD 0 on Free Edition; no infra to show.</div>
+    </div>
+    <div class="card">
+      <h3>D · Defer AWS until M1 is green</h3>
+      <p>Build M0 and M1 locally first; deploy once the migration proves the shape.</p>
+      <ul class="tight"><li>No spend until value is proven; the local stack is already RDS/S3-shaped.</li><li>Drift is discovered later rather than earlier.</li></ul>
+      <div class="cost">USD 0 until M2 starts.</div>
+    </div>
+  </div>
+  <div class="callout bad" style="margin-top:14px"><b>App Runner is retired as an option.</b> AWS stopped accepting new App Runner customers on 30 April 2026; existing services keep running but get no new features. Your six sibling stacks still deploy this way, which turns M5 (shared deploy modules) from tidy-up into a real migration. Two landing spots, decided in M5: extra Caddy routes on this box for pure demos, or an <code>ecs-express-service</code> module with a shared ALB for anything that needs to scale.</div>
+  <div class="callout warn" style="margin-top:14px"><b>Two things to know before M2.</b> Your SSO session is currently expired (<code>aws sso login --profile data-qa</code> before any Terraform). And whichever option you pick, the UI is reachable from the internet behind a password, so treat the MLflow URL as semi-public and never log secrets or PII into runs, which v2v's tracing policy already enforces.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="risks">
+  <div class="eyebrow">9 · Risks and failure modes</div>
+  <h2>What breaks, and what we do about it.</h2>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Risk</th><th>Sev</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td><b>Central stack down, every project's eval fails.</b> New single point of failure on the laptop.</td><td><span class="badge bad">high</span></td><td>Projects fail fast with a message naming <code>make -C ../nmp-central-ai up</code>; each project's Makefile gets a <code>platform-up</code> target; documented sqlite fallback for standalone use.</td></tr>
+        <tr><td><b>Portfolio readers cannot run a project standalone.</b></td><td><span class="badge warn">med</span></td><td>M1 keeps the env-var-only contract. README of each migrated project shows the one-line standalone override.</td></tr>
+        <tr><td><b>Client/server version skew.</b> Server 3.16; clients pinned ≥3.5, ≥3.11, ≥3.12; OTLP ingest needs ≥3.6.</td><td><span class="badge warn">med</span></td><td>Pin server exactly; bump every client floor to ≥3.12 in M1; run <code>mlflow db upgrade</code> as a Make target on server bumps.</td></tr>
+        <tr><td><b>Lost history.</b> Old sqlite / file stores are not migrated.</td><td><span class="badge warn">med</span></td><td>D2 decided: fresh start. Old stores are archived read-only, not deleted; <code>mlflow-export-import</code> is available for ConvFinQA if needed later.</td></tr>
+        <tr><td><b>Port 5000 on macOS.</b> AirPlay Receiver squats it when enabled.</td><td><span class="badge">low</span></td><td>ConvFinQA has run on 5000 on this machine already; decided: 5000, documented in README.</td></tr>
+        <tr><td><b>A VM to keep patched.</b> One box, one OS, one Docker daemon.</td><td><span class="badge">low</span></td><td>AL2023 with automatic security updates, no SSH (SSM only), Terraform rebuild runbook tested once in M2, state lives in RDS and S3 so the box is disposable.</td></tr>
+        <tr><td><b>Sibling demos sit on a retired service.</b> App Runner takes no new customers; existing services get no new features.</td><td><span class="badge warn">med</span></td><td>M5 migrates them either onto this box as Caddy routes or onto ECS Express with a shared ALB. Nothing breaks meanwhile.</td></tr>
+        <tr><td><b>data-qa experiment ids drift.</b> Numeric ids differ per store; header must match.</td><td><span class="badge warn">med</span></td><td><code>mlflow-init</code> is the only source of ids and writes an env fragment data-qa sources.</td></tr>
+        <tr><td><b>Secrets leak in a public repo.</b></td><td><span class="badge bad">high</span></td><td>Checklist in §5; gitleaks in CI; no-mistakes gate before push.</td></tr>
+        <tr><td><b>AWS cost creep.</b> Always-on RDS and compute for a one-person platform.</td><td><span class="badge warn">med</span></td><td>One t4g.small, t4g.micro RDS, no ALB, no NAT, sleep/wake targets, budget alarm at USD 45.</td></tr>
+        <tr><td><b>Agent context goes stale or unread.</b> PLATFORM.md drifts from reality; skills never trigger.</td><td><span class="badge warn">med</span></td><td>PLATFORM.md is generated from <code>registry/projects.yaml</code> and compose in CI; <code>claude plugin eval</code> cases run in CI; <code>/skill-doctor</code> reviewed monthly.</td></tr>
+        <tr><td><b>Scope creep into "platform for its own sake".</b></td><td><span class="badge warn">med</span></td><td>Each service enters the catalogue only with a duplication count ≥ 2 and its own plan. Frontends explicitly excluded.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="decisions">
+  <div class="eyebrow">12 · Decisions</div>
+  <h2>All decided. Plan of record follows.</h2>
+  <p class="sub">Decided so far, now baked into the sections above.</p>
+  <div class="tablewrap" style="margin-bottom:18px">
+    <table>
+      <thead><tr><th>ID</th><th>Decision</th><th>Outcome</th></tr></thead>
+      <tbody>
+        <tr><td><code>D1</code></td><td>Local MLflow port</td><td>5000, the MLflow default</td></tr>
+        <tr><td><code>D2</code></td><td>Old runs</td><td>Fresh start; old sqlite and file stores archived read-only, nothing deleted</td></tr>
+        <tr><td><code>D3</code></td><td>Shared Python helper</td><td>Env var only in M1; helper package later</td></tr>
+        <tr><td><code>D4</code></td><td>AWS compute for the demo</td><td>One Graviton EC2 (t4g.small) running the compose file with Caddy, plus RDS and S3; ECS Express Mode as the upgrade path</td></tr>
+        <tr><td><code>D5</code></td><td>RDS engine</td><td>RDS Postgres db.t4g.micro</td></tr>
+        <tr><td><code>D6</code></td><td>Repo name and licence</td><td>nmp-central-ai, MIT</td></tr>
+        <tr><td><code>D7</code></td><td>Agent onboarding layers</td><td>L1 context in M0 and L2 plugin skills in M1; MCP server in M4</td></tr>
+        <tr><td>—</td><td>Backend store</td><td>Postgres + MinIO locally, RDS + S3 in AWS</td></tr>
+        <tr><td>—</td><td>Scope</td><td>M1 = ConvFinQA, DABStep-loop, tau2-loop, data-qa-agent; transcript-rag right after; v2v, Databricks, CUAD excluded</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub">The plan of record is <code>ai_specs/s00_project_plan.md</code> in the repo. Anything else goes in the note below.</p>
+
+  <div class="cards">
+
+
+
+
+
+
+
+
+  </div>
+
+  <form class="q" data-lavish-question="free-text" style="margin-top:14px" onsubmit="return submitText(event)">
+    <h3>Anything else <span class="queued">queued ✓</span></h3>
+    <textarea name="note" rows="3" placeholder="Services I missed, constraints, a different ordering…"></textarea>
+    <div style="margin-top:10px"><button class="btn ghost" type="submit">Queue note</button></div>
+  </form>
+</section>
+
+<!-- ============================================================ -->
+<section id="agents">
+  <div class="eyebrow">10 · Agents as platform users</div>
+  <h2>How an agent working in a sibling repo gets up to speed.</h2>
+  <p class="sub">Most use of this platform will be by Claude Code and Codex sessions running inside DABStep-loop, ConvFinQA and the rest, not by you typing URLs. So the platform needs an agent golden path, the same way an enterprise platform team ships a service catalogue and a starter template. Three layers, each cheap, each verified against the Claude Code docs. Decided (D7): L1 and L2 are built now, L3 arrives in M4.</p>
+
+  <figure>
+    <svg viewBox="0 0 980 300" role="img" aria-labelledby="fig4t">
+      <title id="fig4t">Three layers by which agents in sibling repos discover the platform</title>
+      <!-- filesystem column -->
+      <text class="svg-t m" x="20" y="28">~/git/nmp-ai-portfolio/</text>
+      <g id="l1-parent"><rect class="svg-box good" x="20" y="40" width="250" height="60" rx="8"/><title>Portfolio-level CLAUDE.md</title>
+        <text class="svg-t b" x="145" y="62" text-anchor="middle">CLAUDE.md  (new, portfolio level)</text>
+        <text class="svg-t m" x="145" y="80" text-anchor="middle">@nmp-central-ai/PLATFORM.md</text></g>
+      <g id="l1-sibling"><rect class="svg-box" x="20" y="130" width="250" height="60" rx="8"/><title>Any sibling project</title>
+        <text class="svg-t b" x="145" y="152" text-anchor="middle">DABStep-loop/  (any sibling)</text>
+        <text class="svg-t m" x="145" y="170" text-anchor="middle">own CLAUDE.md + AGENTS.md, unchanged</text></g>
+      <path class="svg-e good" d="M145 130 V100"/>
+      <text class="svg-t s" x="152" y="118">loaded from every parent dir</text>
+      <g id="l1-platform"><rect class="svg-box good" x="20" y="220" width="250" height="60" rx="8"/><title>PLATFORM.md in the platform repo</title>
+        <text class="svg-t b" x="145" y="242" text-anchor="middle">nmp-central-ai/PLATFORM.md</text>
+        <text class="svg-t m" x="145" y="260" text-anchor="middle">URLs · env vars · naming · rules</text></g>
+      <path class="svg-e good" d="M145 220 V100" stroke-dasharray="4 3"/>
+      <!-- layer labels -->
+      <rect class="svg-region" x="300" y="14" width="660" height="272"/>
+      <text class="svg-t m" x="314" y="34">what the agent gets, by layer</text>
+      <g id="l1"><rect class="svg-box good" x="320" y="48" width="620" height="60" rx="8"/><title>Layer 1: context</title>
+        <text class="svg-t b" x="334" y="70">L1 · Context, zero-touch (M0)</text>
+        <text class="svg-t s" x="334" y="86">Every session in any sibling starts knowing the MLflow URL, the one env var,</text><text class="svg-t s" x="334" y="100">experiment naming, "never start your own server", and where the runbooks live.</text></g>
+      <g id="l2"><rect class="svg-box" x="320" y="122" width="620" height="60" rx="8"/><title>Layer 2: skills via plugin</title>
+        <text class="svg-t b" x="334" y="144">L2 · Skills, installed once (M1)</text>
+        <text class="svg-t s" x="334" y="160">Plugin nmp-platform from this repo: platform-mlflow (log, trace, query, compare)</text><text class="svg-t s" x="334" y="174">and platform-onboard (join a project). Auto-triggers on the right words.</text></g>
+      <g id="l3"><rect class="svg-box" x="320" y="196" width="620" height="60" rx="8" stroke-dasharray="4 3"/><title>Layer 3: MCP tools</title>
+        <text class="svg-t b" x="334" y="218">L3 · Tools, user-scoped MCP (M4)</text>
+        <text class="svg-t s" x="334" y="234">nmp-central MCP server: platform_status, list_experiments, search_traces,</text><text class="svg-t s" x="334" y="248">registry_projects, gateway_spend. An agent checks the platform instead of guessing.</text></g>
+      <text class="svg-t s" x="334" y="276">Codex reads AGENTS.md, not CLAUDE.md: PLATFORM.md is tool-neutral and linked from both.</text>
+    </svg>
+    <figcaption>Layer 1 needs no change in any sibling repo because Claude Code reads CLAUDE.md files from the working directory and every directory above it. The portfolio folder is not a git repo, so the platform installs that file with a Make target rather than relying on a hand-made one.</figcaption>
+  </figure>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Mechanism</th><th>What the docs say</th><th>Use it for</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td><b>Parent-directory CLAUDE.md</b></td><td>Loaded from the cwd and every directory above it, root first. Your <code>~/git/CLAUDE.md</code> already works this way; nothing exists yet at <code>~/git/nmp-ai-portfolio/</code>.</td><td>Announce the platform to all 19 siblings at once. Installed by <code>make install-agent-context</code> as a symlink to <code>agent/portfolio.CLAUDE.md</code> so it is versioned here.</td><td><span class="badge rec">L1 · M0</span></td></tr>
+        <tr><td><b><code>@path</code> imports</b></td><td>Relative and absolute paths, including outside the repo and <code>~/</code>; four hops max; loaded at launch; first external import prompts for approval once per project.</td><td>The portfolio CLAUDE.md imports <code>PLATFORM.md</code> so there is one source of truth. Siblings need no import of their own.</td><td><span class="badge rec">L1 · M0</span></td></tr>
+        <tr><td><b>Plugin marketplace from a git repo</b></td><td>A repo with <code>.claude-plugin/marketplace.json</code> and <code>plugins/&lt;name&gt;/.claude-plugin/plugin.json</code> can bundle skills, MCP servers and hooks; installed once with <code>/plugin marketplace add</code> and available in every project. <code>claude plugin eval</code> and <code>/skill-doctor</code> validate it.</td><td>Ship <code>platform-mlflow</code> and <code>platform-onboard</code> skills, versioned with the platform. Later the MCP server rides in the same plugin.</td><td><span class="badge rec">L2 · M1</span></td></tr>
+        <tr><td><b>User-level skills / rules</b> (<code>~/.claude/skills</code>, <code>~/.claude/rules</code>)</td><td>Load in every project on this machine, but live outside any repo.</td><td>Not used: unversioned and machine-local. The plugin gives the same reach with a git history.</td><td><span class="badge">skip</span></td></tr>
+        <tr><td><b>Per-sibling <code>.claude/rules/</code> with <code>paths:</code></b></td><td>Path-scoped rules load only when matching files are touched.</td><td>Optional later: a rule scoped to <code>**/tracking/**</code> that says "use the platform helper". Not needed while L1 exists.</td><td><span class="badge">later</span></td></tr>
+        <tr><td><b>User-scoped MCP server</b></td><td><code>claude mcp add --scope user</code> makes a server available in all projects; plugin-provided servers rank just below.</td><td>Read-only tools over MLflow, the registry and, later, gateway spend. Agents stop guessing whether the stack is up or which experiment id to use.</td><td><span class="badge info">L3 · M4</span></td></tr>
+        <tr><td><b>AGENTS.md</b></td><td>Cross-tool convention (Codex and others); Claude Code does not read it unless imported.</td><td>Portfolio-level AGENTS.md pointing at the same PLATFORM.md, so Codex sessions get the identical contract.</td><td><span class="badge rec">L1 · M0</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="split" style="margin-top:16px">
+    <div class="card">
+      <h4>PLATFORM.md, the contract (sketch, under 80 lines)</h4>
+<pre><code># nmp-central-ai platform contract
+Shared services for every project in ~/git/nmp-ai-portfolio.
+Never start your own MLflow, Postgres or gateway; use these.
+
+## Status
+  make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # or: up
+
+## MLflow (tracking · traces · prompts · registry)
+  URL        http://localhost:5000     (compose: http://mlflow:5000)
+  OTLP       http://localhost:5000/v1/traces  + x-mlflow-experiment-id
+  Env        MLFLOW_TRACKING_URI       (the only coupling)
+  Naming     experiment &lt;project&gt;/&lt;purpose&gt;; tags project, git_sha, env
+  Ids        make mlflow-init prints them; never hardcode
+  AWS        https://mlflow.&lt;domain&gt;   creds in ~/.env (MLFLOW_TRACKING_USERNAME/PASSWORD)
+
+## Rules for agents
+  - If the server is unreachable, say so and run `make platform-up`; do not
+    fall back to a local sqlite store.
+  - New project? run `make onboard PROJECT=&lt;dir&gt;` here, commit the diff there.
+  - Registry of projects: registry/projects.yaml  (source of truth)
+
+## Coming: Postgres schemas (M3), LiteLLM gateway (M4), MCP tools (M4)
+Runbooks: docs/onboarding.md · docs/runbooks/*.md</code></pre>
+    </div>
+    <div class="card">
+      <h4>What the platform-mlflow skill teaches</h4>
+      <ul class="tight">
+        <li><b>Trigger words:</b> "log this run", "trace", "compare runs", "experiment", "prompt registry", "which model is in production".</li>
+        <li><b>Log correctly:</b> experiment naming, required tags, when to use <code>mlflow.start_span</code> vs framework autolog, artifact size limits.</li>
+        <li><b>Query correctly:</b> <code>search_runs</code> / <code>search_traces</code> snippets against the central server; how to read data-qa's OTLP header setup.</li>
+        <li><b>Do not:</b> start a server, create a sqlite store, hardcode an experiment id, log secrets or PII.</li>
+        <li><b>Verified with</b> <code>claude plugin eval</code> cases: "log an eval run from tau2-loop", "find yesterday's slowest trace in data-qa".</li>
+      </ul>
+      <h4 style="margin-top:14px">Install, once per machine</h4>
+<pre><code>make -C ~/git/nmp-ai-portfolio/nmp-central-ai install-agent-context
+# → symlinks ../CLAUDE.md and ../AGENTS.md to agent/portfolio.*.md
+/plugin marketplace add ~/git/nmp-ai-portfolio/nmp-central-ai
+/plugin install nmp-platform@nmp-central-ai</code></pre>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:14px"><b>Why not just put it in each sibling's CLAUDE.md?</b> Fourteen copies drift, and you are already living with the result of that pattern. One inherited file plus one installed plugin is the platform-team move: publish once, consume everywhere, version centrally.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="bestinclass">
+  <div class="eyebrow">11 · Validation against best in class</div>
+  <h2>Is this what a good AI platform looks like in 2026? Mostly yes; three gaps worth naming.</h2>
+  <p class="sub">Checked against MLflow's own AWS self-hosting guide, the 2026 LLMOps stack comparisons, the platform-engineering community's 2026 predictions and the Claude Code documentation. Vendor pieces are flagged as such.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Best-in-class trait</th><th>Source</th><th>This plan</th><th>Gap</th></tr></thead>
+      <tbody>
+        <tr><td><b>Layer two or three complementary tools, never one.</b> Span-level tracing, span-attached evals, prompt registry with labels, gateway routing, CI gating.</td><td>LLMOps 2026 stack guides (Atlan, FutureAGI, Firecrawl)</td><td>MLflow covers tracing + evals + prompt registry + model registry; LiteLLM is the gateway (M4); CI gating already exists per project and moves to shared modules (M5).</td><td><span class="badge ok">aligned</span></td></tr>
+        <tr><td><b>Open-source, self-hostable, OpenTelemetry-native tracing.</b></td><td>MLflow docs; Langfuse v4 and Opik as the OSS alternatives</td><td>MLflow 3 tracing is OTel-based and ingests OTLP directly, which data-qa already relies on. Langfuse is the credible alternative; sticking with MLflow is justified by four projects already on it and one tool covering eval and registry too. The mlflow.org comparison is vendor-written and was discounted.</td><td><span class="badge ok">aligned</span></td></tr>
+        <tr><td><b>Reference cloud architecture:</b> ECS Fargate in private subnets, HTTPS ALB, RDS Postgres, S3 with public access blocked, IAM task role, basic-auth or OIDC.</td><td>MLflow "Deploying MLflow to AWS"</td><td>Decided E for the demo: same compose on one Graviton EC2 with RDS + S3, which keeps the data tier identical to the reference. ECS Express Mode documented as the upgrade path. App Runner dropped: closed to new customers since April 2026.</td><td><span class="badge warn">deliberate gap</span></td></tr>
+        <tr><td><b>Agents are first-class platform consumers</b> with their own golden paths, quotas and governance.</td><td>platformengineering.org, 10 predictions for 2026</td><td>§10 adds the agent golden path (context, skills, tools). Quotas arrive with per-project LiteLLM keys in M4.</td><td><span class="badge ok">added today</span></td></tr>
+        <tr><td><b>FinOps by default:</b> token and inference budgets, cost gates before deploy.</td><td>platformengineering.org</td><td>Per-project budgets via LiteLLM virtual keys (M4); AWS budget alarm in M2. No pre-deploy cost gate yet.</td><td><span class="badge warn">gap · M4</span></td></tr>
+        <tr><td><b>Golden paths and templates</b> drive adoption above 80%; without them under 20%.</td><td>Platform-engineering guides (DEV, API7)</td><td>Cookiecutter replaces the near-empty <code>ai-project-template/</code> in M5; <code>make onboard</code> is the interim golden path.</td><td><span class="badge warn">gap · M5</span></td></tr>
+        <tr><td><b>One delivery pipeline for apps and ML</b> (DevOps / MLOps convergence).</td><td>platformengineering.org</td><td>Shared Terraform modules and a reusable GitHub workflow in M5 replace six copied stacks.</td><td><span class="badge warn">gap · M5</span></td></tr>
+        <tr><td><b>Lightweight production tracing SDK</b> to keep deployed services thin.</td><td>MLflow <code>mlflow-tracing</code> package</td><td>Use <code>mlflow-tracing</code> in deployed App Runner images instead of full <code>mlflow</code>; noted for M2 and the M1 client floor bump.</td><td><span class="badge ok">adopt</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout info" style="margin-top:14px"><b>Naming what this is.</b> In current vocabulary it is an internal developer platform for AI systems, or an AI platform layer: shared observability, data, gateway and delivery services behind golden paths, with coding agents as a primary consumer. That is exactly the framing the 2026 State of Platform Engineering material uses for its AI/ML reference architecture, so the README can say so without stretching.</div>
+</section>
+
+<section>
+  <div class="eyebrow">Appendix</div>
+  <h2>What was checked to write this.</h2>
+  <ul class="tight">
+    <li>All 19 sibling folders surveyed for MLflow, other observability, databases, UIs, Docker, cloud, LLM providers, secrets handling and eval tooling; the six MLflow configurations then re-read at the cited lines.</li>
+    <li>Local toolchain: Docker 29.2 with Compose v5, AWS CLI 2.35 with two SSO profiles in ap-southeast-2 (session expired), Terraform 1.15, gh authenticated as nmp-dsci, uv 0.10, MLflow 3.16.1 available via uvx.</li>
+    <li>GitHub: nmp-dsci has 40 repos, 30 public; <code>nmp-central-ai</code> does not exist yet.</li>
+    <li>Design: this artifact hand-styles the same dark, token-based look as the plans in the sibling <code>.lavish/</code> folders, since the subject repo is empty and has no design system of its own.</li>
+  </ul>
+  <h4 style="margin-top:14px">Sources used for §10 and §11</h4>
+  <ul class="tight">
+    <li><a href="https://mlflow.org/docs/latest/self-hosting/deploy-to-cloud/aws/">MLflow: Deploying MLflow to AWS</a> (ECS Fargate + ALB + RDS + S3 reference)</li>
+    <li><a href="https://aws.amazon.com/apprunner/">AWS App Runner</a> (no new customers from 30 April 2026), <a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/express-service-overview.html">Amazon ECS Express Mode</a>, <a href="https://aws.amazon.com/fargate/pricing/">Fargate pricing</a>, <a href="https://aws.amazon.com/elasticloadbalancing/pricing/">ELB pricing</a>, <a href="https://aws.amazon.com/lightsail/pricing/">Lightsail pricing</a>, <a href="https://aws.amazon.com/about-aws/whats-new/2025/07/aws-free-tier-credits-month-free-plan/">Free Tier changes</a>. Sydney figures are us-east-1 list prices uplifted ≈ 15–25 %; the pricing pages do not render regional tables without JavaScript.</li>
+    <li><a href="https://mlflow.org/docs/latest/genai/tracing/lightweight-sdk/">MLflow: production tracing SDK</a> and <a href="https://mlflow.org/releases/3/">MLflow 3 release notes</a></li>
+    <li><a href="https://atlan.com/know/best-llmops-platforms/">Atlan: best LLMOps platforms 2026</a>, <a href="https://futureagi.com/blog/best-llmops-platforms-2026/">FutureAGI: 7 end-to-end stacks compared</a>, <a href="https://www.firecrawl.dev/blog/best-llm-observability-tools">Firecrawl: LLM observability tools 2026</a></li>
+    <li><a href="https://mlflow.org/articles/top-llm-observability-tools-in-2026-a-pro-guide/">mlflow.org comparison</a> (vendor-written; used for feature facts only)</li>
+    <li><a href="https://docs.litellm.ai/docs/proxy/users">LiteLLM: budgets and rate limits</a>, <a href="https://docs.litellm.ai/docs/simple_proxy">LiteLLM AI gateway</a></li>
+    <li><a href="https://platformengineering.org/blog/10-platform-engineering-predictions-for-2026">platformengineering.org: 10 predictions for 2026</a>, <a href="https://dev.to/supriyarao/what-are-golden-paths-in-platform-engineering-and-why-do-they-matter-2kj0">golden paths</a>, <a href="https://api7.ai/blog/platform-engineering-guide">platform engineering guide</a></li>
+    <li>Claude Code docs: <a href="https://code.claude.com/docs/en/memory.md">memory and CLAUDE.md hierarchy</a>, <a href="https://code.claude.com/docs/en/skills.md">skills</a>, <a href="https://code.claude.com/docs/en/plugin-marketplaces.md">plugin marketplaces</a>, <a href="https://code.claude.com/docs/en/mcp.md">MCP scopes</a>, <a href="https://code.claude.com/docs/en/large-codebases.md">large codebases</a></li>
+  </ul>
+</section>
+
+</main>
+<div class="toast" id="toast"></div>
+<script>
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none', 2600); }
+  function queue(prompt, opts){
+    if (window.lavish && typeof window.lavish.queuePrompt === 'function') { window.lavish.queuePrompt(prompt, opts); return true; }
+    toast('Lavish not connected: ' + (opts && opts.text ? opts.text : 'answer noted locally'));
+    return false;
+  }
+  function submitChoice(ev, label){
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const v = new FormData(form).get('answer');
+    if (!v) { toast('Pick an option first'); return false; }
+    const key = form.getAttribute('data-lavish-question');
+    queue('Decision ' + label + ': ' + v + '. Update the plan of record accordingly.', { tag:'choice', text: label + ' → ' + v, element: form, queueKey: key, data:{ question:key, answer:v } });
+    form.classList.add('is-queued'); toast('Queued: ' + label);
+    return false;
+  }
+  function submitBatch(ev){
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const selected = [...form.querySelectorAll('input[name=items]:checked')].map(i => ({ id:i.value, label:i.dataset.label, disposition:i.dataset.disposition }));
+    if (!selected.length) { toast('Select at least one project'); return false; }
+    queue('Milestone 1 scope confirmed. Act on every selected project ID and return an item-by-item receipt; account for every submitted ID before reporting completion.', { tag:'tracked-batch', text:'M1 scope: ' + selected.length + ' items', element: form, queueKey:'m1-scope', data:{ items: selected } });
+    form.classList.add('is-queued'); toast('Queued M1 scope (' + selected.length + ' items)');
+    return false;
+  }
+  function submitText(ev){
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const note = (new FormData(form).get('note') || '').trim();
+    if (!note) { toast('Write something first'); return false; }
+    queue('Reviewer note on the nmp-central-ai plan: ' + note, { tag:'note', text: note.slice(0,80), element: form, queueKey:'free-text' });
+    form.classList.add('is-queued'); toast('Queued note');
+    return false;
+  }
+</script>
+</body>
+</html>

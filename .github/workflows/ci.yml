@@ -1,0 +1,35 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-groups
+      - run: uv run ruff check . && uv run ruff format --check .
+      - run: uv run mypy scripts
+      - run: uv run pytest -q
+  stack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: docker compose up -d --build --wait
+      - run: curl -fsS http://localhost:5000/health
+      - run: uv sync && uv run scripts/mlflow_init.py --uri http://localhost:5000
+      - run: |
+          set -a; source .mlflow-ids.env; set +a
+          uv run scripts/otlp_smoke.py --uri http://localhost:5000 --experiment-id "$MLFLOW_TRACE_EXPERIMENT_ID"
+      - if: always()
+        run: docker compose logs --tail=50 mlflow
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
