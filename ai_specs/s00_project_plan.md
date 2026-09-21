@@ -69,7 +69,7 @@ scripts/check_projects.py     M1 verifier
 infra/terraform/bootstrap     state bucket, ECR, GitHub OIDC role
 infra/terraform/central       vpc, rds, s3, ec2 compose host, secrets
 infra/terraform/modules       compose-host, rds-postgres, github-oidc (later ecs-express-service)
-agent/portfolio.CLAUDE.md     installed as ../CLAUDE.md (symlink) by make install-agent-context
+agent/portfolio.CLAUDE.md     copied to ../CLAUDE.md by make install-agent-context
 agent/portfolio.AGENTS.md     same, for Codex
 .claude-plugin/marketplace.json · plugins/nmp-platform/  skills: platform-mlflow, platform-onboard
 packages/nmp-central-py/      empty until D3 revisited
