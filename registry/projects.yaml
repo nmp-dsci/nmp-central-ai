@@ -19,7 +19,7 @@ projects:
   - id: P1
     name: convfinqa-agent
     path: ../ConvFinQA-agent
-    status: pending            # pending | migrated | deferred | excluded | external
+    status: migrated           # pending | migrated | deferred | excluded | external
     mlflow:
       client: python
       experiments: [convfinqa, convfinqa-optimization]
@@ -45,7 +45,7 @@ projects:
   - id: P2
     name: dabstep-loop
     path: ../DABStep-loop
-    status: pending
+    status: migrated
     mlflow:
       client: python
       experiments: [dabstep-loop]
@@ -66,7 +66,7 @@ projects:
   - id: P3
     name: tau2-loop
     path: ../tau2-loop
-    status: pending
+    status: migrated
     mlflow:
       client: python
       experiments: [tau2-loop]
@@ -96,7 +96,7 @@ projects:
   - id: P5
     name: data-qa-agent
     path: ../data-qa-agent
-    status: pending
+    status: migrated
     mlflow:
       client: otlp
       experiments: [data-qa/evals]

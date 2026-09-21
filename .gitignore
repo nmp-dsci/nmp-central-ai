@@ -28,3 +28,6 @@ crash.log
 .vscode/
 
 # NOTE: .lavish/ is deliberately tracked (workspace rule). Never add it here.
+
+# plugin eval outputs
+plugins/*/evals/results/
