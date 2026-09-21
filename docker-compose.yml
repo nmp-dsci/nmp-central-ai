@@ -12,7 +12,11 @@
 # artifact store. In AWS the postgres and minio services are replaced by
 # RDS and S3 via compose.aws.yml (M2); the mlflow service is unchanged.
 
-name: nmp-central
+# The live stack is project `nmp-central` on network `nmp-central` (what every
+# sibling joins). A validation checkout — CI, a no-mistakes worktree — runs the
+# same file under another project name, network and ports (see the Makefile),
+# so its `down` can never stop the live stack. Never set these by hand.
+name: ${COMPOSE_PROJECT_NAME:-nmp-central}
 
 services:
   postgres:
@@ -108,7 +112,7 @@ services:
 
 networks:
   default:
-    name: nmp-central
+    name: ${PLATFORM_NETWORK:-nmp-central}
 
 volumes:
   pgdata:

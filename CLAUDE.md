@@ -1,6 +1,6 @@
 # CLAUDE.md — nmp-central-ai
 
-> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D10, runbooks). The
+> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D12, runbooks). The
 > outward contract is [`PLATFORM.md`](./PLATFORM.md); the plan of record is
 > `ai_specs/s00_project_plan.md`. This file is a pointer plus the rules that bite.
 
@@ -14,6 +14,9 @@
 
 - **The registry is the source of truth.** Experiments, env-id variables and smoke commands
   live in `registry/projects.yaml`. Never hardcode an experiment id anywhere.
+- **`make mode` before `make down`.** A validation checkout (CI, no-mistakes worktree, `VALIDATION=1`) drives
+  project `nmp-central-validate` on :15000, never the live `nmp-central` (D12). Do not set
+  `COMPOSE_PROJECT_NAME` / `PLATFORM_NETWORK` by hand.
 - **Do not change ports or the network name** (`nmp-central`, 5000/5432/9000/9001) without
   updating PLATFORM.md and every sibling; that is what this repo exists to prevent.
 - **Bump the MLflow server deliberately:** pin in `services/mlflow/Dockerfile`, then
