@@ -32,12 +32,23 @@ def mode(**extra: str) -> dict[str, str]:
 
 
 def test_a_plain_checkout_drives_the_live_stack() -> None:
-    assert mode() == {
-        "mode": "live",
-        "project": "nmp-central",
-        "network": "nmp-central",
-        "mlflow": "http://localhost:5000",
-    }
+    got = mode()
+    if "/.no-mistakes/" in str(REPO):
+        # This checkout is itself a no-mistakes worktree, so the Makefile's
+        # path-based validation trigger fires even with the env vars cleared.
+        assert got == {
+            "mode": "validation",
+            "project": "nmp-central-validate",
+            "network": "nmp-central-validate",
+            "mlflow": "http://localhost:15000",
+        }
+    else:
+        assert got == {
+            "mode": "live",
+            "project": "nmp-central",
+            "network": "nmp-central",
+            "mlflow": "http://localhost:5000",
+        }
 
 
 @pytest.mark.parametrize("trigger", ["CI", "NO_MISTAKES_GATE", "VALIDATION"])
@@ -55,5 +66,8 @@ def test_validation_down_also_drops_its_volumes_and_live_down_keeps_them() -> No
             ["make", "-n", "down"], cwd=REPO, env=env, check=True, capture_output=True, text=True
         ).stdout
 
-    assert "-v" not in dry()
+    if "/.no-mistakes/" in str(REPO):
+        assert "-v" in dry()
+    else:
+        assert "-v" not in dry()
     assert "-v" in dry(VALIDATION="1")
