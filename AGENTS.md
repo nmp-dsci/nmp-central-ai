@@ -26,6 +26,7 @@ LiteLLM gateway + metrics + MCP (M4), deploy modules + template (M5).
 | D9 | Experiment naming `<project>/<purpose>` for new experiments; existing flat names kept in M1. |
 | D10 | Server sets `MLFLOW_SERVER_ALLOWED_HOSTS` for `mlflow:5000`, `localhost`, `host.docker.internal`; otherwise in-network exporters get 403. |
 | D11 | The server runs under uvicorn (MLflow default). `--gunicorn-opts` silently selects the Flask app, which has no `/v1/traces` route (404). Never add it back. |
+| D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout
 

@@ -17,14 +17,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: docker compose up -d --build --wait
-      - run: curl -fsS http://localhost:5000/health
-      - run: uv sync && uv run scripts/mlflow_init.py --uri http://localhost:5000
+      # CI=true puts the Makefile in validation mode: project/network
+      # nmp-central-validate on ports 15000/15432/19000/19001.
+      - run: make mode && make up
+      - run: uv sync && make mlflow-init
       - run: |
           set -a; source .mlflow-ids.env; set +a
-          uv run scripts/otlp_smoke.py --uri http://localhost:5000 --experiment-id "$MLFLOW_TRACE_EXPERIMENT_ID"
+          make otlp-smoke EXPERIMENT_ID="$MLFLOW_TRACE_EXPERIMENT_ID"
       - if: always()
-        run: docker compose logs --tail=50 mlflow
+        run: make logs-tail
   secrets:
     runs-on: ubuntu-latest
     steps:

@@ -2,8 +2,30 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 COMPOSE ?= docker compose
-MLFLOW_URI ?= http://localhost:$(or $(MLFLOW_PORT),5000)
 PORTFOLIO_DIR := $(abspath ..)
+
+# ---- live vs validation ----------------------------------------------------
+# The live stack is compose project `nmp-central` (network `nmp-central`, ports
+# 5000/5432/9000/9001) and is what the siblings talk to. Anything that merely
+# validates this repo — GitHub CI, a no-mistakes worktree, or VALIDATION=1 —
+# gets its own project name, network, volumes and ports, so `make down` there
+# tears down only its own containers. Docker compose project names are
+# machine-global; without this, a validation run's `down` stopped the live stack.
+ifneq (,$(CI)$(NO_MISTAKES_GATE)$(VALIDATION)$(findstring /.no-mistakes/,$(CURDIR)))
+MODE := validation
+export COMPOSE_PROJECT_NAME ?= nmp-central-validate
+export PLATFORM_NETWORK ?= nmp-central-validate
+export MLFLOW_PORT ?= 15000
+export POSTGRES_PORT ?= 15432
+export MINIO_PORT ?= 19000
+export MINIO_CONSOLE_PORT ?= 19001
+else
+MODE := live
+export COMPOSE_PROJECT_NAME ?= nmp-central
+export PLATFORM_NETWORK ?= nmp-central
+export MLFLOW_PORT ?= 5000
+endif
+MLFLOW_URI ?= http://localhost:$(MLFLOW_PORT)
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
@@ -13,8 +35,8 @@ up: ## start postgres, minio, mlflow (builds the mlflow image once)
 	$(COMPOSE) up -d --build --wait
 	@echo "MLflow UI: $(MLFLOW_URI)   MinIO console: http://localhost:$(or $(MINIO_CONSOLE_PORT),9001)"
 
-down: ## stop the stack (volumes kept)
-	$(COMPOSE) down
+down: ## stop the stack (live: volumes kept; validation: volumes removed too)
+	$(COMPOSE) down $(if $(filter validation,$(MODE)),-v)
 
 nuke: ## stop the stack AND delete volumes (asks first)
 	@read -p "Delete pgdata + miniodata volumes? [y/N] " a && [ "$$a" = "y" ] && $(COMPOSE) down -v || echo "kept"
@@ -22,8 +44,14 @@ nuke: ## stop the stack AND delete volumes (asks first)
 logs: ## follow logs
 	$(COMPOSE) logs -f --tail=100
 
+logs-tail: ## last 50 mlflow log lines (CI)
+	$(COMPOSE) logs --tail=50 mlflow
+
 ps: ## container status
 	$(COMPOSE) ps
+
+mode: ## which stack this checkout drives (live | validation) and its names/ports
+	@echo "mode=$(MODE) project=$(COMPOSE_PROJECT_NAME) network=$(PLATFORM_NETWORK) mlflow=$(MLFLOW_URI)"
 
 status: ## is the platform healthy?
 	@curl -fsS $(MLFLOW_URI)/health >/dev/null && echo "mlflow  OK  $(MLFLOW_URI)" || (echo "mlflow  DOWN  run: make -C $(CURDIR) up"; exit 1)
@@ -75,4 +103,4 @@ aws-sleep: ## stop the demo EC2 + RDS between demos
 aws-wake: ## start them again
 	@echo "M2: implemented with infra/terraform/central outputs"; exit 1
 
-.PHONY: help up down nuke logs ps status mlflow-init mlflow-db-upgrade check otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
+.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
