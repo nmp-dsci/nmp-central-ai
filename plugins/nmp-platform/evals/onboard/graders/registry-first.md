@@ -1,0 +1,1 @@
+Pass if the response adds (or plans to add) a registry entry in nmp-central-ai/registry/projects.yaml, runs mlflow-init for ids, sets the project's default URI to the central server, adds a zero-cost smoke command, and verifies with `make check`. Fail if it proposes a project-local MLflow server, a sqlite/file store, or hardcodes an experiment id.

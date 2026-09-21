@@ -1,0 +1,30 @@
+# secrets and local state
+.env
+.env.*
+!.env.example
+.mlflow-ids.env
+volumes/
+*.log
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.example.tfvars
+crash.log
+
+# os / editors
+.DS_Store
+.idea/
+.vscode/
+
+# NOTE: .lavish/ is deliberately tracked (workspace rule). Never add it here.

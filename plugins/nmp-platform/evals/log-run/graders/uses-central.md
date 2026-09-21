@@ -1,0 +1,1 @@
+Pass if the response uses the project's existing tracking module or the central server URL (http://localhost:5000 / MLFLOW_TRACKING_URI) and does NOT start a local `mlflow server`, `make mlflow-up`, or reference port 5601/5600. It should check the platform is up (make -C ... status/up) before logging.
