@@ -24,11 +24,11 @@ Plan of record: `s00_project_plan.md`. Everything below was executed and verifie
 | P5 | data-qa-agent | migrate | **addressed** | `platform/central-mlflow` @ `e412da6`; own mlflow service removed; joined `nmp-central`; ids from `.mlflow-ids.env` (6); real `GET /me` trace landed in experiment 6; PASS traces=1 |
 
 Final `make check`: P1 PASS · P2 PASS · P3 PASS · P5 PASS · P4 skip (deferred) · X1–X4 skip.
-Port 5500 is free (container removed). Ports 5600 / 5601 still have the hand-started `make mlflow-up` servers listening; stop those processes yourself (`lsof -nP -iTCP:5600 -iTCP:5601 -sTCP:LISTEN`). Old stores (`mlruns/`, `.mlflow/`) archived on disk, untouched (D2).
+Ports 5500 / 5600 / 5601 are free: the data-qa container was removed and the hand-started DABStep / tau2 `make mlflow-up` servers were stopped on 2026-09-21. Old stores (`mlruns/`, `.mlflow/`) archived on disk, untouched (D2).
 
 ## Not done on purpose / follow-ups
 
-- Sibling branches are committed, **not pushed**; open PRs (or run no-mistakes) per repo.
+- **Merged 2026-09-21.** After a fresh green `make check` each sibling's `platform/central-mlflow` was pushed, fast-forwarded into `main` and pushed (user's call: low-risk, no no-mistakes pass). DABStep, tau2 and data-qa each got a dated *Platform migration (2026-09-21)* note in `AGENTS.md` (ConvFinQA already had one in `CLAUDE.md`). Heads: ConvFinQA `0821637`, DABStep `4fd9e98`, tau2 `ad2c45b`, data-qa `0807379`.
 - DABStep / tau2: run `make snapshot` only after real runs are re-logged on the central server.
 - data-qa: `agent-worker`/`handover-poller` pick up the new network on next `make up`; consider adding
   `mlflow-preflight` to `make eval`.
