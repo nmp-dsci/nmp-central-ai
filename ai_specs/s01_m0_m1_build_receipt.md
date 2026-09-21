@@ -24,7 +24,7 @@ Plan of record: `s00_project_plan.md`. Everything below was executed and verifie
 | P5 | data-qa-agent | migrate | **addressed** | `platform/central-mlflow` @ `e412da6`; own mlflow service removed; joined `nmp-central`; ids from `.mlflow-ids.env` (6); real `GET /me` trace landed in experiment 6; PASS traces=1 |
 
 Final `make check`: P1 PASS · P2 PASS · P3 PASS · P5 PASS · P4 skip (deferred) · X1–X4 skip.
-Ports 5500 / 5600 / 5601 are free. Old stores (`mlruns/`, `.mlflow/`) archived on disk, untouched (D2).
+Port 5500 is free (container removed). Ports 5600 / 5601 still have the hand-started `make mlflow-up` servers listening; stop those processes yourself (`lsof -nP -iTCP:5600 -iTCP:5601 -sTCP:LISTEN`). Old stores (`mlruns/`, `.mlflow/`) archived on disk, untouched (D2).
 
 ## Not done on purpose / follow-ups
 
