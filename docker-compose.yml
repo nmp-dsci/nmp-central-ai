@@ -27,11 +27,23 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-nmp}
       MLFLOW_DB_USER: ${MLFLOW_DB_USER:-mlflow}
       MLFLOW_DB_PASSWORD: ${MLFLOW_DB_PASSWORD:-mlflow}
+    # D17: DataAgentBench's flags (2 813 tables, 6.6 GB) adopted for the whole cluster;
+    # env-overridable so validation mode and any small host can dial them down.
+    command: >
+      postgres
+      -c shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      -c work_mem=${PG_WORK_MEM:-64MB}
+      -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-512MB}
+      -c max_wal_size=${PG_MAX_WAL_SIZE:-4GB}
+      -c checkpoint_timeout=15min
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./services/postgres/init:/docker-entrypoint-initdb.d:ro
+      # `make db-backup` / `db-restore` write and read dumps here (gitignored);
+      # pg_restore -j needs a file, not stdin, so the directory is mounted.
+      - ./backups:/backups
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nmp} -d ${POSTGRES_DB:-nmp}"]
       interval: 5s

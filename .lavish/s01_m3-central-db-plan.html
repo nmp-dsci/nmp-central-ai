@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s01 · M3 — one Postgres for the portfolio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg:#0f1214; --band:#131719; --panel:#171b1e; --panel-2:#1c2124; --line:#2a3034; --line-strong:#3a4146;
+    --ink:#e9ece8; --muted:#9aa39d; --faint:#6f7873;
+    --accent:#5cc8a6; --accent-soft:#163229; --accent-ink:#0d1a15;
+    --amber:#d9a44e; --amber-soft:#3a2c14; --red:#e0716a; --red-soft:#3a1c1a; --blue:#7fa9ff; --blue-soft:#1a2440;
+    --mono:"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:"Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif:"Instrument Serif", Georgia, serif;
+  }
+  html { color-scheme: dark; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.55; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 96px; }
+  :where(.grid, .flex, .cards, .split, .kv, .steps, .verdict) > * { min-width:0; }
+  :where(p, h1, h2, h3, h4, li, td, th, dd, figcaption, .badge, .tag, label) { overflow-wrap:anywhere; }
+  :where(img, svg, video) { max-width:100%; height:auto; }
+  h1 { font-family:var(--serif); font-weight:400; font-size: clamp(34px, 5vw, 54px); line-height:1.05; margin:8px 0 12px; letter-spacing:-0.01em; }
+  h1 em { font-style:italic; color:var(--accent); }
+  h2 { font-family:var(--serif); font-weight:400; font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; }
+  h3 { font-size:16px; font-weight:600; margin:0 0 8px; }
+  h4 { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 8px; }
+  p { margin: 0 0 12px; }
+  a { color:var(--blue); }
+  code, pre { font-family:var(--mono); font-size:13px; }
+  code { background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+  pre { background:#0b0d0f; border:1px solid var(--line); border-radius:8px; padding:14px 16px; overflow-x:auto; margin:0 0 12px; line-height:1.5; }
+  pre code { background:none; border:0; padding:0; }
+  .eyebrow { font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .lede { font-size:18px; color:var(--muted); max-width:70ch; }
+  section { margin-top:56px; padding-top:24px; border-top:1px solid var(--line); }
+  section > .eyebrow { margin-bottom:4px; }
+  .sub { color:var(--muted); margin-bottom:18px; max-width:78ch; }
+  .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card.rec { border-color:var(--accent); box-shadow: 0 0 0 1px var(--accent-soft) inset; }
+  .card .cost { font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:8px; }
+  .card ul { padding-left:18px; margin:6px 0 0; font-size:13.5px; }
+  .split { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:18px; }
+  .badge { display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:0.04em; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--muted); white-space:nowrap; }
+  .badge.ok { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .badge.warn { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); }
+  .badge.bad { color:var(--red); border-color:var(--red); background:var(--red-soft); }
+  .badge.info { color:var(--blue); border-color:var(--blue); background:var(--blue-soft); }
+  .badge.rec { color:var(--accent-ink); background:var(--accent); border-color:var(--accent); font-weight:600; }
+  .tag { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .verdict { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin: 22px 0 0; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .stat .n { font-family:var(--serif); font-size:38px; line-height:1; color:var(--ink); }
+  .stat .l { font-size:13px; color:var(--muted); margin-top:6px; }
+  .stat.accent .n { color:var(--accent); } .stat.amber .n { color:var(--amber); } .stat.red .n { color:var(--red); }
+  .callout { border-left:3px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .callout.warn { border-left-color:var(--amber); } .callout.bad { border-left-color:var(--red); } .callout.info { border-left-color:var(--blue); }
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; background:var(--band); position:sticky; top:0; }
+  tr:last-child td { border-bottom:0; }
+  td .path { font-family:var(--mono); font-size:12px; color:var(--muted); display:block; margin-top:3px; }
+  figure { margin:0 0 12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  figure svg { width:100%; height:auto; display:block; color:var(--ink); }
+  figcaption { font-size:13px; color:var(--muted); margin-top:10px; }
+  .svg-box { fill:var(--panel-2); stroke:var(--line-strong); stroke-width:1; }
+  .svg-box.hot { stroke:var(--amber); fill:var(--amber-soft); }
+  .svg-box.bad { stroke:var(--red); fill:var(--red-soft); }
+  .svg-box.good { stroke:var(--accent); fill:var(--accent-soft); }
+  .svg-box.blue { stroke:var(--blue); fill:var(--blue-soft); }
+  .svg-box.dim { stroke:var(--line); fill:var(--band); }
+  .svg-t { fill:var(--ink); font-family:var(--sans); font-size:12px; }
+  .svg-t.b { font-weight:600; }
+  .svg-t.m { fill:var(--muted); font-family:var(--mono); font-size:10.5px; }
+  .svg-t.s { font-size:10.5px; fill:var(--muted); }
+  .svg-t.dim { fill:var(--faint); }
+  .svg-e { stroke:var(--line-strong); stroke-width:1.4; fill:none; }
+  .svg-e.good { stroke:var(--accent); } .svg-e.bad { stroke:var(--red); stroke-dasharray:4 3; } .svg-e.blue { stroke:var(--blue); } .svg-e.dim { stroke:var(--line); stroke-dasharray:3 3; }
+  .svg-region { fill:none; stroke:var(--line); stroke-dasharray:5 4; rx:10; }
+  .steps { display:grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap:12px; }
+  .step { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; position:relative; }
+  .step .id { font-family:var(--mono); font-size:12px; color:var(--accent); }
+  .step h3 { margin-top:4px; }
+  .step ul { padding-left:18px; margin:6px 0 0; font-size:13.5px; color:var(--muted); }
+  .step .done { font-family:var(--mono); font-size:11.5px; color:var(--accent); margin-top:8px; display:block; }
+  .step .eff { font-family:var(--mono); font-size:11.5px; color:var(--muted); margin-top:8px; display:block; }
+  ul.tight { padding-left:20px; margin:0 0 10px; } ul.tight li { margin-bottom:5px; }
+  ol.tight { padding-left:22px; margin:0 0 10px; } ol.tight li { margin-bottom:6px; }
+  .q { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-top:14px; }
+  .q h3 { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .q label { display:flex; gap:10px; align-items:flex-start; padding:8px 10px; border:1px solid var(--line); border-radius:8px; margin-bottom:8px; cursor:pointer; font-size:14px; }
+  .q label:has(input:checked) { border-color:var(--accent); background:var(--accent-soft); }
+  .q label input { margin-top:3px; flex:0 0 auto; }
+  .q label small { display:block; color:var(--muted); }
+  .q textarea, .q input[type=text] { width:100%; background:#0b0d0f; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:8px 10px; font-family:var(--sans); font-size:14px; }
+  .btn { display:inline-block; background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:8px 14px; font-weight:600; font-size:13.5px; cursor:pointer; font-family:var(--sans); }
+  .btn.ghost { background:transparent; color:var(--ink); border:1px solid var(--line-strong); }
+  .queued { font-family:var(--mono); font-size:11.5px; color:var(--accent); margin-left:10px; display:none; }
+  .q.is-queued .queued { display:inline; }
+  .kv { display:grid; grid-template-columns: max-content minmax(0,1fr); gap:6px 16px; font-size:14px; }
+  .kv dt { color:var(--muted); font-family:var(--mono); font-size:12.5px; } .kv dd { margin:0; }
+  .toast { position:fixed; right:18px; bottom:18px; background:var(--panel-2); border:1px solid var(--accent); color:var(--ink); padding:10px 14px; border-radius:8px; font-size:13px; display:none; z-index:50; max-width:min(90vw, 420px); }
+  .toc { display:flex; flex-wrap:wrap; gap:8px 14px; font-size:13px; margin-top:18px; }
+  .toc a { color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--line-strong); } .toc a:hover { color:var(--ink); }
+  .tree { font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--muted); }
+  .tree b { color:var(--ink); font-weight:500; }
+  .tree i { color:var(--faint); font-style:normal; }
+  .play { border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:16px 18px; margin-bottom:16px; }
+  .play h3 { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .play .meta { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .play h4 { margin-top:14px; }
+  @media (max-width: 640px) { th, td { padding:8px; } h2 { font-size:26px; } }
+</style>
+</head>
+<body>
+<main>
+
+<div class="eyebrow">nmp-central-ai · ai_specs/s01 · plan for review · 2026-09-22</div>
+<h1>M3 — <em>one Postgres</em> for the portfolio</h1>
+<p class="lede">The central compose stack already runs a Postgres 16 + pgvector server for MLflow. M3 makes it the only database server on the machine: every sibling that keeps relational data gets its own database on that cluster, provisioned from the registry, verified by <code>make check</code>, and moved over with its data intact.</p>
+
+<div class="verdict">
+  <div class="stat amber"><div class="n">3</div><div class="l">Postgres servers today (central, dab, data-qa) on 3 ports: 5432 / 5433 / 5434</div></div>
+  <div class="stat"><div class="n">9.0 GB</div><div class="l">of live relational data to carry across: DAB 6.6 GB, data-qa 2.3 GB, MLflow 83 MB</div></div>
+  <div class="stat accent"><div class="n">2</div><div class="l">projects migrate (DAB, data-qa); 4 stay on embedded or non-relational stores by design</div></div>
+  <div class="stat"><div class="n">≈3.25 d</div><div class="l">platform primitives 1 d · DAB 0.5 d · data-qa 1.5 d · sign-off 0.25 d</div></div>
+</div>
+
+<div class="toc">
+  <a href="#survey">1 · Survey</a><a href="#target">2 · Target shape</a><a href="#decisions">3 · Decisions</a><a href="#primitives">4 · Platform primitives</a>
+  <a href="#move">5 · Moving data</a><a href="#playbooks">6 · Per-project playbooks</a><a href="#verify">7 · Verification</a><a href="#risks">8 · Risks</a><a href="#out">9 · Out of scope</a><a href="#sequence">10 · Sequence</a><a href="#scope">11 · Confirm scope</a>
+</div>
+
+<!-- ============================================================ 1 SURVEY -->
+<section id="survey">
+  <div class="eyebrow">1 · Survey — who keeps relational data, and where</div>
+  <h2>Two Postgres servers to fold in, and four stores that should not move</h2>
+  <p class="sub">Every claim below was checked against the repo and the running Docker daemon on 2026-09-22 (<code>docker ps -a</code>, <code>docker system df -v</code>, <code>psql</code> into each container). Sizes are <code>pg_total_relation_size</code> sums, not volume sizes.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>ID</th><th>Project</th><th>Store today</th><th>Size</th><th>Shape</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code>P6</code></td><td><b>DataAgentBench</b><span class="path">infra/docker-compose.yml · infra/roles.sql · src/dab_bench/config.py</span></td>
+          <td><code>pgvector/pgvector:pg16</code>, compose project <code>dab</code>, host port <b>5433</b>, superuser <code>nmp</code>, db <code>nmp</code></td>
+          <td><b>6.6 GB</b> · 2 813 tables</td>
+          <td>One schema <code>dataagentbench</code> owned by <code>dab_owner</code>; <code>dab_agent</code> read-only with 60 s statement timeout. Tuned server flags (<code>shared_buffers=512MB</code> …). Its own AGENTS.md calls the local server "a stated deviation from rule zero; migrate after M3".</td>
+          <td><span class="badge ok">migrate</span></td>
+        </tr>
+        <tr>
+          <td><code>P5</code></td><td><b>data-qa-agent</b><span class="path">docker-compose.yml · db/init/*.sql · services/db-migrate (Alembic, 40 versions) · services/data-pipeline/dbt</span></td>
+          <td><code>pgvector/pgvector:pg16</code>, service <code>db</code>, host port <b>5434</b>, superuser <code>postgres</code>, db <code>dataqa</code></td>
+          <td><b>2.3 GB</b> · raw 1.35 GB, staging 725 MB, marts 174 MB, app 70 MB</td>
+          <td>Four schemas (<code>app</code>, <code>raw</code>, <code>staging</code>, <code>marts</code>), extensions <code>vector</code> + <code>pgcrypto</code>, row-level security, three login roles <code>app_user</code> / <code>agent_ro</code> / <code>admin_ro</code> referenced from 34 files. Alembic migrations run as a compose job; dbt targets host <code>db</code>.</td>
+          <td><span class="badge ok">migrate</span> <span class="badge warn">largest change</span></td>
+        </tr>
+        <tr>
+          <td><code>—</code></td><td><b>nmp-central-ai</b> (MLflow)</td>
+          <td>the central cluster, host port <b>5432</b>, db <code>mlflow</code> role <code>mlflow</code></td>
+          <td>83 MB</td>
+          <td>Created by <code>services/postgres/init/01-mlflow.sh</code> on first boot only. Becomes the first entry in the new registry block, nothing else changes.</td>
+          <td><span class="badge ok">already central</span></td>
+        </tr>
+        <tr>
+          <td><code>P1</code></td><td><b>ConvFinQA-agent</b><span class="path">.traces/traces.db · src/convfinqa/tracking/traces.py</span></td>
+          <td>SQLite, 58 MB, one <code>turns</code> table</td><td>58 MB</td>
+          <td>Embedded turn store read by serving and by the demo image, which is deliberately server-free and seeds from a committed snapshot. Moving it to Postgres breaks that invariant for no gain.</td>
+          <td><span class="badge">keep SQLite</span></td>
+        </tr>
+        <tr>
+          <td><code>—</code></td><td><b>value-invest-agent</b>, <b>productivity-tracker</b></td>
+          <td>DuckDB files (41 MB; in-memory + Parquet)</td><td>small</td>
+          <td>Embedded analytical engines; a Postgres port is a re-architecture, not a migration.</td>
+          <td><span class="badge">out</span></td>
+        </tr>
+        <tr>
+          <td><code>P4</code></td><td><b>transcript-rag-agent</b></td><td>Neo4j 5 (compose)</td><td>—</td>
+          <td>Graph store, not relational. Duplication count is 1, so it does not enter the catalogue (guardrail in s00).</td>
+          <td><span class="badge">out</span></td>
+        </tr>
+        <tr>
+          <td><code>—</code></td><td><b>DABStep-loop</b>, <b>tau2-loop</b></td><td>only the archived MLflow sqlite under <code>.mlflow/</code></td><td>—</td>
+          <td>No application database. Nothing to do.</td>
+          <td><span class="badge">n/a</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout warn" style="margin-top:16px"><b>Also found on the daemon:</b> six <code>01k…_dbdata</code> volumes (up to 71 MB each) left by data-qa's <code>.claude/worktrees</code> compose runs, the orphan <code>data-qa-agent_pgdata</code> (71 MB, June), a stopped <code>kb-pg</code> pgvector container from an unknown project, and the retired floor-plan-reviewer's stopped <code>floor-plan-studio-db-1</code> + 49 MB volume (project no longer used). M3's sign-off step lists them for deletion with sizes; you confirm each.</div>
+</section>
+
+<!-- ============================================================ 2 TARGET -->
+<section id="target">
+  <div class="eyebrow">2 · Target shape</div>
+  <h2>One cluster, one database per project, roles owned by the registry</h2>
+  <p class="sub">The question this figure answers: after M3, where does each project's data live and how does each process reach it?</p>
+
+  <figure>
+    <svg viewBox="0 0 1000 420" role="img" aria-labelledby="fig-target-title">
+      <title id="fig-target-title">Target: DAB and data-qa connect over the nmp-central network or localhost:5432 to one Postgres cluster holding one database per project</title>
+      <!-- siblings column -->
+      <g id="sib-dab"><rect class="svg-box" x="20" y="30" width="230" height="64" rx="8"/><text class="svg-t b" x="34" y="54">DataAgentBench (P6)</text><text class="svg-t m" x="34" y="72">nmp (admin) · dab_owner · dab_agent</text><text class="svg-t s" x="34" y="86">host → localhost:5432/dab</text></g>
+      <g id="sib-dataqa"><rect class="svg-box" x="20" y="110" width="230" height="78" rx="8"/><text class="svg-t b" x="34" y="134">data-qa-agent (P5)</text><text class="svg-t m" x="34" y="152">nmp (admin) · app_user · agent_ro · admin_ro</text><text class="svg-t s" x="34" y="166">compose → postgres:5432/dataqa</text><text class="svg-t s" x="34" y="180">host scripts → localhost:5432/dataqa</text></g>
+            <g id="sib-mlflow"><rect class="svg-box dim" x="20" y="284" width="230" height="64" rx="8"/><text class="svg-t b" x="34" y="308">mlflow server (platform)</text><text class="svg-t m" x="34" y="326">mlflow</text><text class="svg-t s" x="34" y="340">compose → postgres:5432/mlflow</text></g>
+      <!-- network region -->
+      <rect class="svg-region" x="300" y="20" width="150" height="340"/>
+      <text class="svg-t m" x="312" y="40">network nmp-central</text>
+      <text class="svg-t s" x="312" y="58">postgres:5432 inside</text>
+      <text class="svg-t s" x="312" y="72">localhost:5432 on host</text>
+      <!-- edges -->
+      <path id="e-dab" class="svg-e good" d="M250 62 C 300 62, 330 100, 470 100"/>
+      <path id="e-dataqa" class="svg-e good" d="M250 149 C 300 149, 330 160, 470 160"/>
+            <path id="e-mlflow" class="svg-e dim" d="M250 316 C 300 316, 330 280, 470 280"/>
+      <!-- cluster -->
+      <rect class="svg-box good" x="470" y="30" width="510" height="340" rx="12"/>
+      <text class="svg-t b" x="490" y="56">nmp-central-postgres-1 · pgvector/pgvector:pg16 · superuser nmp</text>
+      <text class="svg-t s" x="490" y="72">tuned: shared_buffers 512MB · work_mem 64MB · maintenance_work_mem 512MB · max_wal_size 4GB (D17)</text>
+      <g id="db-dab"><rect class="svg-box" x="490" y="86" width="220" height="46" rx="6"/><text class="svg-t b" x="502" y="105">db dab</text><text class="svg-t m" x="502" y="122">schema dataagentbench · ext vector</text></g>
+      <g id="db-dataqa"><rect class="svg-box" x="490" y="146" width="220" height="46" rx="6"/><text class="svg-t b" x="502" y="165">db dataqa</text><text class="svg-t m" x="502" y="182">app raw staging marts · vector pgcrypto · RLS</text></g>
+            <g id="db-mlflow"><rect class="svg-box dim" x="490" y="266" width="220" height="46" rx="6"/><text class="svg-t b" x="502" y="285">db mlflow</text><text class="svg-t m" x="502" y="302">MLflow 3.16 schema (unchanged)</text></g>
+      <!-- registry / roles panel -->
+      <rect class="svg-box blue" x="730" y="86" width="232" height="226" rx="8"/>
+      <text class="svg-t b" x="744" y="108">registry/projects.yaml</text>
+      <text class="svg-t m" x="744" y="128">database: name, roles,</text>
+      <text class="svg-t m" x="744" y="142">extensions, migrate, smoke</text>
+      <text class="svg-t s" x="744" y="166">scripts/db_init.py → idempotent</text>
+      <text class="svg-t s" x="744" y="180">CREATE ROLE / DATABASE / EXTENSION</text>
+      <text class="svg-t s" x="744" y="204">role names are cluster-global;</text>
+      <text class="svg-t s" x="744" y="218">the registry refuses a duplicate</text>
+      <text class="svg-t s" x="744" y="242">.db-urls.env → one URL per role</text>
+      <text class="svg-t s" x="744" y="256">(gitignored, like .mlflow-ids.env)</text>
+      <text class="svg-t s" x="744" y="280">scripts/check_databases.py →</text>
+      <text class="svg-t s" x="744" y="294">connect · extensions · project smoke</text>
+      <text class="svg-t m" x="490" y="350">volumes: nmp-central_pgdata grows by ≈9 GB · dab_dab-pgdata and data-qa-agent_dbdata are deleted once the central copy is verified (D14)</text>
+    </svg>
+    <figcaption>Every sibling keeps exactly one coupling to the platform for its database: a <code>DATABASE_URL</code>-style env var whose host is <code>postgres</code> inside compose or <code>localhost</code> on the host, port 5432 in both cases. Ports 5433 and 5434 are freed. The two "project-local Postgres" compose services are deleted, not disabled.</figcaption>
+  </figure>
+
+  <div class="split">
+    <div class="card">
+      <h3>Why database-per-project, not schema-per-project</h3>
+      <p>s00 wrote "per-project schemas on the same Postgres". The survey changed the answer: data-qa already <i>is</i> four schemas (<code>app</code>, <code>raw</code>, <code>staging</code>, <code>marts</code>) with 40 Alembic versions, a dbt project and RLS functions that reference <code>app.…</code> by name. Folding it into a shared database means renaming every schema across all of that. A database per project keeps every sibling's internals byte-for-byte, gives per-project <code>pg_dump</code> / <code>pg_restore</code>, per-project extensions, and a clean AWS story (RDS hosts many databases in one instance). DAB's single schema simply lives inside database <code>dab</code>. Nothing needs cross-project joins.</p>
+    </div>
+    <div class="card">
+      <h3>What the registry owns from now on</h3>
+      <ul class="tight">
+        <li><b>Database names</b> and <b>role names</b> — the only cluster-global namespace, so the registry is the only place they are declared and <code>db_init</code> refuses a duplicate.</li>
+        <li><b>Extensions</b> — created by the platform superuser once per database, before any project SQL runs.</li>
+        <li><b>The migrate and smoke commands</b> — like MLflow's <code>smoke</code>, both zero-LLM, run by <code>make check</code>.</li>
+        <li><b>Nothing inside a database</b> — schemas, tables, grants and RLS stay the project's business, in the project's repo.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 3 DECISIONS -->
+<section id="decisions">
+  <div class="eyebrow">3 · Decisions — taken in review, 2026-09-22</div>
+  <h2>D13–D19, recorded</h2>
+  <p class="sub">Continue the numbering from <code>AGENTS.md</code> (D1–D12). These go into the plan of record <code>ai_specs/s02_m3_central_db.md</code> and the AGENTS.md decisions table when M3.0 is built.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>ID</th><th>Decision</th><th>Outcome</th><th>Consequence for the build</th></tr></thead>
+    <tbody>
+      <tr><td><code>D13</code></td><td>Database layout</td><td><b>One database per project</b>: <code>mlflow</code>, <code>dab</code>, <code>dataqa</code>.</td><td>Projects keep their schemas byte-for-byte; dump/restore and extensions are per database. DAB's URL changes db name <code>nmp</code> → <code>dab</code>.</td></tr>
+      <tr><td><code>D14</code></td><td>Data carry-over</td><td><b>pg_dump → pg_restore</b> for every project; the old container and volume are deleted as soon as step 4 verifies the central copy is complete (unlike D2 for MLflow — this data is easy to recreate from source).</td><td>Same major version (pg16) everywhere, so lossless. DAB ≈ 10–20 min, data-qa ≈ 5 min; +9 GB on disk only during the move. The dump file in <code>backups/</code> is the safety net.</td></tr>
+      <tr><td><code>D15</code></td><td>Role namespace</td><td><b>Grandfather</b> data-qa's <code>app_user</code> / <code>agent_ro</code> / <code>admin_ro</code>; the registry declares every role and <code>db_init</code> refuses a duplicate; new projects use <code>&lt;project&gt;_&lt;purpose&gt;</code>.</td><td>Zero code change in data-qa's 34 files.</td></tr>
+      <tr><td><code>D16</code></td><td>Who runs migrations</td><td><b>Projects use the cluster superuser</b> (<code>nmp</code>) as their admin identity, as they use their local superuser today.</td><td>Databases are owned by <code>nmp</code>; DAB's <code>roles.sql</code> and data-qa's <code>db/init/*.sql</code> + Alembic run unchanged (they still create their login roles idempotently). Table ownership stays "superuser", so RLS behaves exactly as today. The accepted cost: any sibling's admin URL can reach any database, so every sibling <code>reset</code> target must be schema-level (<code>DROP SCHEMA … CASCADE</code> in its own database), never <code>DROP DATABASE</code> or <code>down -v</code>, and <code>make db-backup</code> precedes every playbook step. The per-database owner role remains the AWS-ready shape (D19) and can be introduced later without touching the projects' SQL.</td></tr>
+      <tr><td><code>D17</code></td><td>Server flags</td><td><b>Adopt DAB's tuning centrally</b>, env-overridable per mode.</td><td><code>command: postgres -c shared_buffers=${PG_SHARED_BUFFERS:-512MB} -c work_mem=${PG_WORK_MEM:-64MB} -c maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-512MB} -c max_wal_size=${PG_MAX_WAL_SIZE:-4GB} -c checkpoint_timeout=15min</code>; validation mode (D12) and any future AWS host override them down.</td></tr>
+      <tr><td><code>D18</code></td><td>Sibling CI database</td><td><b>GitHub Actions service container</b> (<code>pgvector/pgvector:pg16</code>) on the <code>nmp-central</code> network the job already creates, alias <code>postgres</code>.</td><td>Same hostname as local; no platform checkout in CI; throwaway by construction (the D12 principle). ≈ 15 lines of YAML in data-qa's workflow.</td></tr>
+      <tr><td><code>D19</code></td><td>Databases in AWS</td><td><b>None for projects.</b> The AWS stack is a demo; only MLflow's backend store lives on RDS (M2). Dev holds the live databases. The shape stays dev = prod so a future AWS deployment is a flag flip, not a redesign.</td><td>Registry: every project database carries <code>aws: false</code>; <code>db_init --target aws</code> provisions only the PLATFORM entry; the central compose keeps its <code>compose.aws.yml</code> override (RDS instead of the postgres service) and the same URL shapes, so a sibling deploying to AWS later only sets its URLs. Any project going to AWS is when the per-database owner role (rejected locally in D16) gets introduced, since RDS gives no superuser anyway.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 4 PRIMITIVES -->
+<section id="primitives">
+  <div class="eyebrow">4 · Platform primitives — M3.0, built once in nmp-central-ai</div>
+  <h2>The registry grows a <code>database</code> block; four scripts and six make targets act on it</h2>
+  <p class="sub">Same pattern as M1: the registry is the source of truth, a script makes reality match it idempotently, a checker proves it, and <code>PLATFORM.md</code> + the plugin tell agents how to use it.</p>
+
+  <div class="split">
+    <div>
+      <h4>registry/projects.yaml — new block per project</h4>
+<pre><code>platform:
+  postgres_uri: postgresql://localhost:5432      # host
+  postgres_compose: postgresql://postgres:5432   # in-network
+
+projects:
+  - id: P5
+    name: data-qa-agent
+    path: ../data-qa-agent
+    mlflow: { … unchanged … }
+    database:
+      name: dataqa                             # D13: one database per project
+      roles: [app_user, agent_ro, admin_ro]   # D15: grandfathered; cluster-global, so declared here
+      extensions: [vector, pgcrypto]
+      env:                                     # what the project reads
+        ADMIN_DATABASE_URL: superuser          # D16: the cluster superuser (nmp)
+        DATABASE_URL: app_user
+        AGENT_RO_DATABASE_URL: agent_ro
+        ADMIN_RO_DATABASE_URL: admin_ro
+      migrate: make -C ../data-qa-agent migrate
+      smoke: make -C ../data-qa-agent db-smoke    # zero-LLM
+      aws: false                                  # D19: no project databases in AWS
+
+  - id: P6
+    name: dataagentbench
+    database:
+      name: dab
+      roles: [dab_owner, dab_agent]
+      extensions: [vector]
+      env: { DATABASE_URL: dab_owner, AGENT_DATABASE_URL: dab_agent, PG_SUPERUSER_URL: superuser }
+      migrate: make -C ../DataAgentBench db-roles   # runs roles.sql as the superuser, unchanged
+      smoke: make -C ../DataAgentBench db-smoke
+      aws: false</code></pre>
+    </div>
+    <div>
+      <h4>What each piece does</h4>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Piece</th><th>Behaviour</th></tr></thead>
+        <tbody>
+          <tr><td><code>scripts/db_init.py</code></td><td>For every project with a <code>database</code> block: <code>CREATE ROLE … LOGIN</code> (password = role name locally, <code>&lt;ROLE&gt;_PASSWORD</code> env overrides), <code>CREATE DATABASE</code> (owned by the superuser, D16), <code>CREATE EXTENSION</code> inside it. Idempotent; refuses if two projects declare the same role or database. Renders SQL (unit-testable) and applies it with <code>psql</code> through <code>docker compose exec -T postgres</code> (or a given superuser URL for AWS). Writes <code>.db-urls.env</code> (gitignored) with one URL per <code>env:</code> key, host <code>localhost</code>; <code>superuser</code> resolves to <code>nmp</code>. Replaces <code>services/postgres/init/01-mlflow.sh</code>, which only ever ran on an empty volume.</td></tr>
+          <tr><td><code>scripts/check_databases.py</code></td><td>One row per project: connect as the superuser and as each role, assert extensions present, run the project's <code>smoke</code> with the URLs exported. <code>make check</code> runs it after the MLflow checker; <code>--only P6</code> works the same way.</td></tr>
+          <tr><td><code>make db-init · db-urls · db-check</code></td><td>Provision · print the URLs (and where the project should paste them) · verify.</td></tr>
+          <tr><td><code>make db-backup DB=dab · db-restore DB=dab FILE=…</code></td><td><code>pg_dump -Fc</code> to <code>backups/&lt;db&gt;-&lt;utc&gt;.dump</code> (gitignored) and the matching <code>pg_restore -j4 --no-owner</code> (everything ends up owned by <code>nmp</code>, as it is owned by the local superuser today). The migration playbooks below use these against the <i>old</i> containers too (<code>SRC=container</code>).</td></tr>
+          <tr><td><code>docker-compose.yml</code></td><td>Postgres flags from env (D17); nothing else changes. The MLflow database becomes a registry entry (<code>id: PLATFORM</code>) so the same script owns it.</td></tr>
+          <tr><td><code>PLATFORM.md</code> + plugin</td><td>New "Postgres" table (URLs, rule: one database per project, roles from the registry, the superuser only for migrations and only in your own database, never a local db service, reset = drop your own schemas) and rule 7. Skill <code>platform-db</code> added to <code>nmp-platform</code> with an eval case ("add a table to my project" → must not create a compose postgres, must use the registry URL).</td></tr>
+          <tr><td>CI</td><td><code>stack</code> job adds <code>make db-init && make db-check ARGS="--only PLATFORM"</code>; <code>tests/test_db_init.py</code> renders SQL for a fixture registry and asserts the statements and the duplicate-role refusal.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="callout info"><b>The one coupling stays one env var per URL.</b> A sibling never imports the platform. It reads <code>DATABASE_URL</code> (and friends) exactly as it does now; only the default value and the hostname change. Validation and CI use a throwaway server with the same hostname (D12, D18).</div>
+</section>
+
+<!-- ============================================================ 5 MOVE -->
+<section id="move">
+  <div class="eyebrow">5 · Moving data — the same six steps for every project</div>
+  <h2>Dump from the old container, restore into the registry-made database, prove, cut over, delete the old one</h2>
+  <div class="steps">
+    <div class="step"><span class="id">1 · freeze</span><h3>Stop writers, keep the old server up</h3><ul><li>project's app containers down; its <code>db</code> stays up</li><li><code>make -C ../nmp-central-ai db-init</code> creates the target</li></ul></div>
+    <div class="step"><span class="id">2 · dump</span><h3>From the old container</h3><ul><li><code>docker exec &lt;old&gt; pg_dump -Fc -U &lt;su&gt; &lt;db&gt; &gt; backups/…</code></li><li>size check vs <code>pg_database_size</code></li></ul></div>
+    <div class="step"><span class="id">3 · restore</span><h3>Into the central database</h3><ul><li><code>pg_restore -j4 --no-owner -d &lt;db&gt;</code> as <code>nmp</code></li><li>extensions already exist → <code>--no-comments</code>, ignore "already exists"</li></ul></div>
+    <div class="step"><span class="id">4 · prove</span><h3>Counts match, roles work</h3><ul><li>per-schema table counts and <code>pg_total_relation_size</code> within 2 %</li><li>project's <code>db-smoke</code> as each role (RLS still hides rows for user2, agent role still read-only)</li></ul></div>
+    <div class="step"><span class="id">5 · cut over</span><h3>Change the defaults, delete the service</h3><ul><li>URLs → <code>postgres</code>/<code>localhost:5432</code></li><li>compose <code>db</code> service + <code>depends_on</code> removed, network joined</li><li><code>make up</code>, full smoke/e2e</li></ul></div>
+    <div class="step"><span class="id">6 · delete</span><h3>Old server gone, port freed</h3><ul><li>step 4 proved the central copy complete, so the old container <i>and</i> its volume are removed right away (reviewer decision: the data is easy to recreate from source anyway)</li><li>the step-2 dump file stays in <code>backups/</code> as the safety net</li></ul></div>
+  </div>
+  <p class="sub" style="margin-top:14px">Rollback at any step before 6: put the old default back and <code>docker compose up db</code>. Nothing in steps 1–5 writes to the old volume. After 6, rollback is <code>make db-restore</code> from the dump, or a re-ingest from source.</p>
+</section>
+
+<!-- ============================================================ 6 PLAYBOOKS -->
+<section id="playbooks">
+  <div class="eyebrow">6 · Per-project playbooks</div>
+  <h2>What actually changes in each repo</h2>
+
+  <div class="play">
+    <h3><span class="tag">P6</span> DataAgentBench <span class="meta">≈ 0.5 day · 6.6 GB · already built for this</span></h3>
+    <div class="split">
+      <div>
+        <h4>Changes</h4>
+        <ul class="tight">
+          <li><code>src/dab_bench/config.py</code>: defaults <code>…@localhost:5433/nmp</code> → <code>…@localhost:5432/dab</code> for <code>database_url</code>, <code>agent_database_url</code> and <code>pg_superuser_url</code> (now <code>nmp:nmp</code>, D16). <code>roles.sql</code> runs unchanged.</li>
+          <li><code>.env.example</code>: the three commented URLs updated; <code>DAB_PG_PORT</code> gone.</li>
+          <li><code>infra/docker-compose.yml</code> deleted; <code>Makefile</code> <code>db-up</code> → <code>platform-up</code> (as DABStep/tau2 did), <code>db-roles</code> runs <code>roles.sql</code> with <code>PG_SUPERUSER_URL</code> as today, new <code>db-smoke</code>: <code>SELECT count(*) FROM dataagentbench.…</code> as <code>dab_agent</code> and a write as owner.</li>
+          <li><code>AGENTS.md</code> §2 table row "Postgres location" rewritten; dated migration note like the M1 ones.</li>
+          <li>Registry: the <code>infra/registry.P6.yaml</code> stub finally lands in <code>projects.yaml</code> (MLflow block too — P6 was never registered for M1).</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Data · verify · watch out</h4>
+        <ul class="tight">
+          <li>Dump <code>-n dataagentbench</code> from <code>dab-postgres-1</code> (6.6 GB, ≈ 10–20 min with <code>-j4</code>); restore into <code>dab</code> as <code>nmp</code>.</li>
+          <li>Verify: 2 813 tables in <code>dataagentbench</code>; <code>make context</code> (no model) regenerates a context pack identical to the committed one; a committed dry-run re-logs via <code>make -C ../nmp-central-ai check ARGS="--only P6"</code>.</li>
+          <li>Watch: <code>dab_agent</code>'s <code>ALTER ROLE … SET search_path/statement_timeout</code> are role-level (cluster-global) settings — <code>roles.sql</code> keeps setting them, fine. The tuned flags must be on the central server first (D17) or the restore itself takes hours.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="play">
+    <h3><span class="tag">P5</span> data-qa-agent <span class="meta">≈ 1.5 days · 2.3 GB · RLS + Alembic + dbt + four roles</span></h3>
+    <div class="split">
+      <div>
+        <h4>Changes</h4>
+        <ul class="tight">
+          <li><code>docker-compose.yml</code>: delete service <code>db</code> and its <code>depends_on</code>/healthcheck edges (migrate, pipeline, backend-api, data-agent, …); every URL host <code>db</code> → <code>postgres</code>; <code>migrate</code>, <code>pipeline</code>, <code>pipeline-docs</code> join <code>[default, nmp-central]</code> like backend-api already does; <code>ADMIN_DATABASE_URL</code> → <code>postgresql://nmp:nmp@postgres:5432/dataqa</code> (D16: the cluster superuser, as <code>postgres:postgres</code> was locally).</li>
+          <li><code>db/init/01_schema.sql</code>, <code>02_rls.sql</code>, <code>03_seed.sql</code>: unchanged. The extension and <code>CREATE ROLE IF NOT EXISTS</code> statements become no-ops because the platform already made them; schemas, tables, grants and RLS run as the superuser exactly as before, so table ownership and RLS behaviour are identical to today.</li>
+          <li><code>services/data-pipeline/dbt/profiles.yml</code>: <code>DBT_HOST</code> default <code>db</code> → <code>postgres</code>, <code>DBT_USER</code> default <code>postgres</code> → <code>nmp</code>.</li>
+          <li><code>Makefile</code>: the host-side <code>localhost:5434</code> defaults → <code>5432</code>; <code>reset</code> must no longer <code>down -v</code> the database — it becomes "drop and recreate the four schemas inside <code>dataqa</code>", never <code>DROP DATABASE</code> and never a cluster operation (the D16 trade-off).</li>
+          <li><code>.env.example</code>, <code>AGENTS.md</code> (Run fully locally, Data model, ports table: 5434 row gone), <code>README.md</code>.</li>
+          <li>CI: service container per D18; the smoke job keeps its network-create step from PR #44.</li>
+          <li>Untouched: <code>infra/terraform</code> (Aurora) and Bicep — the AWS deployment keeps its own database until M2/M5 decide otherwise.</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Data · verify · watch out</h4>
+        <ul class="tight">
+          <li>Dump the whole <code>dataqa</code> database from <code>data-qa-agent-db-1</code> (2.3 GB); restore <code>--no-owner</code> as <code>nmp</code>. Roles exist beforehand, so grants restore cleanly.</li>
+          <li>Verify: Alembic <code>current</code> == head; dbt <code>--select marts</code> tests green; <code>make smoke</code> and <code>make e2e</code>; RLS test (user2 zero rows); MLflow eval re-log unchanged (P5 row of <code>make check</code>).</li>
+          <li>Watch: 34 files name the roles (D15 says leave them). <code>make reset</code> and the <code>.claude/worktrees</code> pattern created six stray volumes — with the database central, a worktree run must never <code>down -v</code>; the compose file will have nothing to drop, which is the point. The live volume is <code>data-qa-agent_dbdata</code> (3.5 GB on disk, 2.3 GB of relations; mounted by <code>data-qa-agent-db-1</code>); <code>data-qa-agent_pgdata</code> (71 MB, June) is an older orphan from before the volume was renamed and goes on the hygiene list.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<!-- ============================================================ 7 VERIFY -->
+<section id="verify">
+  <div class="eyebrow">7 · Verification protocol</div>
+  <h2><code>make check</code> gets database rows; a red row is a platform bug until shown otherwise</h2>
+  <div class="split">
+    <div>
+<pre><code>$ make check
+central MLflow: http://localhost:5000
+  P1  convfinqa-agent        PASS   runs=1 traces=1
+  P2  dabstep-loop           PASS   runs=1
+  P3  tau2-loop              PASS   runs=1
+  P5  data-qa-agent          PASS   traces=1
+  P6  dataagentbench         PASS   runs=1 traces=1
+central Postgres: postgresql://localhost:5432
+  PLATFORM  mlflow           PASS   1 role ok   ext=-                smoke ok
+  P5        dataqa           PASS   3 roles ok  ext=vector,pgcrypto  smoke ok (alembic head, rls)
+  P6        dab              PASS   2 roles ok  ext=vector           smoke ok (2813 tables)
+all registered projects use the central server</code></pre>
+    </div>
+    <div>
+      <h4>Done when</h4>
+      <ul class="tight">
+        <li>Every row above is PASS on a laptop where <code>docker ps</code> shows exactly one Postgres container.</li>
+        <li>Ports 5433 and 5434 are free; <code>lsof</code> shows only Docker on 5432.</li>
+        <li>Each migrated repo's own CI is green on main with the service container (D18).</li>
+        <li><code>PLATFORM.md</code> documents the database contract; the plugin's <code>platform-db</code> eval scores 1.00; <code>make -C nmp-central-ai plugin-validate</code> passes.</li>
+        <li>An <code>ai_specs/s03_m3_receipt.md</code> lists every submitted ID with its outcome, like s01 did for M1.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 8 RISKS -->
+<section id="risks">
+  <div class="eyebrow">8 · Risks and failure modes</div>
+  <h2>What can go wrong, and what the plan does about it</h2>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Risk</th><th>Likelihood</th><th>Mitigation</th></tr></thead>
+    <tbody>
+      <tr><td>A project's <code>make reset</code> / <code>down -v</code> deletes the shared volume, or a project's admin URL (the superuser, D16) drops another project's database</td><td><span class="badge bad">high if unhandled</span></td><td>No sibling compose file mounts <code>pgdata</code>; only nmp-central-ai's <code>make nuke</code> (asks first) can drop it. Sibling reset targets are rewritten to schema-level operations inside their own database; PLATFORM.md rule 7 says so; <code>make db-backup</code> before every playbook step and nightly is one cron line away.</td></tr>
+      <tr><td>Central Postgres down → every sibling fails</td><td><span class="badge warn">medium</span></td><td>Same posture as MLflow: fail fast naming <code>make -C ~/git/nmp-ai-portfolio/nmp-central-ai up</code>. data-qa's backend already does a health preflight for MLflow; add the same for the database. Validation never depends on it (D12/D18).</td></tr>
+      <tr><td>RLS behaves differently after the move</td><td><span class="badge">low</span></td><td>Tables stay owned by the superuser (D16) exactly as today; the existing user2-sees-zero-rows test runs as <code>app_user</code> in step 4 "prove" before cut-over.</td></tr>
+      <tr><td>Restore of 6.6 GB on stock flags takes hours</td><td><span class="badge warn">medium</span></td><td>D17 first; <code>pg_restore -j4</code>; <code>maintenance_work_mem=512MB</code> for index builds.</td></tr>
+      <tr><td>Disk: both copies exist during a move (+9 GB peak), plus ≈ 0.5 GB of stray worktree/orphan volumes</td><td><span class="badge">low</span></td><td>Old volume deleted in step 6 of each playbook, right after verification (D14); the daemon-hygiene list in §1 is actioned at sign-off with your confirmation per volume.</td></tr>
+      <tr><td>Role or database name collision between projects</td><td><span class="badge">low</span></td><td>Registry declares all names; <code>db_init</code> refuses duplicates; <code>tests/test_db_init.py</code> covers it.</td></tr>
+      <tr><td>Host port 5432 taken by a native Postgres (Homebrew) on another machine</td><td><span class="badge">low</span></td><td>Already parameterised (<code>POSTGRES_PORT</code>); the URL defaults follow <code>.db-urls.env</code>, which <code>db-init</code> writes with the real port.</td></tr>
+      <tr><td>AWS demo has no project databases</td><td><span class="badge">by design</span></td><td>D19: every project database is <code>aws: false</code>; <code>db_init --target aws</code> provisions only MLflow's. Dev and prod keep the same URL shapes so a later AWS deployment is configuration, not code.</td></tr>
+      <tr><td>Agents in a sibling spin up a local Postgres again</td><td><span class="badge warn">medium</span></td><td>Rule zero already says so for MLflow; PLATFORM.md rule 7 + the <code>platform-db</code> skill + its eval case make it explicit for databases.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============================================================ 9 OUT -->
+<section id="out">
+  <div class="eyebrow">9 · Out of scope, on purpose</div>
+  <h2>Kept where they are</h2>
+  <div class="cards">
+    <div class="card"><h3>ConvFinQA <code>.traces/traces.db</code></h3><p>Embedded SQLite behind a server-free demo image. A Postgres port would force the demo to carry a database or lose the Traces page. Revisit only if a second project needs a shared turn store.</p></div>
+    <div class="card"><h3>DuckDB (value-invest, productivity-tracker)</h3><p>Columnar, file-based, analytical. Different engine, different job; the s00 guardrail (duplication ≥ 2 and its own plan) is not met for a shared OLAP service.</p></div>
+    <div class="card"><h3>Neo4j (transcript-rag)</h3><p>Graph database; single consumer. Stays project-local.</p></div>
+    <div class="card"><h3>v2v-prod-agent, Databricks projects</h3><p>Excluded from the platform in s00.</p></div>
+    <div class="card"><h3>AWS databases</h3><p>D19: the AWS stack is a demo with no project databases. data-qa's own Terraform keeps its Aurora untouched; M2/M5 decide what the demo shows.</p></div>
+    <div class="card"><h3>Connection pooling</h3><p>Four projects, one laptop: not needed. PgBouncer enters the catalogue when a second concurrent-heavy service appears.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ 10 SEQUENCE -->
+<section id="sequence">
+  <div class="eyebrow">10 · Sequence</div>
+  <h2>Primitives first, then DAB, then data-qa</h2>
+  <div class="steps">
+    <div class="step"><span class="id">M3.0</span><h3>Platform primitives</h3><ul><li>registry <code>database</code> blocks incl. PLATFORM (mlflow)</li><li><code>db_init.py</code>, <code>check_databases.py</code>, make targets, backup/restore</li><li>D17 flags, PLATFORM.md, skill + eval, CI, tests</li><li>D13 recorded; <code>make db-init</code> creates <code>dab</code> and <code>dataqa</code> empty</li></ul><span class="eff">≈ 1 day · nmp-central-ai PR via no-mistakes</span></div>
+    <div class="step"><span class="id">M3.1</span><h3>DataAgentBench</h3><ul><li>the six-step move; 6.6 GB</li><li>register P6 (MLflow + database)</li><li>old server + volume deleted, port 5433 freed</li></ul><span class="eff">≈ 0.5 day · DataAgentBench PR</span></div>
+    <div class="step"><span class="id">M3.2</span><h3>data-qa-agent</h3><ul><li>the six-step move; 2.3 GB</li><li>compose, Alembic, dbt, Makefile, CI service container</li><li>old server + volume deleted, port 5434 freed</li></ul><span class="eff">≈ 1.5 days · data-qa PR</span></div>
+    <div class="step"><span class="id">M3.3</span><h3>Sign-off</h3><ul><li><code>make check</code> all green, receipt s03</li><li><code>docker ps</code> shows one Postgres; 5433/5434 free</li><li>daemon hygiene: worktree volumes, orphan pgdata, kb-pg, retired floor-plan container + volume</li></ul><span class="eff">≈ 0.25 day</span></div>
+  </div>
+  <p class="sub" style="margin-top:14px">Each milestone is its own PR through no-mistakes (which, thanks to D12, can no longer touch the live stack). M3.1 before M3.2 because DAB was built to move and proves the primitives on the largest dataset with the simplest schema.</p>
+</section>
+
+<!-- ============================================================ 11 SCOPE -->
+<section id="scope">
+  <div class="eyebrow">11 · Confirm scope</div>
+  <h2>Which projects move in M3?</h2>
+  <form class="q" data-lavish-question="m3-scope" onsubmit="return submitBatch(event)">
+    <h3>M3 scope <span class="queued">queued ✓</span></h3>
+    <div class="tablewrap" style="margin-bottom:12px">
+      <table>
+        <thead><tr><th></th><th>ID</th><th>Project</th><th>Disposition</th><th>Effort</th></tr></thead>
+        <tbody>
+          <tr><td><input type="checkbox" name="items" value="M3.0" data-label="Platform primitives in nmp-central-ai" data-disposition="build" checked></td><td><code>M3.0</code></td><td><b>nmp-central-ai</b> primitives</td><td>build: registry block, db_init, check_databases, make targets, flags, PLATFORM.md, skill</td><td>1 d</td></tr>
+          <tr><td><input type="checkbox" name="items" value="P6" data-label="DataAgentBench → central Postgres db dab" data-disposition="migrate" checked></td><td><code>P6</code></td><td><b>DataAgentBench</b></td><td>migrate (6.6 GB, dump/restore, old server deleted after verification)</td><td>0.5 d</td></tr>
+          <tr><td><input type="checkbox" name="items" value="P5" data-label="data-qa-agent → central Postgres db dataqa" data-disposition="migrate" checked></td><td><code>P5</code></td><td><b>data-qa-agent</b></td><td>migrate (2.3 GB, dump/restore, roles grandfathered, old server deleted after verification)</td><td>1.5 d</td></tr>
+          <tr><td><input type="checkbox" name="items" value="P1-traces" data-label="ConvFinQA .traces SQLite stays embedded" data-disposition="defer" checked></td><td><code>P1</code></td><td><b>ConvFinQA-agent</b> traces</td><td>defer: keep SQLite (recorded as a decision, not a gap)</td><td>—</td></tr>
+          <tr><td><input type="checkbox" name="items" value="HYGIENE" data-label="Daemon hygiene: stray worktree volumes, orphan pgdata, kb-pg, retired floor-plan db container + volume" data-disposition="list-for-confirmation" checked></td><td><code>HYG</code></td><td>daemon hygiene</td><td>list every stray volume/container with size (incl. the retired floor-plan db); delete only what you confirm</td><td>0.1 d</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="btn" type="submit">Queue M3 scope</button>
+  </form>
+
+  <form class="q" data-lavish-question="free-text" onsubmit="return submitText(event)">
+    <h3>Anything else <span class="queued">queued ✓</span></h3>
+    <textarea name="note" rows="3" placeholder="e.g. 'DAB first is wrong, data-qa is what I use daily' or 'add a read-replica role for the MCP server'"></textarea>
+    <div style="margin-top:10px"><button class="btn ghost" type="submit">Queue note</button></div>
+  </form>
+</section>
+
+<section>
+  <div class="eyebrow">Evidence</div>
+  <p class="sub">Survey commands, 2026-09-22: <code>grep -rIl -iE 'postgres|sqlite|psycopg|asyncpg|sqlalchemy|alembic|drizzle|prisma|DATABASE_URL|pgvector|duckdb'</code> over every sibling; <code>docker ps -a</code>; <code>docker system df -v</code>; <code>psql -tAc "select schemaname, count(*), pg_size_pretty(sum(pg_total_relation_size(…)))"</code> in <code>dab-postgres-1</code> and <code>data-qa-agent-db-1</code>; <code>pg_roles</code> and <code>pg_extension</code> in data-qa; <code>DataAgentBench/infra/roles.sql</code>, <code>AGENTS.md</code> §2 (line 136); <code>data-qa-agent/db/init/01_schema.sql</code>, <code>services/db-migrate/migrations/versions</code> (40 files), <code>services/data-pipeline/dbt/profiles.yml</code>; <code>ConvFinQA-agent/src/convfinqa/tracking/traces.py</code>; <code>value-invest-agent/src/value_invest/config.py</code>; <code>productivity-tracker/src/pt/store/rollup.py</code>; <code>transcript-rag-agent/docker-compose.yml</code>.</p>
+</section>
+
+</main>
+<div id="toast" class="toast"></div>
+<script>
+  function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.style.display='block'; clearTimeout(t._h); t._h=setTimeout(()=>t.style.display='none', 2600); }
+  function queue(prompt, opts){
+    if (window.lavish && typeof window.lavish.queuePrompt === 'function') { window.lavish.queuePrompt(prompt, opts); return true; }
+    toast('Lavish not connected: ' + (opts && opts.text ? opts.text : 'answer noted locally'));
+    return false;
+  }
+  function submitChoice(ev, label){
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const v = new FormData(form).get('answer');
+    if (!v) { toast('Pick an option first'); return false; }
+    const key = form.getAttribute('data-lavish-question');
+    queue('Decision ' + label + ': ' + v + '. Record it in the M3 plan of record (ai_specs/s02_m3_central_db.md) and AGENTS.md.', { tag:'choice', text: label + ' → ' + v, element: form, queueKey: key, data:{ question:key, answer:v } });
+    form.classList.add('is-queued'); toast('Queued: ' + label);
+    return false;
+  }
+  function submitBatch(ev){
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const selected = [...form.querySelectorAll('input[name=items]:checked')].map(i => ({ id:i.value, label:i.dataset.label, disposition:i.dataset.disposition }));
+    if (!selected.length) { toast('Select at least one item'); return false; }
+    queue('M3 scope confirmed. Write the M3 plan of record from this artifact and the queued decisions, then act on every selected ID in order and return an item-by-item receipt; account for every submitted ID before reporting completion.', { tag:'tracked-batch', text:'M3 scope: ' + selected.length + ' items', element: form, queueKey:'m3-scope', data:{ items: selected } });
+    form.classList.add('is-queued'); toast('Queued M3 scope (' + selected.length + ' items)');
+    return false;
+  }
+  function submitText(ev){
+    ev.preventDefault();
+    const form = ev.currentTarget;
+    const note = (new FormData(form).get('note') || '').trim();
+    if (!note) { toast('Write something first'); return false; }
+    queue('Reviewer note on the M3 central database plan: ' + note, { tag:'note', text: note.slice(0,80), element: form, queueKey:'free-text' });
+    form.classList.add('is-queued'); toast('Queued note');
+    return false;
+  }
+</script>
+</body>
+</html>

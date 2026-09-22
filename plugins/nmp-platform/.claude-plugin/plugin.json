@@ -1,6 +1,8 @@
 {
   "name": "nmp-platform",
-  "version": "0.1.0",
-  "description": "Skills for the nmp-central-ai shared platform: log, trace and query the central MLflow correctly; onboard a project.",
-  "author": { "name": "nmp-dsci" }
+  "version": "0.2.0",
+  "description": "Skills for the nmp-central-ai shared platform: log, trace and query the central MLflow correctly; use the central Postgres (one database per project); onboard a project.",
+  "author": {
+    "name": "nmp-dsci"
+  }
 }

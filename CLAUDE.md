@@ -1,19 +1,23 @@
 # CLAUDE.md — nmp-central-ai
 
-> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D12, runbooks). The
+> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D19, runbooks). The
 > outward contract is [`PLATFORM.md`](./PLATFORM.md); the plan of record is
 > `ai_specs/s00_project_plan.md`. This file is a pointer plus the rules that bite.
 
 ## Quick reference
 
-- `make up` · `make status` · `make mlflow-init` · `make check` · `make install-agent-context`
+- `make up` · `make status` · `make mlflow-init` · `make db-init` · `make check` · `make install-agent-context`
 - `make setup && make lint && make test` for the scripts (uv, ruff, mypy strict, pytest)
 - `make plugin-validate` after touching `plugins/` or `.claude-plugin/`
 
 ## Rules
 
-- **The registry is the source of truth.** Experiments, env-id variables and smoke commands
-  live in `registry/projects.yaml`. Never hardcode an experiment id anywhere.
+- **The registry is the source of truth.** Experiments, env-id variables, smoke commands and
+  every project database (name, roles, extensions, URL vars) live in `registry/projects.yaml`.
+  Never hardcode an experiment id or a database URL anywhere; `make db-init` writes `.db-urls.env`.
+- **One Postgres, one database per project (D13).** Roles are cluster-global and registry-owned
+  (D15). Never `DROP DATABASE`, never `down -v` a stack that owned data; back up with
+  `make db-backup DB=<db>` before any migration step (D14/D16).
 - **`make mode` before `make down`.** A validation checkout (CI, no-mistakes worktree, `VALIDATION=1`) drives
   project `nmp-central-validate` on :15000, never the live `nmp-central` (D12). Do not set
   `COMPOSE_PROJECT_NAME` / `PLATFORM_NETWORK` by hand.

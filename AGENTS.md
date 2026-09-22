@@ -8,8 +8,10 @@ Read this first. `CLAUDE.md` is a pointer plus the rules that bite; the plan of 
 The shared-services platform for `~/git/nmp-ai-portfolio`. Today: MLflow 3.16 on Postgres +
 MinIO (S3 API) via Docker Compose, a project registry, an init script that owns experiment
 ids, a verifier that proves each sibling can log, and agent context (portfolio-level
-CLAUDE.md/AGENTS.md + a Claude Code plugin). Next: AWS demo (M2), central database (M3),
-LiteLLM gateway + metrics + MCP (M4), deploy modules + template (M5).
+CLAUDE.md/AGENTS.md + a Claude Code plugin). M3 (2026-09-22): the same Postgres hosts one
+database per sibling project, provisioned from the registry by `make db-init` and proved by
+`make check`. Next: AWS demo (M2), LiteLLM gateway + metrics + MCP (M4), deploy modules +
+template (M5).
 
 ## Decisions
 
@@ -26,12 +28,21 @@ LiteLLM gateway + metrics + MCP (M4), deploy modules + template (M5).
 | D9 | Experiment naming `<project>/<purpose>` for new experiments; existing flat names kept in M1. |
 | D10 | Server sets `MLFLOW_SERVER_ALLOWED_HOSTS` for `mlflow:5000`, `localhost`, `host.docker.internal`; otherwise in-network exporters get 403. |
 | D11 | The server runs under uvicorn (MLflow default). `--gunicorn-opts` silently selects the Flask app, which has no `/v1/traces` route (404). Never add it back. |
+| D13 | One database per project on the central cluster (`mlflow`, `dab`, `dataqa`); projects keep their schemas byte-for-byte. Not schema-per-project: data-qa already *is* four schemas with Alembic, dbt and RLS naming them. |
+| D14 | Data moves by `pg_dump -Fc` → `pg_restore -j4 --no-owner`; the old container **and volume are deleted as soon as the central copy is verified** (unlike D2 — this data is easy to recreate). The dump in `backups/` is the safety net. |
+| D15 | Role names are cluster-global. The registry declares every role and `db_init` refuses a duplicate; data-qa's generic `app_user`/`agent_ro`/`admin_ro` are grandfathered; new projects use `<project>_<purpose>`. |
+| D16 | Projects use the cluster superuser `nmp` as their migration identity (user's call over per-database owner roles). Hence: sibling `reset` targets are schema-level inside their own database, never `DROP DATABASE`/`down -v`; back up first. Owner roles return if a project ever deploys to AWS (RDS has no superuser). |
+| D17 | DataAgentBench's server flags adopted for the cluster, env-overridable: `shared_buffers=512MB work_mem=64MB maintenance_work_mem=512MB max_wal_size=4GB checkpoint_timeout=15min`. |
+| D18 | A sibling's CI gets a throwaway `pgvector/pgvector:pg16` service container aliased `postgres` on the `nmp-central` network — same hostname as local, no platform checkout, no rule-zero breach. |
+| D19 | No project databases in AWS: the AWS stack is a demo and only MLflow's store lives on RDS (M2). Registry `aws: false`; URL shapes stay identical so a later deploy is configuration. |
 | D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout
 
 See README. The registry (`registry/projects.yaml`) is the source of truth for projects,
-experiments, env-id variables and smoke commands; `scripts/_registry.py` is the loader.
+experiments, env-id variables, smoke commands and, since M3, each project's database (name,
+roles, extensions, URL env vars, migrate and smoke commands); `scripts/_registry.py` is the
+loader and refuses cluster-global name collisions.
 
 ## Runbooks
 
@@ -39,11 +50,14 @@ experiments, env-id variables and smoke commands; `scripts/_registry.py` is the 
 - Bump the server: edit `services/mlflow/Dockerfile`, `make up`, `make mlflow-db-upgrade`.
 - New project: `docs/onboarding.md`.
 - Verify the platform end to end: `make check` (all) or `make check ARGS="--only P2"`.
+- Databases: `make db-init` (idempotent, writes `.db-urls.env`), `make db-urls`, `make db-check`,
+  `make db-backup DB=dab`, `make db-restore DB=dab FILE=backups/….dump`, `make db-psql DB=dab`.
+  Moving a sibling's database in: `docs/runbooks/central-postgres.md`.
 - OTLP ingest check without any sibling: `make otlp-smoke EXPERIMENT_ID=<id>`.
 
 ## Rules
 
-- Never commit `.env`, `.mlflow-ids.env`, volumes, Terraform state or any real credential.
+- Never commit `.env`, `.mlflow-ids.env`, `.db-urls.env`, `backups/`, volumes, Terraform state or any real credential.
 - Ports 5000 / 5432 / 9000 / 9001 are the platform's. Siblings must not squat them.
 - Everything MLflow-related in the siblings is best-effort-silent (they swallow tracking
   errors). `make check` is the only way to know the platform works; run it after any change.

@@ -24,6 +24,9 @@ jobs:
       - run: |
           set -a; source .mlflow-ids.env; set +a
           make otlp-smoke EXPERIMENT_ID="$MLFLOW_TRACE_EXPERIMENT_ID"
+      # M3: the registry's roles, databases and extensions are created idempotently (twice, to
+      # prove it) and the platform's own database row must pass the checker.
+      - run: make db-init && make db-init && make db-check ARGS="--only PLATFORM"
       - if: always()
         run: make logs-tail
   secrets:

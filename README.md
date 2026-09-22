@@ -17,37 +17,41 @@ Coding agents working in the sibling repos are first-class consumers: see
 ```bash
 make up            # postgres + minio + mlflow  ->  http://localhost:5000
 make mlflow-init   # create every experiment in registry/projects.yaml, write .mlflow-ids.env
+make db-init       # create every project database, role and extension in the registry, write .db-urls.env
 make status        # health
-make check         # prove each registered sibling can log to the server (no paid LLM calls)
+make check         # prove each registered sibling logs to the server and its database lives here (no paid LLM calls)
 make install-agent-context   # portfolio-level CLAUDE.md / AGENTS.md so agents see PLATFORM.md
 ```
 
-Sibling projects need exactly one thing: `MLFLOW_TRACKING_URI=http://localhost:5000`
+Sibling projects need one thing for tracking, `MLFLOW_TRACKING_URI=http://localhost:5000`
 (or `http://mlflow:5000` from inside a compose stack that joins the external network
-`nmp-central`). OTLP exporters post to `/v1/traces` with `x-mlflow-experiment-id`.
+`nmp-central`). OTLP exporters post to `/v1/traces` with `x-mlflow-experiment-id`. For a
+database they need their block from `.db-urls.env` (`make db-urls`): one database per project
+on the same Postgres, host `localhost:5432` / `postgres:5432`.
 
 ## Layout
 
 | path | what |
 |---|---|
-| `docker-compose.yml` | postgres (pgvector/pg16), minio, mlflow 3.16 — the local platform |
+| `docker-compose.yml` | postgres (pgvector/pg16, one database per project), minio, mlflow 3.16 — the local platform |
 | `services/mlflow/` | the pinned server image |
-| `registry/projects.yaml` | the project map: who uses which experiments, how to smoke-test them |
-| `scripts/` | `mlflow_init.py` (experiments + ids), `check_projects.py` (M1 verifier), `otlp_smoke.py` |
+| `registry/projects.yaml` | the project map: experiments, databases (name, roles, extensions, URL vars), smoke commands |
+| `scripts/` | `mlflow_init.py` (experiments + ids), `db_init.py` (roles, databases, extensions, URLs), `check_projects.py` + `check_databases.py` (verifiers), `otlp_smoke.py` |
 | `PLATFORM.md` | the contract every agent and person reads |
 | `agent/` | portfolio-level `CLAUDE.md` / `AGENTS.md` installed one directory up |
-| `plugins/nmp-platform/` | Claude Code plugin: `platform-mlflow`, `platform-onboard` skills |
+| `plugins/nmp-platform/` | Claude Code plugin: `platform-mlflow`, `platform-db`, `platform-onboard` skills |
 | `docs/` | onboarding and runbooks |
 | `infra/terraform/` | AWS demo stack (M2) |
-| `ai_specs/` | plan of record (`s00_project_plan.md`) |
+| `ai_specs/` | plans of record (`s00_project_plan.md`, `s02_m3_central_db.md`) and build receipts |
 | `.lavish/` | review artifacts |
 
 ## Milestones
 
 M0 repo + local stack · M1 migrate ConvFinQA-agent, DABStep-loop, tau2-loop, data-qa-agent
-(then transcript-rag-agent) · M2 AWS demo on one Graviton EC2 + RDS + S3 · M3 central
-database · M4 gateway, secrets, metrics, MCP server · M5 deploy modules and template.
-Details and decisions: [ai_specs/s00_project_plan.md](ai_specs/s00_project_plan.md).
+(then transcript-rag-agent) · **M3 one Postgres, one database per project** (DataAgentBench,
+data-qa-agent) · M2 AWS demo on one Graviton EC2 + RDS + S3 · M4 gateway, secrets, metrics,
+MCP server · M5 deploy modules and template. Details and decisions:
+[ai_specs/s00_project_plan.md](ai_specs/s00_project_plan.md), [ai_specs/s02_m3_central_db.md](ai_specs/s02_m3_central_db.md).
 
 ## Development
 

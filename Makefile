@@ -63,8 +63,40 @@ mlflow-init: ## create every experiment in registry/projects.yaml (idempotent), 
 mlflow-db-upgrade: ## run MLflow schema migration after bumping the server image
 	$(COMPOSE) run --rm --no-deps mlflow mlflow db upgrade postgresql://$${MLFLOW_DB_USER:-mlflow}:$${MLFLOW_DB_PASSWORD:-mlflow}@postgres:5432/mlflow
 
-check: ## M1 verifier: smoke every registered project and confirm a run/trace landed
+check: ## verifier: every registered project logs to the central MLflow AND its database lives here
 	uv run scripts/check_projects.py --uri $(MLFLOW_URI) $(ARGS)
+	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) $(ARGS)
+
+# ---- central postgres (M3) --------------------------------------------------
+POSTGRES_URI ?= postgresql://localhost:$(or $(POSTGRES_PORT),5432)
+STAMP := $(shell date -u +%Y%m%dT%H%M%SZ)
+
+db-init: ## create every role, database and extension in registry/projects.yaml (idempotent), write .db-urls.env
+	POSTGRES_PORT=$(or $(POSTGRES_PORT),5432) uv run scripts/db_init.py --psql "$(COMPOSE) exec -T postgres psql" $(ARGS)
+
+db-urls: ## print the database URLs each project should paste into its .env
+	@test -f .db-urls.env || { echo "run: make db-init"; exit 1; }
+	@cat .db-urls.env
+
+db-check: ## M3 verifier only (make check runs it too)
+	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) $(ARGS)
+
+db-psql: ## psql as the superuser into DB (default: the maintenance db)
+	$(COMPOSE) exec postgres psql -U nmp -d $(or $(DB),nmp)
+
+db-backup: ## pg_dump -Fc DB=<database> to backups/<db>-<utc>.dump (SRC=<other container> SRC_USER=… SRC_DB=… to dump an old server)
+	@test -n "$(DB)" || { echo "usage: make db-backup DB=<database> [SRC=<container> SRC_USER=<user> SRC_DB=<db>]"; exit 1; }
+	@mkdir -p backups
+ifeq ($(SRC),)
+	$(COMPOSE) exec -T postgres pg_dump -Fc -U nmp -d $(DB) -f /backups/$(DB)-$(STAMP).dump
+else
+	docker exec $(SRC) pg_dump -Fc -U $(or $(SRC_USER),postgres) -d $(or $(SRC_DB),$(DB)) $(if $(SCHEMA),-n $(SCHEMA)) > backups/$(DB)-$(STAMP).dump
+endif
+	@ls -la backups/$(DB)-$(STAMP).dump
+
+db-restore: ## pg_restore -j4 --no-owner FILE=backups/<file>.dump into DB=<database> (database must exist: make db-init)
+	@test -n "$(DB)" -a -n "$(FILE)" || { echo "usage: make db-restore DB=<database> FILE=backups/<file>.dump"; exit 1; }
+	$(COMPOSE) exec -T postgres pg_restore -j4 --no-owner --no-privileges --exit-on-error -U nmp -d $(DB) /backups/$(notdir $(FILE))
 
 otlp-smoke: ## send one OTLP span to the central server (EXPERIMENT_ID=<id>)
 	uv run scripts/otlp_smoke.py --uri $(MLFLOW_URI) --experiment-id $(EXPERIMENT_ID)
@@ -103,4 +135,4 @@ aws-sleep: ## stop the demo EC2 + RDS between demos
 aws-wake: ## start them again
 	@echo "M2: implemented with infra/terraform/central outputs"; exit 1
 
-.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
+.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check db-init db-urls db-check db-psql db-backup db-restore otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
