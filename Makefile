@@ -94,9 +94,9 @@ else
 endif
 	@ls -la backups/$(DB)-$(STAMP).dump
 
-db-restore: ## pg_restore -j4 --no-owner FILE=backups/<file>.dump into DB=<database> (database must exist: make db-init)
-	@test -n "$(DB)" -a -n "$(FILE)" || { echo "usage: make db-restore DB=<database> FILE=backups/<file>.dump"; exit 1; }
-	$(COMPOSE) exec -T postgres pg_restore -j4 --no-owner --no-privileges --exit-on-error -U nmp -d $(DB) /backups/$(notdir $(FILE))
+db-restore: ## pg_restore -j4 --no-owner FILE=backups/<file>.dump into DB=<database> [ROLE=<owner of the restored objects>]
+	@test -n "$(DB)" -a -n "$(FILE)" || { echo "usage: make db-restore DB=<database> FILE=backups/<file>.dump [ROLE=<role>]"; exit 1; }
+	$(COMPOSE) exec -T postgres pg_restore -j4 --no-owner --no-privileges --exit-on-error -U nmp -d $(DB) $(if $(ROLE),--role=$(ROLE)) /backups/$(notdir $(FILE))
 
 otlp-smoke: ## send one OTLP span to the central server (EXPERIMENT_ID=<id>)
 	uv run scripts/otlp_smoke.py --uri $(MLFLOW_URI) --experiment-id $(EXPERIMENT_ID)
