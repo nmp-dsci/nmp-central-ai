@@ -65,7 +65,7 @@ mlflow-db-upgrade: ## run MLflow schema migration after bumping the server image
 
 check: ## verifier: every registered project logs to the central MLflow AND its database lives here
 	uv run scripts/check_projects.py --uri $(MLFLOW_URI) $(ARGS)
-	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) $(ARGS)
+	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) --mlflow-uri $(MLFLOW_URI) $(ARGS)
 
 # ---- central postgres (M3) --------------------------------------------------
 POSTGRES_URI ?= postgresql://localhost:$(or $(POSTGRES_PORT),5432)
@@ -79,7 +79,7 @@ db-urls: ## print the database URLs each project should paste into its .env
 	@cat .db-urls.env
 
 db-check: ## M3 verifier only (make check runs it too)
-	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) $(ARGS)
+	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) --mlflow-uri $(MLFLOW_URI) $(ARGS)
 
 db-psql: ## psql as the superuser into DB (default: the maintenance db)
 	$(COMPOSE) exec postgres psql -U nmp -d $(or $(DB),nmp)

@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _registry import SUPERUSER, Project, Registry, load_registry  # noqa: E402
+from _registry import SUPERUSER, Project, Registry, load_registry, resolve_uri  # noqa: E402
 from db_init import url_for  # noqa: E402
 
 
@@ -31,7 +31,9 @@ def query(url: str, sql: str) -> list[tuple[object, ...]]:
         return [tuple(r) for r in conn.execute(sql).fetchall()]
 
 
-def check_project(reg: Registry, p: Project, base: str, timeout: int) -> tuple[bool, str, str]:
+def check_project(
+    reg: Registry, p: Project, base: str, mlflow_uri: str, timeout: int
+) -> tuple[bool, str, str]:
     """Return (ok, detail, tail-of-smoke-output)."""
     db = p.database
     assert db is not None
@@ -64,7 +66,7 @@ def check_project(reg: Registry, p: Project, base: str, timeout: int) -> tuple[b
 
     tail = ""
     if db.smoke:
-        env = dict(os.environ)
+        env = dict(os.environ, MLFLOW_TRACKING_URI=mlflow_uri)
         for e in db.env:
             env[e.var] = url_for(reg, db, e.role, e.scheme, base)
         try:
@@ -94,6 +96,12 @@ def main() -> int:
         default=None,
         help="host-side base URI (default: env PLATFORM_POSTGRES_URI or registry)",
     )
+    ap.add_argument(
+        "--mlflow-uri",
+        default=None,
+        help="MLflow tracking URI for smoke commands that talk to MLflow, e.g. PLATFORM "
+        "(default: env MLFLOW_TRACKING_URI or registry)",
+    )
     ap.add_argument("--only", default="", help="comma-separated project ids")
     ap.add_argument("--timeout", type=int, default=600)
     ap.add_argument("--verbose", action="store_true")
@@ -101,6 +109,7 @@ def main() -> int:
 
     reg = load_registry()
     base = args.base_uri or os.environ.get("PLATFORM_POSTGRES_URI") or reg.postgres_uri
+    mlflow_uri = resolve_uri(args.mlflow_uri, reg)
     only = {s.strip() for s in args.only.split(",") if s.strip()}
     print(f"central Postgres: {base}\n")
 
@@ -118,7 +127,7 @@ def main() -> int:
             print(f"{label} FAIL   path missing: {p.path}")
             failures += 1
             continue
-        ok, detail, tail = check_project(reg, p, base, args.timeout)
+        ok, detail, tail = check_project(reg, p, base, mlflow_uri, args.timeout)
         print(f"{label} {'PASS' if ok else 'FAIL'}   {detail}")
         if (not ok or args.verbose) and tail:
             print("        " + tail.replace("\n", "\n        "))
