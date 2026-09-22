@@ -161,7 +161,7 @@ projects:
         # passwords: the project's dozen defaults spell them out. options/settings: role
         # attributes its Alembic 0012/0018 set on the OLD cluster; a database dump cannot
         # carry them, so the registry does.
-      extensions: [vector, pgcrypto]
+      extensions: [vector, pgcrypto, postgres_fdw]   # fdw: reads propertyiq.staging (P7) as foreign tables
       env:
         ADMIN_DATABASE_URL: superuser            # Alembic, init SQL, dbt (D16)
         DATABASE_URL: { role: app_user, scheme: postgresql+asyncpg }
@@ -177,6 +177,9 @@ projects:
       (2026-09-22): its Postgres (schemas app/raw/staging/marts, RLS, Alembic, dbt; 2.3 GB) lives in
       database `dataqa` here — restored with SKIP="DEFAULT ACL" then ALTER DEFAULT PRIVILEGES for nmp.
       Role attributes (BYPASSRLS, statement_timeout) come from this registry, not from the dump.
+      Since propertyiq_getdata plan s03 (P6) its dlt ingest is gone: migration 0040 imports
+      `propertyiq.staging` (P7) as `propertyiq_staging.*` over postgres_fdw (user mapping ->
+      propertyiq_ro) and its dbt builds only marts + RLS on top.
 
   - id: P6
     name: dataagentbench
