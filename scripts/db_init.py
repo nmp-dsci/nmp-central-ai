@@ -42,9 +42,11 @@ from _registry import (  # noqa: E402
 )
 
 
-def role_password(role: str) -> str:
-    """Local default is the role name; <ROLE>_PASSWORD overrides (AWS: Secrets Manager)."""
-    return os.environ.get(f"{role.upper()}_PASSWORD", role)
+def role_password(role: str, db: Database | None = None) -> str:
+    """<ROLE>_PASSWORD wins (AWS: Secrets Manager); else the registry's local default for the
+    role, if it declares one (grandfathered names, D15); else the role name."""
+    default = db.passwords.get(role, role) if db is not None else role
+    return os.environ.get(f"{role.upper()}_PASSWORD", default)
 
 
 def superuser_password(reg: Registry) -> str:
@@ -69,7 +71,7 @@ def render_sql(reg: Registry, projects: list[Project], target: str = "local") ->
             continue
         out.append(f"\n-- {p.id} · {p.name} · database {db.name}")
         for role in db.roles:
-            pw = quote_literal(role_password(role))
+            pw = quote_literal(role_password(role, db))
             out.append(
                 "DO $$ BEGIN\n"
                 f"  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {quote_literal(role)})"
@@ -100,7 +102,7 @@ def url_for(reg: Registry, db: Database, role: str, scheme: str, base_uri: str) 
     if role == SUPERUSER:
         user, pw = reg.postgres_superuser, superuser_password(reg)
     else:
-        user, pw = role, role_password(role)
+        user, pw = role, role_password(role, db)
     return f"{scheme}://{user}:{pw}@{host}:{port}/{db.name}"
 
 

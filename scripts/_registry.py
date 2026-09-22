@@ -33,6 +33,7 @@ class Database:
 
     name: str
     roles: list[str] = field(default_factory=list)
+    passwords: dict[str, str] = field(default_factory=dict)  # local dev defaults per role
     extensions: list[str] = field(default_factory=list)
     env: list[DbEnv] = field(default_factory=list)
     migrate: str = ""
@@ -93,9 +94,19 @@ def _parse_database(raw: dict[str, Any]) -> Database:
             env.append(DbEnv(var=var, role=spec))
         else:
             env.append(DbEnv(var=var, role=spec["role"], scheme=spec.get("scheme", "postgresql")))
+    roles: list[str] = []
+    passwords: dict[str, str] = {}
+    for item in raw.get("roles") or []:
+        if isinstance(item, str):
+            roles.append(item)
+        else:  # {name, password}: a grandfathered local default (D15), e.g. data-qa's app_pw
+            roles.append(item["name"])
+            if item.get("password"):
+                passwords[item["name"]] = str(item["password"])
     return Database(
         name=raw["name"],
-        roles=list(raw.get("roles") or []),
+        roles=roles,
+        passwords=passwords,
         extensions=list(raw.get("extensions") or []),
         env=env,
         migrate=(raw.get("migrate") or "").strip(),

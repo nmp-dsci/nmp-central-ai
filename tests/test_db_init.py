@@ -162,3 +162,33 @@ def test_the_real_registry_declares_a_database_for_the_platform() -> None:
     for p in reg.databases:
         assert p.database is not None
         assert p.database.status in {"pending", "migrated"}, p.id
+
+
+def test_a_role_may_carry_a_grandfathered_local_password(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("LEGACY_PASSWORD", raising=False)
+    reg = load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj(
+                    "P9",
+                    "demo",
+                    {
+                        "name": "demo",
+                        "roles": [{"name": "legacy", "password": "legacy_pw"}, "demo_app"],
+                        "env": {"URL": "legacy"},
+                    },
+                )
+            ],
+        )
+    )
+    sql = render_sql(reg, reg.databases)
+    assert "CREATE ROLE legacy LOGIN PASSWORD 'legacy_pw'" in sql
+    assert "CREATE ROLE demo_app LOGIN PASSWORD 'demo_app'" in sql
+    assert "URL=postgresql://legacy:legacy_pw@localhost:5432/demo" in render_env(
+        reg, reg.databases, reg.postgres_uri
+    )
+    monkeypatch.setenv("LEGACY_PASSWORD", "from-env")
+    assert "PASSWORD 'from-env'" in render_sql(reg, reg.databases)

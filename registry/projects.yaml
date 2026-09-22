@@ -12,7 +12,8 @@
 # database (M3, one database per project on the central Postgres — D13):
 #   name:       the database; created by `make db-init`, owned by the cluster superuser (D16)
 #   roles:      login roles the project needs; cluster-global, so declared here and unique across
-#               projects (D15). Local password = role name; <ROLE>_PASSWORD overrides.
+#               projects (D15). Local password = role name, or `{name, password}` for a
+#               grandfathered default; <ROLE>_PASSWORD overrides either.
 #   extensions: created by db-init inside the database before any project SQL runs
 #   env:        VAR -> role | superuser, or {role, scheme}; db-init writes the URLs to .db-urls.env
 #   migrate:    the project's own schema command (Alembic, roles.sql …), run from `path`
@@ -152,7 +153,10 @@ projects:
         PY
     database:
       name: dataqa
-      roles: [app_user, agent_ro, admin_ro]     # D15: grandfathered generic names
+      roles:                                    # D15: grandfathered generic names AND their
+        - { name: app_user, password: app_pw }  # local dev passwords, which a dozen of the
+        - { name: agent_ro, password: agent_pw }  # project's defaults spell out
+        - { name: admin_ro, password: admin_pw }
       extensions: [vector, pgcrypto]
       env:
         ADMIN_DATABASE_URL: superuser            # Alembic, init SQL, dbt (D16)
