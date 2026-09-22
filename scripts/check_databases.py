@@ -7,7 +7,8 @@ database and its extensions; connect as each declared role; then run the project
 `smoke` command inside the project with its URLs exported (the same values db_init
 writes to .db-urls.env). One row per project, non-zero exit on any miss.
 
-    uv run scripts/check_databases.py [--base-uri postgresql://localhost:5432] [--only P5,P6]
+    uv run scripts/check_databases.py [--base-uri postgresql://localhost:5432]
+                                      [--mlflow-uri http://localhost:5000] [--only P5,P6]
                                       [--timeout 600]
 """
 
