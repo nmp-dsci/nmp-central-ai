@@ -16,6 +16,7 @@ DB_URLS_ENV_PATH = ROOT / ".db-urls.env"
 
 
 SUPERUSER = "superuser"  # the `env:` value that means "the cluster superuser" (D16)
+ROLE_OPTIONS = {"BYPASSRLS", "NOBYPASSRLS", "CREATEDB", "NOCREATEDB", "INHERIT", "NOINHERIT"}
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,8 @@ class Database:
     name: str
     roles: list[str] = field(default_factory=list)
     passwords: dict[str, str] = field(default_factory=dict)  # local dev defaults per role
+    options: dict[str, list[str]] = field(default_factory=dict)  # role attributes, e.g. BYPASSRLS
+    settings: dict[str, dict[str, str]] = field(default_factory=dict)  # ALTER ROLE … SET k = v
     extensions: list[str] = field(default_factory=list)
     env: list[DbEnv] = field(default_factory=list)
     migrate: str = ""
@@ -96,17 +99,33 @@ def _parse_database(raw: dict[str, Any]) -> Database:
             env.append(DbEnv(var=var, role=spec["role"], scheme=spec.get("scheme", "postgresql")))
     roles: list[str] = []
     passwords: dict[str, str] = {}
+    options: dict[str, list[str]] = {}
+    settings: dict[str, dict[str, str]] = {}
     for item in raw.get("roles") or []:
         if isinstance(item, str):
             roles.append(item)
-        else:  # {name, password}: a grandfathered local default (D15), e.g. data-qa's app_pw
-            roles.append(item["name"])
-            if item.get("password"):
-                passwords[item["name"]] = str(item["password"])
+            continue
+        # {name, password, options}: password is a grandfathered local default (D15), e.g.
+        # data-qa's app_pw; options are cluster-level role attributes a database dump cannot
+        # carry (data-qa's admin_ro is BYPASSRLS); settings are per-role GUCs set the same way
+        # (data-qa's statement_timeout), also cluster-level.
+        roles.append(item["name"])
+        if item.get("password"):
+            passwords[item["name"]] = str(item["password"])
+        opts = [str(o).upper() for o in (item.get("options") or [])]
+        bad = [o for o in opts if o not in ROLE_OPTIONS]
+        if bad:
+            raise RegistryError(f"role {item['name']!r}: unsupported options {bad}")
+        if opts:
+            options[item["name"]] = opts
+        if item.get("settings"):
+            settings[item["name"]] = {str(k): str(v) for k, v in item["settings"].items()}
     return Database(
         name=raw["name"],
         roles=roles,
         passwords=passwords,
+        options=options,
+        settings=settings,
         extensions=list(raw.get("extensions") or []),
         env=env,
         migrate=(raw.get("migrate") or "").strip(),

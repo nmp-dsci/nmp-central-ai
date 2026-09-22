@@ -13,7 +13,8 @@
 #   name:       the database; created by `make db-init`, owned by the cluster superuser (D16)
 #   roles:      login roles the project needs; cluster-global, so declared here and unique across
 #               projects (D15). Local password = role name, or `{name, password}` for a
-#               grandfathered default; <ROLE>_PASSWORD overrides either.
+#               grandfathered default; <ROLE>_PASSWORD overrides either. `options` are role
+#               attributes (BYPASSRLS …) that live on the cluster, not in any database dump.
 #   extensions: created by db-init inside the database before any project SQL runs
 #   env:        VAR -> role | superuser, or {role, scheme}; db-init writes the URLs to .db-urls.env
 #   migrate:    the project's own schema command (Alembic, roles.sql …), run from `path`
@@ -154,9 +155,12 @@ projects:
     database:
       name: dataqa
       roles:                                    # D15: grandfathered generic names AND their
-        - { name: app_user, password: app_pw }  # local dev passwords, which a dozen of the
-        - { name: agent_ro, password: agent_pw }  # project's defaults spell out
-        - { name: admin_ro, password: admin_pw }
+        - { name: app_user, password: app_pw, settings: { statement_timeout: 15s } }
+        - { name: agent_ro, password: agent_pw, settings: { statement_timeout: 15s } }
+        - { name: admin_ro, password: admin_pw, options: [BYPASSRLS], settings: { statement_timeout: 30s } }
+        # passwords: the project's dozen defaults spell them out. options/settings: role
+        # attributes its Alembic 0012/0018 set on the OLD cluster; a database dump cannot
+        # carry them, so the registry does.
       extensions: [vector, pgcrypto]
       env:
         ADMIN_DATABASE_URL: superuser            # Alembic, init SQL, dbt (D16)
@@ -165,12 +169,14 @@ projects:
         ADMIN_RO_DATABASE_URL: { role: admin_ro, scheme: postgresql+asyncpg }
       migrate: make migrate
       smoke: make db-smoke
-      status: pending                            # M3.2
+      status: migrated                           # M3.2, 2026-09-22 (data copied + verified; live cut-over with the project's next rebase)
       aws: false
     notes: >-
       No Python mlflow dependency; spans go to /v1/traces with x-mlflow-experiment-id. Its compose
-      stack joins the external network nmp-central and drops its own mlflow service. M3: its
-      Postgres (schemas app/raw/staging/marts, RLS, Alembic, dbt) moves to database `dataqa`.
+      stack joins the external network nmp-central and drops its own mlflow service. M3.2
+      (2026-09-22): its Postgres (schemas app/raw/staging/marts, RLS, Alembic, dbt; 2.3 GB) lives in
+      database `dataqa` here — restored with SKIP="DEFAULT ACL" then ALTER DEFAULT PRIVILEGES for nmp.
+      Role attributes (BYPASSRLS, statement_timeout) come from this registry, not from the dump.
 
   - id: P6
     name: dataagentbench

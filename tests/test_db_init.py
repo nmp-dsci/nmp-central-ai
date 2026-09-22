@@ -192,3 +192,54 @@ def test_a_role_may_carry_a_grandfathered_local_password(
     )
     monkeypatch.setenv("LEGACY_PASSWORD", "from-env")
     assert "PASSWORD 'from-env'" in render_sql(reg, reg.databases)
+
+
+def test_role_options_are_rendered_and_validated(tmp_path: Path) -> None:
+    reg = load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj(
+                    "P9",
+                    "demo",
+                    {"name": "demo", "roles": [{"name": "ro", "options": ["bypassrls"]}]},
+                )
+            ],
+        )
+    )
+    sql = render_sql(reg, reg.databases)
+    assert "CREATE ROLE ro LOGIN PASSWORD 'ro' NOSUPERUSER BYPASSRLS;" in sql
+    assert "ALTER ROLE ro WITH LOGIN PASSWORD 'ro' BYPASSRLS;" in sql
+    (tmp_path / "bad").mkdir()
+    with pytest.raises(RegistryError, match="unsupported options"):
+        load_registry(
+            write_registry(
+                tmp_path / "bad",
+                [
+                    proj(
+                        "P9",
+                        "demo",
+                        {"name": "demo", "roles": [{"name": "ro", "options": ["SUPERUSER"]}]},
+                    )
+                ],
+            )
+        )
+
+
+def test_role_settings_become_alter_role_set(tmp_path: Path) -> None:
+    reg = load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj(
+                    "P9",
+                    "demo",
+                    {
+                        "name": "demo",
+                        "roles": [{"name": "ro", "settings": {"statement_timeout": "15s"}}],
+                    },
+                )
+            ],
+        )
+    )
+    assert "ALTER ROLE ro SET statement_timeout = '15s';" in render_sql(reg, reg.databases)

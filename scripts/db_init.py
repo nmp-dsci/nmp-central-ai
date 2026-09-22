@@ -72,15 +72,19 @@ def render_sql(reg: Registry, projects: list[Project], target: str = "local") ->
         out.append(f"\n-- {p.id} · {p.name} · database {db.name}")
         for role in db.roles:
             pw = quote_literal(role_password(role, db))
+            opts = " ".join(db.options.get(role, []))
+            opts = f" {opts}" if opts else ""
             out.append(
                 "DO $$ BEGIN\n"
                 f"  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = {quote_literal(role)})"
                 " THEN\n"
-                f"    CREATE ROLE {role} LOGIN PASSWORD {pw} NOSUPERUSER;\n"
+                f"    CREATE ROLE {role} LOGIN PASSWORD {pw} NOSUPERUSER{opts};\n"
                 "  END IF;\n"
                 "END $$;"
             )
-            out.append(f"ALTER ROLE {role} WITH LOGIN PASSWORD {pw};")
+            out.append(f"ALTER ROLE {role} WITH LOGIN PASSWORD {pw}{opts};")
+            for key, value in db.settings.get(role, {}).items():
+                out.append(f"ALTER ROLE {role} SET {key} = {quote_literal(value)};")
         out.append(
             f"SELECT 'CREATE DATABASE {db.name} OWNER {reg.postgres_superuser}'\n"
             "  WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = "
