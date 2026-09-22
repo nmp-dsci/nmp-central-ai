@@ -1,6 +1,6 @@
 # s02 — M3: one Postgres for the portfolio (plan of record)
 
-Status: decided 2026-09-22 · Review artifact: `.lavish/s01_m3-central-db-plan.html` · Receipt: `ai_specs/s03_m3_receipt.md`
+Status: decided and **built** 2026-09-22 · Review artifact: `.lavish/s01_m3-central-db-plan.html` · Receipt: `ai_specs/s03_m3_receipt.md`
 
 ## Goal
 
