@@ -78,7 +78,7 @@ STAMP := $(shell date -u +%Y%m%dT%H%M%SZ)
 db-init: ## create every role, database and extension in registry/projects.yaml (idempotent), write .db-urls.env + .dbgate.env, reload the DB UI
 	POSTGRES_PORT=$(or $(POSTGRES_PORT),5432) uv run scripts/db_init.py --psql "$(COMPOSE) exec -T postgres psql" $(ARGS)
 	@# DbGate reads its connection list at start only, so pick up the rendered .dbgate.env
-	$(COMPOSE) up -d --no-deps --force-recreate --wait dbgate
+	@$(if $(findstring --dry-run,$(ARGS)),true,$(COMPOSE) up -d --no-deps --force-recreate --wait dbgate)
 
 db-ui: ## open the DB UI (DbGate: browse + query every project database as nmp)
 	@echo "$(DBGATE_URI)"; open "$(DBGATE_URI)" 2>/dev/null || true
