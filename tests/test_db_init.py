@@ -162,3 +162,84 @@ def test_the_real_registry_declares_a_database_for_the_platform() -> None:
     for p in reg.databases:
         assert p.database is not None
         assert p.database.status in {"pending", "migrated"}, p.id
+
+
+def test_a_role_may_carry_a_grandfathered_local_password(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("LEGACY_PASSWORD", raising=False)
+    reg = load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj(
+                    "P9",
+                    "demo",
+                    {
+                        "name": "demo",
+                        "roles": [{"name": "legacy", "password": "legacy_pw"}, "demo_app"],
+                        "env": {"URL": "legacy"},
+                    },
+                )
+            ],
+        )
+    )
+    sql = render_sql(reg, reg.databases)
+    assert "CREATE ROLE legacy LOGIN PASSWORD 'legacy_pw'" in sql
+    assert "CREATE ROLE demo_app LOGIN PASSWORD 'demo_app'" in sql
+    assert "URL=postgresql://legacy:legacy_pw@localhost:5432/demo" in render_env(
+        reg, reg.databases, reg.postgres_uri
+    )
+    monkeypatch.setenv("LEGACY_PASSWORD", "from-env")
+    assert "PASSWORD 'from-env'" in render_sql(reg, reg.databases)
+
+
+def test_role_options_are_rendered_and_validated(tmp_path: Path) -> None:
+    reg = load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj(
+                    "P9",
+                    "demo",
+                    {"name": "demo", "roles": [{"name": "ro", "options": ["bypassrls"]}]},
+                )
+            ],
+        )
+    )
+    sql = render_sql(reg, reg.databases)
+    assert "CREATE ROLE ro LOGIN PASSWORD 'ro' NOSUPERUSER BYPASSRLS;" in sql
+    assert "ALTER ROLE ro WITH LOGIN PASSWORD 'ro' BYPASSRLS;" in sql
+    (tmp_path / "bad").mkdir()
+    with pytest.raises(RegistryError, match="unsupported options"):
+        load_registry(
+            write_registry(
+                tmp_path / "bad",
+                [
+                    proj(
+                        "P9",
+                        "demo",
+                        {"name": "demo", "roles": [{"name": "ro", "options": ["SUPERUSER"]}]},
+                    )
+                ],
+            )
+        )
+
+
+def test_role_settings_become_alter_role_set(tmp_path: Path) -> None:
+    reg = load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj(
+                    "P9",
+                    "demo",
+                    {
+                        "name": "demo",
+                        "roles": [{"name": "ro", "settings": {"statement_timeout": "15s"}}],
+                    },
+                )
+            ],
+        )
+    )
+    assert "ALTER ROLE ro SET statement_timeout = '15s';" in render_sql(reg, reg.databases)
