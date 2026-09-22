@@ -28,7 +28,7 @@ template (M5).
 | D9 | Experiment naming `<project>/<purpose>` for new experiments; existing flat names kept in M1. |
 | D10 | Server sets `MLFLOW_SERVER_ALLOWED_HOSTS` for `mlflow:5000`, `localhost`, `host.docker.internal`; otherwise in-network exporters get 403. |
 | D11 | The server runs under uvicorn (MLflow default). `--gunicorn-opts` silently selects the Flask app, which has no `/v1/traces` route (404). Never add it back. |
-| D13 | One database per project on the central cluster (`mlflow`, `dab`, `dataqa`); projects keep their schemas byte-for-byte. Not schema-per-project: data-qa already *is* four schemas with Alembic, dbt and RLS naming them. |
+| D13 | One database per project on the central cluster (`mlflow`, `dab`, `dataqa`, `propertyiq`); projects keep their schemas byte-for-byte. Not schema-per-project: data-qa already *is* four schemas with Alembic, dbt and RLS naming them. |
 | D14 | Data moves by `pg_dump -Fc` → `pg_restore -j4 --no-owner`; the old container **and volume are deleted as soon as the central copy is verified** (unlike D2 — this data is easy to recreate). The dump in `backups/` is the safety net. |
 | D15 | Role names are cluster-global. The registry declares every role and `db_init` refuses a duplicate; data-qa's generic `app_user`/`agent_ro`/`admin_ro` are grandfathered; new projects use `<project>_<purpose>`. |
 | D16 | Projects use the cluster superuser `nmp` as their migration identity (user's call over per-database owner roles). Hence: sibling `reset` targets are schema-level inside their own database, never `DROP DATABASE`/`down -v`; back up first. Owner roles return if a project ever deploys to AWS (RDS has no superuser). |
