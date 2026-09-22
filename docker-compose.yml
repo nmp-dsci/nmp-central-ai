@@ -90,6 +90,9 @@ services:
       # MLflow's DNS-rebinding guard 403s any Host it does not know. Siblings reach us as
       # mlflow:5000 (compose network) or localhost:5000 (host); data-qa hit this once already.
       MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow,mlflow:5000,localhost,127.0.0.1,localhost:${MLFLOW_PORT:-5000},127.0.0.1:${MLFLOW_PORT:-5000},host.docker.internal,host.docker.internal:${MLFLOW_PORT:-5000}"
+      # Siblings embed the trace view in their own explorers (DataAgentBench does); the
+      # default SAMEORIGIN blocks the frame. Local only: every sibling is on this host.
+      MLFLOW_SERVER_X_FRAME_OPTIONS: "NONE"
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
