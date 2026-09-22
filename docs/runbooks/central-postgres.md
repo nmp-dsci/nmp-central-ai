@@ -22,7 +22,7 @@ database per project (D13). Everything below runs from `nmp-central-ai`. Decisio
    `make db-init` here creates the empty target database, roles and extensions.
 2. **Dump** from the old container: `make db-backup DB=<target> SRC=<old container> SRC_USER=<its superuser> SRC_DB=<its db> [SCHEMA=<one schema>]`.
    Check the size against `pg_database_size` in the old server.
-3. **Restore**: `make db-restore DB=<target> FILE=backups/<target>-<utc>.dump` (`-j4 --no-owner --no-privileges`; everything ends up owned by `nmp`, D16). Grants that the project's own SQL creates are re-applied by its migrate command.
+3. **Restore**: `make db-restore DB=<target> FILE=backups/<target>-<utc>.dump [ROLE=<role>]` (`-j4 --no-owner --no-privileges`). Without `ROLE` everything ends up owned by `nmp` (D16) — right for projects whose migrations ran as the superuser (data-qa). Pass `ROLE=<owner>` when the project's own role owned the schema and writes to it (DataAgentBench: `ROLE=dab_owner`), otherwise that role cannot create tables afterwards. Grants are re-applied by the project's migrate command.
 4. **Prove.** Per-schema table counts and `pg_total_relation_size` within 2 % of the source; the project's `smoke` as every role (`make db-check ARGS="--only <ID>"`).
 5. **Cut over.** Project URLs → `postgres:5432` / `localhost:5432`; delete its compose `db` service, volume and `depends_on` edges; join `nmp-central`; `make up` there and run its full smoke/e2e.
 6. **Delete** the old container and its volume (`docker rm`, `docker volume rm`) — the dump from step 2 is the safety net. Confirm the port is free.

@@ -194,12 +194,14 @@ projects:
         AGENT_DATABASE_URL: dab_agent
       migrate: make db-roles
       smoke: make db-smoke
-      status: pending                            # M3.1
+      status: migrated                           # M3.1, 2026-09-22
       aws: false
     notes: >-
       Runs (kind=eval) and per-trial traces in one experiment; curator sessions are kind=curate.
-      M3: the 6.6 GB benchmark schema `dataagentbench` moves from its own compose Postgres (:5433,
-      db nmp) to database `dab` on the central cluster; roles.sql runs unchanged.
+      M3.1 (2026-09-22): the 6.6 GB benchmark schema `dataagentbench` (2 813 tables) moved from
+      its own compose Postgres (:5433, db nmp) to database `dab` here by pg_dump/pg_restore
+      (ROLE=dab_owner, so the owner role keeps writing); roles.sql ran unchanged; old server and
+      volume deleted (D14).
 
   # ---- not on the platform, listed so the map is complete ----------------
   - id: X1
