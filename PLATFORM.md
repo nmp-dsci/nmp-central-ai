@@ -49,7 +49,7 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
 | Host from the host | `localhost:5432` |
 | Host from a sibling's compose stack | `postgres:5432` after joining the external network `nmp-central` |
 | Server | Postgres 16 + pgvector (`pgvector/pgvector:pg16`), tuned flags (D17) |
-| Layout | **one database per project** (D13): `mlflow`, `dab`, `dataqa`. Your schemas, tables, grants and RLS live inside your database and stay yours. |
+| Layout | **one database per project** (D13): `mlflow`, `dab`, `dataqa`, `propertyiq`. Your schemas, tables, grants and RLS live inside your database and stay yours. |
 | Roles | cluster-global, so declared in `registry/projects.yaml` and created by `make db-init`; a duplicate is refused (D15). New roles are `<project>_<purpose>`. Local password = role name (or a grandfathered per-role default); `<ROLE>_PASSWORD` overrides. |
 | Admin identity | the cluster superuser `nmp` (D16), for your migrations only and only inside your own database |
 | Extensions | declared in the registry, created by `db-init` before any project SQL runs |

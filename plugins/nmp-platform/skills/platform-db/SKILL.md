@@ -13,7 +13,7 @@ Runbook: `nmp-central-ai/docs/runbooks/central-postgres.md`.
 
 - Host side: `localhost:5432`. From a compose stack on network `nmp-central`: host `postgres`, port 5432.
 - Server: Postgres 16 + pgvector (`pgvector/pgvector:pg16`), superuser `nmp` (D16).
-- Databases: `mlflow` (platform), `dab` (DataAgentBench), `dataqa` (data-qa-agent). A new project gets its own.
+- Databases: `mlflow` (platform), `dab` (DataAgentBench), `dataqa` (data-qa-agent), `propertyiq` (propertyiq-getdata). A new project gets its own.
 - Roles are cluster-global and registry-owned (D15): declared in `nmp-central-ai/registry/projects.yaml`,
   created by `make db-init`, duplicates refused. New roles are `<project>_<purpose>`. Local password = role name.
 - URLs come from `make -C ~/git/nmp-ai-portfolio/nmp-central-ai db-urls` (one block per project, paste into

@@ -161,7 +161,7 @@ projects:
         # passwords: the project's dozen defaults spell them out. options/settings: role
         # attributes its Alembic 0012/0018 set on the OLD cluster; a database dump cannot
         # carry them, so the registry does.
-      extensions: [vector, pgcrypto]
+      extensions: [vector, pgcrypto, postgres_fdw]   # fdw: reads propertyiq.staging (P7) as foreign tables
       env:
         ADMIN_DATABASE_URL: superuser            # Alembic, init SQL, dbt (D16)
         DATABASE_URL: { role: app_user, scheme: postgresql+asyncpg }
@@ -177,6 +177,9 @@ projects:
       (2026-09-22): its Postgres (schemas app/raw/staging/marts, RLS, Alembic, dbt; 2.3 GB) lives in
       database `dataqa` here — restored with SKIP="DEFAULT ACL" then ALTER DEFAULT PRIVILEGES for nmp.
       Role attributes (BYPASSRLS, statement_timeout) come from this registry, not from the dump.
+      Since propertyiq_getdata plan s03 (P7) its dlt ingest is gone: migration 0040 imports
+      `propertyiq.staging` (P7) as `propertyiq_staging.*` over postgres_fdw (user mapping ->
+      propertyiq_ro) and its dbt builds only marts + RLS on top.
 
   - id: P6
     name: dataagentbench
@@ -212,6 +215,29 @@ projects:
       its own compose Postgres (:5433, db nmp) to database `dab` here by pg_dump/pg_restore
       (ROLE=dab_owner, so the owner role keeps writing); roles.sql ran unchanged; old server and
       volume deleted (D14).
+
+  - id: P7
+    name: propertyiq-getdata
+    path: ../propertyiq_getdata
+    status: migrated
+    mlflow: { client: external }          # ETL only; no MLflow use
+    database:
+      name: propertyiq
+      roles: [propertyiq_owner, propertyiq_ro]
+      extensions: []                       # consumers install postgres_fdw in THEIR database
+      env:
+        PROPERTYIQ_ADMIN_DATABASE_URL: superuser        # `db init` only (D16)
+        PROPERTYIQ_DATABASE_URL: propertyiq_owner       # loader + dbt
+        PROPERTYIQ_RO_DATABASE_URL: propertyiq_ro       # fdw user mappings, notebooks
+      migrate: uv run --extra db --env-file .env propertyiq-getdata db init
+      smoke: uv run --extra db --env-file .env propertyiq-getdata db smoke
+      status: migrated                     # 2026-09-22: db init + first full load (6.6 M rows) + 36 dbt tests green
+      aws: false
+    notes: >-
+      NSW property sales/rent + ABS/RBA economic series, raw->staging via dbt (plan:
+      propertyiq_getdata/.lavish/s03). Shared clean layer: apps import `staging` over
+      postgres_fdw as `propertyiq_ro` and build their own marts (data-qa-agent first;
+      it replaces that project's dlt ingest). No marts live here.
 
   # ---- not on the platform, listed so the map is complete ----------------
   - id: X1
