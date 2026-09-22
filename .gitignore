@@ -4,6 +4,7 @@
 !.env.example
 .mlflow-ids.env
 .db-urls.env
+.dbgate.env
 backups/
 volumes/
 *.log

@@ -19,21 +19,24 @@ export MLFLOW_PORT ?= 15000
 export POSTGRES_PORT ?= 15432
 export MINIO_PORT ?= 19000
 export MINIO_CONSOLE_PORT ?= 19001
+export DBGATE_PORT ?= 15050
 else
 MODE := live
 export COMPOSE_PROJECT_NAME ?= nmp-central
 export PLATFORM_NETWORK ?= nmp-central
 export MLFLOW_PORT ?= 5000
+export DBGATE_PORT ?= 5050
 endif
 MLFLOW_URI ?= http://localhost:$(MLFLOW_PORT)
+DBGATE_URI ?= http://127.0.0.1:$(DBGATE_PORT)
 
 help: ## list targets
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-24s\033[0m %s\n", $$1, $$2}'
 
 # ---- local stack ---------------------------------------------------------
-up: ## start postgres, minio, mlflow (builds the mlflow image once)
+up: ## start postgres, minio, mlflow, dbgate (builds the mlflow image once)
 	$(COMPOSE) up -d --build --wait
-	@echo "MLflow UI: $(MLFLOW_URI)   MinIO console: http://localhost:$(or $(MINIO_CONSOLE_PORT),9001)"
+	@echo "MLflow UI: $(MLFLOW_URI)   DB UI: $(DBGATE_URI)   MinIO console: http://localhost:$(or $(MINIO_CONSOLE_PORT),9001)"
 
 down: ## stop the stack (live: volumes kept; validation: volumes removed too)
 	$(COMPOSE) down $(if $(filter validation,$(MODE)),-v)
@@ -51,10 +54,11 @@ ps: ## container status
 	$(COMPOSE) ps
 
 mode: ## which stack this checkout drives (live | validation) and its names/ports
-	@echo "mode=$(MODE) project=$(COMPOSE_PROJECT_NAME) network=$(PLATFORM_NETWORK) mlflow=$(MLFLOW_URI)"
+	@echo "mode=$(MODE) project=$(COMPOSE_PROJECT_NAME) network=$(PLATFORM_NETWORK) mlflow=$(MLFLOW_URI) dbui=$(DBGATE_URI)"
 
 status: ## is the platform healthy?
 	@curl -fsS $(MLFLOW_URI)/health >/dev/null && echo "mlflow  OK  $(MLFLOW_URI)" || (echo "mlflow  DOWN  run: make -C $(CURDIR) up"; exit 1)
+	@curl -fsS $(DBGATE_URI)/ >/dev/null && echo "dbui    OK  $(DBGATE_URI)  ($$(grep -c '^LABEL_' .dbgate.env 2>/dev/null || echo 0) connections; make db-init to refresh)" || (echo "dbui    DOWN  run: make -C $(CURDIR) up"; exit 1)
 	@$(COMPOSE) ps --format '{{.Name}}\t{{.Status}}' | sed 's/^/  /'
 
 mlflow-init: ## create every experiment in registry/projects.yaml (idempotent), write .mlflow-ids.env
@@ -71,8 +75,13 @@ check: ## verifier: every registered project logs to the central MLflow AND its 
 POSTGRES_URI ?= postgresql://localhost:$(or $(POSTGRES_PORT),5432)
 STAMP := $(shell date -u +%Y%m%dT%H%M%SZ)
 
-db-init: ## create every role, database and extension in registry/projects.yaml (idempotent), write .db-urls.env
+db-init: ## create every role, database and extension in registry/projects.yaml (idempotent), write .db-urls.env + .dbgate.env, reload the DB UI
 	POSTGRES_PORT=$(or $(POSTGRES_PORT),5432) uv run scripts/db_init.py --psql "$(COMPOSE) exec -T postgres psql" $(ARGS)
+	@# DbGate reads its connection list at start only, so pick up the rendered .dbgate.env
+	$(COMPOSE) up -d --no-deps --force-recreate --wait dbgate
+
+db-ui: ## open the DB UI (DbGate: browse + query every project database as nmp)
+	@echo "$(DBGATE_URI)"; open "$(DBGATE_URI)" 2>/dev/null || true
 
 db-urls: ## print the database URLs each project should paste into its .env
 	@test -f .db-urls.env || { echo "run: make db-init"; exit 1; }
@@ -135,4 +144,4 @@ aws-sleep: ## stop the demo EC2 + RDS between demos
 aws-wake: ## start them again
 	@echo "M2: implemented with infra/terraform/central outputs"; exit 1
 
-.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check db-init db-urls db-check db-psql db-backup db-restore otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
+.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake

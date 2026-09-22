@@ -4,7 +4,7 @@ Shared services for every project in `~/git/nmp-ai-portfolio`. This file is the
 contract an agent or a person needs to use them. It is imported into every
 sibling's context by the portfolio-level `CLAUDE.md` / `AGENTS.md`.
 
-**Rule zero: never start your own MLflow, Postgres, MinIO or gateway inside a
+**Rule zero: never start your own MLflow, Postgres, MinIO, database UI or gateway inside a
 project. Use these.**
 
 ## Status
@@ -56,6 +56,7 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
 | URLs | `make db-init` writes `.db-urls.env` — one block per project; paste your block into your `.env`. **Never hardcode a URL, never hardcode a port.** |
 | Backups | `make db-backup DB=<db>` → `backups/`, `make db-restore DB=<db> FILE=…` |
 | Verify | `make check` (or `make db-check ARGS="--only <ID>"`) connects as every role and runs your zero-LLM `smoke` |
+| Browse / query (humans) | **DbGate** at `http://127.0.0.1:5050` (`make db-ui`): one connection per project database as `nmp`, fenced to that database, rendered from the registry by `make db-init` (D20–D24). Host-only, no login. Agents do not drive it — use `make db-psql DB=<db>` or the project's own URL. |
 | AWS | no project databases in AWS (D19). Keep the URL shape so a future deploy is configuration only. |
 
 ## Rule 7 for databases

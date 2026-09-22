@@ -15,9 +15,10 @@ Coding agents working in the sibling repos are first-class consumers: see
 ## Quickstart
 
 ```bash
-make up            # postgres + minio + mlflow  ->  http://localhost:5000
+make up            # postgres + minio + mlflow + dbgate  ->  http://localhost:5000
 make mlflow-init   # create every experiment in registry/projects.yaml, write .mlflow-ids.env
-make db-init       # create every project database, role and extension in the registry, write .db-urls.env
+make db-init       # create every project database, role and extension in the registry, write .db-urls.env + .dbgate.env
+make db-ui         # browse + query every project database in the browser (DbGate, http://127.0.0.1:5050)
 make status        # health
 make check         # prove each registered sibling logs to the server and its database lives here (no paid LLM calls)
 make install-agent-context   # portfolio-level CLAUDE.md / AGENTS.md so agents see PLATFORM.md
@@ -33,7 +34,7 @@ on the same Postgres, host `localhost:5432` / `postgres:5432`.
 
 | path | what |
 |---|---|
-| `docker-compose.yml` | postgres (pgvector/pg16, one database per project), minio, mlflow 3.16 — the local platform |
+| `docker-compose.yml` | postgres (pgvector/pg16, one database per project), minio, mlflow 3.16, dbgate (DB UI) — the local platform |
 | `services/mlflow/` | the pinned server image |
 | `registry/projects.yaml` | the project map: experiments, databases (name, roles, extensions, URL vars), smoke commands |
 | `scripts/` | `mlflow_init.py` (experiments + ids), `db_init.py` (roles, databases, extensions, URLs), `check_projects.py` + `check_databases.py` (verifiers), `otlp_smoke.py` |
@@ -42,7 +43,7 @@ on the same Postgres, host `localhost:5432` / `postgres:5432`.
 | `plugins/nmp-platform/` | Claude Code plugin: `platform-mlflow`, `platform-db`, `platform-onboard` skills |
 | `docs/` | onboarding and runbooks |
 | `infra/terraform/` | AWS demo stack (M2) |
-| `ai_specs/` | plans of record (`s00_project_plan.md`, `s02_m3_central_db.md`) and build receipts |
+| `ai_specs/` | plans of record (`s00_project_plan.md`, `s02_m3_central_db.md`, `s04_db_ui.md`) and build receipts |
 | `.lavish/` | review artifacts |
 
 ## Milestones

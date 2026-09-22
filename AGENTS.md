@@ -35,6 +35,11 @@ template (M5).
 | D17 | DataAgentBench's server flags adopted for the cluster, env-overridable: `shared_buffers=512MB work_mem=64MB maintenance_work_mem=512MB max_wal_size=4GB checkpoint_timeout=15min`. |
 | D18 | A sibling's CI gets a throwaway `pgvector/pgvector:pg16` service container aliased `postgres` on the `nmp-central` network — same hostname as local, no platform checkout, no rule-zero breach. |
 | D19 | No project databases in AWS: the AWS stack is a demo and only MLflow's store lives on RDS (M2). Registry `aws: false`; URL shapes stay identical so a later deploy is configuration. |
+| D20 | A browser SQL frontend for the cluster is a ready-made tool, not ours: **DbGate Community** (`dbgate/dbgate`, pinned) as the compose service `dbgate`. Chosen over pgweb (read-only viewer, yearly releases), CloudBeaver (JVM, 3× the image, mandatory login), Adminer/pgAdmin (not editors / admin-oriented) after a trial against the live cluster (70→234 MB RAM). Investigation: `.lavish/s02_sql-frontend.html`. |
+| D21 | Host port `5050` (validation mode `15050`, same +10 000 rule as D12). Not DbGate's default 3000, which collides with sibling dev servers. |
+| D22 | The UI connects as the superuser `nmp` (D16), **one read-write connection per project database, fenced with `ALLOWED_DATABASES`**; `make db-init --dbgate-readonly` (`ARGS=`) flips every connection read-only. Connections are rendered from the registry into `.dbgate.env` (gitignored) — nobody types a host or password into the UI, and "add connection" is disabled by design. |
+| D23 | No web login: the port is published on `127.0.0.1` only, like MLflow and the MinIO console. `LOGIN`/`PASSWORD` become necessary only if the bind is ever widened. |
+| D24 | DbGate's built-in MCP server stays off; M4 decides the portfolio's MCP surface. |
 | D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout

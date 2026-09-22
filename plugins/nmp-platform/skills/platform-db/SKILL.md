@@ -20,6 +20,7 @@ Runbook: `nmp-central-ai/docs/runbooks/central-postgres.md`.
   the project's `.env`). Never hardcode a URL or a port.
 - Extensions (vector, pgcrypto, …) are declared in the registry and created by `db-init`; project SQL never needs `CREATE EXTENSION` to succeed, `IF NOT EXISTS` is fine.
 - Migrations run as `nmp` inside the project's own database (Alembic, dbt, `roles.sql`, `create_all` — whatever the project already uses).
+- A browser UI exists for the human: `make -C ~/git/nmp-ai-portfolio/nmp-central-ai db-ui` (DbGate, `http://127.0.0.1:5050`, one connection per database as `nmp`). Point the user at it when they want to *look* at data; you keep using psql / the project's URL, never the UI.
 
 ## Do this
 
