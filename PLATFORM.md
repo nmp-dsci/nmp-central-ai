@@ -40,12 +40,35 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
    project's default tracking URI to the central one, add a zero-cost `smoke` command, run
    `make check ARGS="--only <ID>"`. Full steps: `docs/onboarding.md`.
 6. Skills: install the `nmp-platform` plugin once (`/plugin marketplace add ~/git/nmp-ai-portfolio/nmp-central-ai`,
-   then `/plugin install nmp-platform@nmp-central-ai`). It carries `platform-mlflow` and `platform-onboard`.
+   then `/plugin install nmp-platform@nmp-central-ai`). It carries `platform-mlflow`, `platform-db` and `platform-onboard`.
+
+## Postgres — one database per project (M3)
+
+| | value |
+|---|---|
+| Host from the host | `localhost:5432` |
+| Host from a sibling's compose stack | `postgres:5432` after joining the external network `nmp-central` |
+| Server | Postgres 16 + pgvector (`pgvector/pgvector:pg16`), tuned flags (D17) |
+| Layout | **one database per project** (D13): `mlflow`, `dab`, `dataqa`. Your schemas, tables, grants and RLS live inside your database and stay yours. |
+| Roles | cluster-global, so declared in `registry/projects.yaml` and created by `make db-init`; a duplicate is refused (D15). New roles are `<project>_<purpose>`. Local password = role name; `<ROLE>_PASSWORD` overrides. |
+| Admin identity | the cluster superuser `nmp` (D16), for your migrations only and only inside your own database |
+| Extensions | declared in the registry, created by `db-init` before any project SQL runs |
+| URLs | `make db-init` writes `.db-urls.env` — one block per project; paste your block into your `.env`. **Never hardcode a URL, never hardcode a port.** |
+| Backups | `make db-backup DB=<db>` → `backups/`, `make db-restore DB=<db> FILE=…` |
+| Verify | `make check` (or `make db-check ARGS="--only <ID>"`) connects as every role and runs your zero-LLM `smoke` |
+| AWS | no project databases in AWS (D19). Keep the URL shape so a future deploy is configuration only. |
+
+## Rule 7 for databases
+
+7. Never add a `postgres`/`db` service to a project's compose file; never `DROP DATABASE`; never
+   `docker compose down -v` a stack that used to own a database. A project's `reset` drops and
+   recreates **its own schemas inside its own database** as `nmp`, nothing wider. Back up first:
+   `make -C ~/git/nmp-ai-portfolio/nmp-central-ai db-backup DB=<db>`. In CI, use a throwaway
+   service container `pgvector/pgvector:pg16` aliased `postgres` on the `nmp-central` network (D18).
 
 ## Coming (not yet available)
 
 - M2: the same stack on AWS (one Graviton EC2 + RDS + S3), URL in `.env` as `MLFLOW_TRACKING_URI_AWS`.
-- M3: per-project schemas on the central Postgres.
 - M4: LiteLLM gateway with per-project keys and budgets; Prometheus + Grafana; an MCP server.
 
-Runbooks: `docs/runbooks/`. Plan of record: `ai_specs/s00_project_plan.md`.
+Runbooks: `docs/runbooks/`. Plans of record: `ai_specs/s00_project_plan.md` (platform), `ai_specs/s02_m3_central_db.md` (databases).

@@ -3,6 +3,8 @@
 .env.*
 !.env.example
 .mlflow-ids.env
+.db-urls.env
+backups/
 volumes/
 *.log
 

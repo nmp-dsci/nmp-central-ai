@@ -8,14 +8,44 @@
 # verify:  runs | traces | both   -> what check_projects.py looks for after the smoke command
 # smoke:   a command run from `path` that must produce >= 1 run/trace with NO paid LLM calls
 # env_ids: env var name -> experiment name; mlflow-init writes the numeric id into .mlflow-ids.env
+#
+# database (M3, one database per project on the central Postgres — D13):
+#   name:       the database; created by `make db-init`, owned by the cluster superuser (D16)
+#   roles:      login roles the project needs; cluster-global, so declared here and unique across
+#               projects (D15). Local password = role name; <ROLE>_PASSWORD overrides.
+#   extensions: created by db-init inside the database before any project SQL runs
+#   env:        VAR -> role | superuser, or {role, scheme}; db-init writes the URLs to .db-urls.env
+#   migrate:    the project's own schema command (Alembic, roles.sql …), run from `path`
+#   smoke:      zero-LLM proof the project works against its database, run by check_databases.py
+#   status:     pending | migrated   (check_databases.py skips pending)
+#   aws:        false for every project database (D19: the AWS stack is a demo, MLflow only)
 
 platform:
   mlflow_uri: http://localhost:5000
   mlflow_uri_compose: http://mlflow:5000
+  postgres_uri: postgresql://localhost:5432          # host; db-init appends role@ and /database
+  postgres_uri_compose: postgresql://postgres:5432   # from a sibling's compose stack
+  postgres_superuser: nmp
+  postgres_db: nmp                                   # maintenance database (POSTGRES_DB)
   docker_network: nmp-central
   experiment_naming: "<project>/<purpose> for new experiments; existing flat names kept as-is in M1"
 
 projects:
+  - id: PLATFORM
+    name: nmp-central-ai
+    path: .
+    status: migrated
+    mlflow: { client: external }          # the server itself; nothing to smoke
+    database:
+      name: mlflow
+      roles: [mlflow]
+      extensions: []
+      env: { MLFLOW_BACKEND_STORE_URI: mlflow }
+      smoke: 'curl -fsS "${MLFLOW_TRACKING_URI:-http://localhost:5000}/health"'
+      status: migrated
+      aws: true                            # the one database the AWS demo has (RDS, M2)
+    notes: MLflow's backend store. Bootstrapped by services/postgres/init/01-mlflow.sh on an empty volume; db-init keeps it in step afterwards.
+
   - id: P1
     name: convfinqa-agent
     path: ../ConvFinQA-agent
@@ -120,9 +150,56 @@ projects:
             s.set_attribute("probe", "data-qa-migration")
         p.shutdown(); print("exported span to", uri, "experiment", exp)
         PY
+    database:
+      name: dataqa
+      roles: [app_user, agent_ro, admin_ro]     # D15: grandfathered generic names
+      extensions: [vector, pgcrypto]
+      env:
+        ADMIN_DATABASE_URL: superuser            # Alembic, init SQL, dbt (D16)
+        DATABASE_URL: { role: app_user, scheme: postgresql+asyncpg }
+        AGENT_RO_DATABASE_URL: { role: agent_ro, scheme: postgresql+asyncpg }
+        ADMIN_RO_DATABASE_URL: { role: admin_ro, scheme: postgresql+asyncpg }
+      migrate: make migrate
+      smoke: make db-smoke
+      status: pending                            # M3.2
+      aws: false
     notes: >-
       No Python mlflow dependency; spans go to /v1/traces with x-mlflow-experiment-id. Its compose
-      stack joins the external network nmp-central and drops its own mlflow service.
+      stack joins the external network nmp-central and drops its own mlflow service. M3: its
+      Postgres (schemas app/raw/staging/marts, RLS, Alembic, dbt) moves to database `dataqa`.
+
+  - id: P6
+    name: dataagentbench
+    path: ../DataAgentBench
+    status: migrated           # MLflow: its client already defaulted to the central server
+    mlflow:
+      client: python
+      experiments: [dataagentbench/evals]
+      verify: runs               # re-logging a committed run folder recreates the run, not its live traces
+      smoke: |
+        uv run python -c "
+        from dab_bench.config import RUNS_DIR
+        from dab_bench.eval.runner import load_run
+        from dab_bench.tracking.mlflow_log import log_run
+        rid = sorted(p.name for p in RUNS_DIR.iterdir() if (p / 'run.json').exists())[0]
+        m, r = load_run(rid); print('run_id', log_run(RUNS_DIR / rid, m, r))
+        "
+    database:
+      name: dab
+      roles: [dab_owner, dab_agent]
+      extensions: [vector]
+      env:
+        PG_SUPERUSER_URL: superuser              # roles.sql (D16)
+        DATABASE_URL: dab_owner
+        AGENT_DATABASE_URL: dab_agent
+      migrate: make db-roles
+      smoke: make db-smoke
+      status: pending                            # M3.1
+      aws: false
+    notes: >-
+      Runs (kind=eval) and per-trial traces in one experiment; curator sessions are kind=curate.
+      M3: the 6.6 GB benchmark schema `dataagentbench` moves from its own compose Postgres (:5433,
+      db nmp) to database `dab` on the central cluster; roles.sql runs unchanged.
 
   # ---- not on the platform, listed so the map is complete ----------------
   - id: X1

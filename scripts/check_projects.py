@@ -71,6 +71,8 @@ def main() -> int:
     for p in reg.projects:
         if only and p.id not in only:
             continue
+        if p.id == "PLATFORM":
+            continue  # the server itself; check_databases.py covers its database
         if not p.on_platform:
             print(f"  {p.id:<3} {p.name:<22} skip   ({p.status})")
             continue
