@@ -177,7 +177,7 @@ projects:
       (2026-09-22): its Postgres (schemas app/raw/staging/marts, RLS, Alembic, dbt; 2.3 GB) lives in
       database `dataqa` here — restored with SKIP="DEFAULT ACL" then ALTER DEFAULT PRIVILEGES for nmp.
       Role attributes (BYPASSRLS, statement_timeout) come from this registry, not from the dump.
-      Since propertyiq_getdata plan s03 (P6) its dlt ingest is gone: migration 0040 imports
+      Since propertyiq_getdata plan s03 (P7) its dlt ingest is gone: migration 0040 imports
       `propertyiq.staging` (P7) as `propertyiq_staging.*` over postgres_fdw (user mapping ->
       propertyiq_ro) and its dbt builds only marts + RLS on top.
 
