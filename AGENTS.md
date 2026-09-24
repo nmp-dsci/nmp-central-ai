@@ -24,7 +24,7 @@ template (M5).
 | D5 | RDS Postgres db.t4g.micro. |
 | D6 | Repo `nmp-central-ai`, MIT, public. |
 | D7 | Agent onboarding: portfolio-level CLAUDE.md/AGENTS.md importing PLATFORM.md (M0), plugin skills (M1), MCP server (M4). |
-| D8 | MinIO image from quay.io (Docker Hub repo withdrawn), pinned; fallback RustFS. |
+| D8 | MinIO image from Chainguard (`cgr.dev/chainguard/minio`, pinned by digest; its free tier publishes only `latest`), run as root to keep the existing volume. MinIO withdrew Docker Hub, then quay.io (anonymous pulls 401 from 2026-09). The same image runs `minio-init`. Fallback RustFS (a data migration). |
 | D9 | Experiment naming `<project>/<purpose>` for new experiments; existing flat names kept in M1. |
 | D10 | Server sets `MLFLOW_SERVER_ALLOWED_HOSTS` for `mlflow:5000`, `localhost`, `host.docker.internal`; otherwise in-network exporters get 403. |
 | D11 | The server runs under uvicorn (MLflow default). `--gunicorn-opts` silently selects the Flask app, which has no `/v1/traces` route (404). Never add it back. |

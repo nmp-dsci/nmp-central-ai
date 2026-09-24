@@ -52,9 +52,14 @@ services:
     restart: unless-stopped
 
   minio:
-    # MinIO's Docker Hub repo was withdrawn in 2026; images are published on quay.io.
-    # Pinned to the last multi-arch (amd64+arm64) release. Fallback if this goes away: rustfs/rustfs.
-    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # MinIO withdrew its public images (Docker Hub in 2026, then quay.io: anonymous pulls 401).
+    # Chainguard builds the same server from source (amd64+arm64, same on-disk format, so the
+    # existing volume is read as-is). Its free tier publishes only `latest`, so pin the digest;
+    # bump it deliberately. This digest is MinIO RELEASE.2026-09-22T19-25-18Z.
+    # Fallback if this goes away: rustfs/rustfs (S3-compatible, but a data migration).
+    image: cgr.dev/chainguard/minio:latest@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1
+    # the image runs as uid 65532; the volume was written as root by the old image
+    user: "0:0"
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
@@ -72,7 +77,8 @@ services:
     restart: unless-stopped
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    # the server image ships `mc` and a shell; chainguard/minio-client has no shell for the entrypoint
+    image: cgr.dev/chainguard/minio:latest@sha256:bd014394a80898e68c149f2311fdf8d5a2c2f3bb2c33b9327ae6d02b4b065ae1
     depends_on:
       minio:
         condition: service_healthy
