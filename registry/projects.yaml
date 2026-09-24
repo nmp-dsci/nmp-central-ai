@@ -188,6 +188,7 @@ projects:
     mlflow:
       client: python
       experiments: [dataagentbench/evals]
+      prompts: [dataagentbench.system]   # the eval agent's editable prompt, one version per agent fingerprint (s06)
       verify: runs               # re-logging a committed run folder recreates the run, not its live traces
       smoke: |
         uv run python -c "
