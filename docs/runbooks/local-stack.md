@@ -12,3 +12,4 @@
 | the stack vanished after a no-mistakes / CI run | pre-D12 behaviour; just `make up` (volumes survive). `make mode` must say `live` in your checkout and `validation` in a worktree |
 | try the stack without touching the live one | `VALIDATION=1 make up` → http://localhost:15000, its own volumes; `VALIDATION=1 make down` removes all of it. Re-run `make mlflow-init` afterwards if you ran it in validation mode (it rewrites `.mlflow-ids.env`) |
 | where is the data | Docker volumes `nmp-central_pgdata` and `nmp-central_miniodata`; MinIO console at http://localhost:9001 |
+| look at the data | `make db-ui` → DbGate at http://127.0.0.1:5050, every project database, SQL editor; see `central-postgres.md` |

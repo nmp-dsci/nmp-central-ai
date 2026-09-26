@@ -1,6 +1,6 @@
 # nmp-central-ai — shared services for the nmp-ai-portfolio siblings.
 #
-#   make up          start everything (postgres, minio, mlflow)
+#   make up          start everything (postgres, minio, mlflow, dbgate)
 #   make mlflow-init create every experiment in registry/projects.yaml
 #   make status      health of the stack
 #
@@ -129,6 +129,30 @@ services:
       timeout: 5s
       retries: 30
       start_period: 20s
+    restart: unless-stopped
+
+  dbgate:
+    # Browse and query every project database from a browser (D20). Connections are NOT
+    # configured here: `make db-init` renders .dbgate.env from the registry (one connection
+    # per project database as nmp, fenced to that database) and restarts this service, since
+    # DbGate reads its connection list once at start. Humans only; agents use `make db-psql`.
+    image: dbgate/dbgate:7.3.0
+    env_file:
+      - path: .dbgate.env
+        required: false   # first `make up` before `make db-init` still starts (empty sidebar)
+    ports:
+      # Host-only (D23): the UI holds the superuser identity, so it never leaves 127.0.0.1.
+      - "127.0.0.1:${DBGATE_PORT:-5050}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # The image ships no wget/curl; node is what runs the app.
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
 
 networks:

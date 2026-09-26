@@ -7,9 +7,7 @@
   "plugins": [
     {
       "name": "nmp-platform",
-      "source": "./plugins/nmp-platform",
-      "version": "0.1.0",
-      "description": "Use the central MLflow server correctly from any sibling project, and onboard a new project to the platform."
+      "source": "./plugins/nmp-platform"
     }
   ]
 }

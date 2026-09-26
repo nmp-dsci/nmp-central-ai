@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>s02 · A SQL frontend for the central Postgres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg:#0f1214; --band:#131719; --panel:#171b1e; --panel-2:#1c2124; --line:#2a3034; --line-strong:#3a4146;
+    --ink:#e9ece8; --muted:#9aa39d; --faint:#6f7873;
+    --accent:#5cc8a6; --accent-soft:#163229; --accent-ink:#0d1a15;
+    --amber:#d9a44e; --amber-soft:#3a2c14; --red:#e0716a; --red-soft:#3a1c1a; --blue:#7fa9ff; --blue-soft:#1a2440;
+    --mono:"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans:"Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --serif:"Instrument Serif", Georgia, serif;
+  }
+  html { color-scheme: dark; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.55; }
+  main { max-width: 1120px; margin: 0 auto; padding: 32px 20px 96px; }
+  :where(.grid, .flex, .cards, .split, .kv, .steps, .verdict, .qgrid) > * { min-width:0; }
+  :where(p, h1, h2, h3, h4, li, td, th, dd, figcaption, .badge, .tag, label) { overflow-wrap:anywhere; }
+  :where(img, svg, video) { max-width:100%; height:auto; }
+  h1 { font-family:var(--serif); font-weight:400; font-size: clamp(34px, 5vw, 54px); line-height:1.05; margin:8px 0 12px; letter-spacing:-0.01em; }
+  h1 em { font-style:italic; color:var(--accent); }
+  h2 { font-family:var(--serif); font-weight:400; font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; }
+  h3 { font-size:16px; font-weight:600; margin:0 0 8px; }
+  h4 { font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin:0 0 8px; }
+  p { margin: 0 0 12px; }
+  a { color:var(--blue); }
+  code, pre { font-family:var(--mono); font-size:13px; }
+  code { background:var(--panel-2); border:1px solid var(--line); border-radius:4px; padding:1px 5px; }
+  pre { background:#0b0d0f; border:1px solid var(--line); border-radius:8px; padding:14px 16px; overflow-x:auto; margin:0 0 12px; line-height:1.5; }
+  pre code { background:none; border:0; padding:0; }
+  .eyebrow { font-family:var(--mono); font-size:12px; color:var(--muted); letter-spacing:0.06em; text-transform:uppercase; }
+  .lede { font-size:18px; color:var(--muted); max-width:70ch; }
+  section { margin-top:56px; padding-top:24px; border-top:1px solid var(--line); }
+  section > .eyebrow { margin-bottom:4px; }
+  .sub { color:var(--muted); margin-bottom:18px; max-width:78ch; }
+  .cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap:14px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card.rec { border-color:var(--accent); box-shadow: 0 0 0 1px var(--accent-soft) inset; }
+  .card .cost { font-family:var(--mono); font-size:12px; color:var(--muted); margin-top:8px; }
+  .card ul { padding-left:18px; margin:6px 0 0; font-size:13.5px; }
+  .split { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:18px; }
+  .badge { display:inline-block; font-family:var(--mono); font-size:11px; letter-spacing:0.04em; padding:2px 8px; border-radius:999px; border:1px solid var(--line-strong); color:var(--muted); white-space:nowrap; }
+  .badge.ok { color:var(--accent); border-color:var(--accent); background:var(--accent-soft); }
+  .badge.warn { color:var(--amber); border-color:var(--amber); background:var(--amber-soft); }
+  .badge.bad { color:var(--red); border-color:var(--red); background:var(--red-soft); }
+  .badge.info { color:var(--blue); border-color:var(--blue); background:var(--blue-soft); }
+  .badge.rec { color:var(--accent-ink); background:var(--accent); border-color:var(--accent); font-weight:600; }
+  .tag { font-family:var(--mono); font-size:12px; color:var(--muted); }
+  .verdict { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:12px; margin: 22px 0 0; }
+  .stat { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .stat .n { font-family:var(--serif); font-size:38px; line-height:1; color:var(--ink); }
+  .stat .l { font-size:13px; color:var(--muted); margin-top:6px; }
+  .stat.accent .n { color:var(--accent); } .stat.amber .n { color:var(--amber); } .stat.red .n { color:var(--red); }
+  .callout { border-left:3px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0; }
+  .callout.warn { border-left-color:var(--amber); }
+  .callout.red { border-left-color:var(--red); }
+  .tablewrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+  table { border-collapse:collapse; width:100%; font-size:13.5px; }
+  th, td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-size:12px; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); font-weight:600; background:var(--band); position:sticky; top:0; }
+  tr:last-child td { border-bottom:0; }
+  td.k { color:var(--muted); font-family:var(--mono); font-size:12px; white-space:nowrap; }
+  td.rec { background:rgba(92,200,166,0.06); }
+  th.rec { color:var(--accent); }
+  .steps { counter-reset: s; display:grid; gap:10px; }
+  .step { position:relative; padding:12px 14px 12px 52px; background:var(--panel); border:1px solid var(--line); border-radius:10px; }
+  .step::before { counter-increment:s; content: counter(s); position:absolute; left:14px; top:12px; width:26px; height:26px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-family:var(--mono); font-size:12px; display:grid; place-items:center; }
+  .step b { display:block; margin-bottom:2px; }
+  .step .tag { display:block; margin-top:4px; }
+  figure { margin:0; }
+  figure img { border:1px solid var(--line); border-radius:10px; display:block; }
+  figcaption { font-size:13px; color:var(--muted); margin-top:8px; }
+  .fig { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .qgrid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap:14px; }
+  form.q { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  form.q h3 { display:flex; gap:10px; align-items:center; }
+  form.q label { display:flex; gap:10px; align-items:flex-start; padding:6px 0; cursor:pointer; font-size:14px; }
+  form.q label input { margin-top:4px; flex:none; }
+  form.q label span.d { color:var(--muted); font-size:13px; display:block; }
+  form.q .row { display:flex; gap:10px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+  form.q input[type=text], form.q textarea { background:#0b0d0f; color:var(--ink); border:1px solid var(--line-strong); border-radius:6px; padding:6px 8px; font-family:var(--mono); font-size:13px; width:100%; }
+  button { font:inherit; font-size:13px; font-weight:600; padding:7px 14px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink); cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); }
+  .queued { font-family:var(--mono); font-size:12px; color:var(--amber); }
+  .queued:empty { display:none; }
+  ul.tight { margin:0; padding-left:18px; } ul.tight li { margin:3px 0; }
+  .src { font-size:13px; color:var(--muted); }
+  .src li { margin:3px 0; }
+  .kv { display:grid; grid-template-columns: max-content minmax(0,1fr); gap:6px 14px; font-size:13.5px; }
+  .kv dt { color:var(--muted); font-family:var(--mono); font-size:12px; }
+  .kv dd { margin:0; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="eyebrow">nmp-central-ai · branch <code>sql-frontend</code> · investigation → built · 2026-09-22</div>
+<h1>Browse and query the central Postgres. <em>Pick a UI, don't build one.</em></h1>
+<p class="lede">Three project databases now live on one server (<code>mlflow</code>, <code>dab</code>, <code>dataqa</code>). You want a browser page where you can see every table and run SQL. Six ready-made tools were checked against current releases and one was trial-run against the live cluster. The recommendation is <b>DbGate Community</b> as a fourth compose service, with its connections generated from <code>registry/projects.yaml</code> — about half a day of work, no code of our own beyond a 30-line renderer.</p>
+
+<div class="verdict">
+  <div class="stat accent"><div class="n">DbGate</div><div class="l">recommended · v7.3.0 (2026-09-15) · GPL-3 · 147 MB arm64 image</div></div>
+  <div class="stat"><div class="n">70→234 MB</div><div class="l">RAM measured on the trial: idle → after loading DAB's 2 813 tables</div></div>
+  <div class="stat"><div class="n">827 689</div><div class="l">rows <code>marts.property_sales</code> returned in the trial query as <code>nmp</code></div></div>
+  <div class="stat amber"><div class="n">0.5 d</div><div class="l">compose service + registry renderer + docs + tests, through no-mistakes</div></div>
+</div>
+
+<div class="callout">
+  <b>Built.</b> The trial container is gone; the compose service <code>nmp-central-dbgate-1</code> now serves <a href="http://127.0.0.1:5050/">http://127.0.0.1:5050</a> with connections rendered from the registry. Decisions and receipt at the bottom.
+</div>
+
+<!-- ============================================================ -->
+<section id="need">
+  <div class="eyebrow">What the frontend has to do</div>
+  <h2>Requirements, in the platform's terms</h2>
+  <p class="sub">These are the criteria the comparison scores. The last three come from decisions already made in s00–s02, not from taste.</p>
+  <div class="cards">
+    <div class="card"><h3>Browse every table</h3><p>All three databases, all schemas (data-qa has <code>app raw staging marts</code>; DAB has 2 813 tables in one schema), row counts, sizes, a data grid with filters and export.</p></div>
+    <div class="card"><h3>A real SQL editor</h3><p>Autocomplete against the live schema, multiple tabs, saved queries, results grid, CSV/JSON export, kill a running query.</p></div>
+    <div class="card"><h3>Registry-driven connections</h3><p>Nobody types a host or password into a UI. <code>make db-init</code> already knows every database and role (D13/D15); it should also emit the UI's connection list.</p></div>
+    <div class="card"><h3>Lives in the compose stack</h3><p>A service on the <code>nmp-central</code> network reaching <code>postgres:5432</code>; obeys D12 (validation project gets its own port); arm64 image; <code>make up</code> brings it along.</p></div>
+    <div class="card"><h3>Safe by default</h3><p>Bound to <code>127.0.0.1</code> only; no ad-hoc connections to other servers; superuser <code>nmp</code> is the admin identity (D16) so the UI uses it, scoped to one database per connection.</p></div>
+    <div class="card"><h3>Maintained, light, free</h3><p>Released in 2026, OSI licence, runs in well under 500 MB next to Postgres/MinIO/MLflow. Nice-to-have: an MCP endpoint, since M4 plans one.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="compare">
+  <div class="eyebrow">Comparison · verified 2026-09-22 against Docker Hub tags and vendor docs</div>
+  <h2>Six options that already exist</h2>
+  <p class="sub">Image sizes are the arm64 layer from Docker Hub. "Connections from env" is whether the container can be pointed at our three databases without anyone clicking through a setup wizard.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr>
+      <th></th>
+      <th class="rec">A · DbGate CE</th>
+      <th>B · pgweb</th>
+      <th>C · CloudBeaver CE</th>
+      <th>D · Adminer / AdminNeo</th>
+      <th>E · pgAdmin 4</th>
+      <th>F · Desktop client</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="k">what it is</td>
+        <td class="rec">Node/Svelte web + desktop DB client, 19 engines, Postgres first-class</td>
+        <td>Single Go binary, Postgres-only explorer</td>
+        <td>DBeaver in the browser (Java)</td>
+        <td>One PHP file, classic admin pages</td>
+        <td>The official Postgres admin app (Python)</td>
+        <td>TablePlus · Postico · DBeaver · Beekeeper (none installed here)</td></tr>
+      <tr><td class="k">latest release</td>
+        <td class="rec"><span class="badge ok">7.3.0 · 2026-09-15</span></td>
+        <td><span class="badge warn">0.17.0 · 2025-11-22</span> ~1 release/yr, one maintainer</td>
+        <td><span class="badge ok">26.2.1 · 2026-09-21</span></td>
+        <td><span class="badge ok">6.0.1 / Neo 5.8.0 · Sep 2026</span></td>
+        <td><span class="badge ok">monthly</span></td>
+        <td>—</td></tr>
+      <tr><td class="k">licence</td><td class="rec">GPL-3 (Community; Premium tier exists)</td><td>MIT</td><td>Apache-2</td><td>Apache-2 / GPL-2</td><td>PostgreSQL</td><td>proprietary (TablePlus, Postico) or Apache-2 (DBeaver)</td></tr>
+      <tr><td class="k">image (arm64)</td><td class="rec">147 MB</td><td>66 MB</td><td>416 MB</td><td>43 / 62 MB</td><td>181 MB</td><td>n/a</td></tr>
+      <tr><td class="k">RAM</td><td class="rec"><b>70 MB idle → 234 MB</b> after loading DAB (measured)</td><td>~20–40 MB (Go)</td><td>JVM; vendor says 2–4 GB hosts</td><td>~30 MB (PHP)</td><td>300 MB+ (Python + gunicorn)</td><td>host app</td></tr>
+      <tr><td class="k">SQL editor</td>
+        <td class="rec"><span class="badge ok">full</span> autocomplete, tabs, format, kill, parameters, saved queries, charts</td>
+        <td><span class="badge warn">basic</span> one editor, history, EXPLAIN, CSV/JSON/XML export</td>
+        <td><span class="badge ok">full</span> DBeaver-grade</td>
+        <td><span class="badge bad">textarea</span></td>
+        <td><span class="badge ok">query tool</span> heavy UI</td>
+        <td><span class="badge ok">best-in-class</span></td></tr>
+      <tr><td class="k">data grid / edit</td><td class="rec">grid, filters, inline edit, import/export, ER diagram</td><td>read-only viewer, filters, export</td><td>grid, edit, ER</td><td>form-per-row edit</td><td>grid, edit</td><td>grid, edit</td></tr>
+      <tr><td class="k">connections from env</td>
+        <td class="rec"><span class="badge ok">yes</span> <code>CONNECTIONS=…</code> + <code>SERVER_x USER_x DATABASE_x ALLOWED_DATABASES_x READONLY_x</code>; "Add connection" then disappears</td>
+        <td><span class="badge ok">yes</span> TOML bookmarks dir, <code>--bookmarks-only --sessions</code></td>
+        <td><span class="badge warn">partly</span> workspace JSON + first-run admin wizard</td>
+        <td><span class="badge warn">plugin</span> autologin needs a PHP plugin file</td>
+        <td><span class="badge warn">servers.json</span> + master-password prompt per user</td>
+        <td>paste from <code>.db-urls.env</code> by hand</td></tr>
+      <tr><td class="k">read-only switch</td><td class="rec">per connection <code>READONLY_x=1</code></td><td>global <code>--readonly</code> or per bookmark</td><td>per connection</td><td>no</td><td>no</td><td>per connection (most)</td></tr>
+      <tr><td class="k">web login</td><td class="rec">optional <code>LOGIN/PASSWORD</code>; off = open on localhost</td><td>optional basic auth</td><td>mandatory admin account</td><td>DB credentials form</td><td>mandatory account</td><td>—</td></tr>
+      <tr><td class="k">MCP / AI</td><td class="rec"><span class="badge info">MCP server</span> in Community Docker since 7.2.3 (Jul 2026) — ties into M4</td><td>no</td><td>AI assistant, bring your own key</td><td>no</td><td>no</td><td>varies</td></tr>
+      <tr><td class="k">extras that matter here</td><td class="rec">built-in pg backup/restore (7.2.4), DuckDB support in the same client (value-invest, productivity-tracker use DuckDB)</td><td>Prometheus metrics endpoint</td><td>20+ engines, RBAC</td><td>tiny</td><td>server admin (roles, vacuum, dashboards)</td><td>fastest UX, no container</td></tr>
+      <tr><td class="k">verdict</td>
+        <td class="rec"><span class="badge rec">recommend</span> hits every requirement; trial passed</td>
+        <td><span class="badge warn">fallback</span> if you want the smallest possible thing and can live without editing/autocomplete; slow cadence</td>
+        <td><span class="badge bad">overkill</span> 3× the image, JVM, mandatory login</td>
+        <td><span class="badge bad">not an editor</span> fine for a quick row poke, not for query work</td>
+        <td><span class="badge bad">overkill</span> admin-oriented, clunky per-user setup</td>
+        <td><span class="badge warn">complement</span> zero platform work, but not in the stack, not registry-driven, not shareable</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:12px">Not shortlisted: Metabase, Superset, Redash (BI dashboards, not editors; each wants its own metadata database); NocoDB/Baserow (Airtable-style, hide SQL); Outerbase Studio (Postgres support still labelled beta); SQLPad (unmaintained); Hasura/Directus (API layers, not editors); Drizzle/Prisma Studio (tied to an ORM project).</p>
+</section>
+
+<!-- ============================================================ -->
+<section id="trial">
+  <div class="eyebrow">Evidence</div>
+  <h2>The trial against the live cluster</h2>
+  <div class="split">
+    <figure>
+      <img src="s02_dbgate-trial.jpg" alt="DbGate 7.3.0 in Chrome: three registry connections in the sidebar, data-qa tables listed, a query tab returning current_user=nmp and 827689 sales rows" width="1247" height="791">
+      <figcaption>DbGate 7.3.0 on <code>127.0.0.1:5050</code>, connection <em>P5 data-qa-agent · dataqa</em>: sidebar lists <code>app.*</code> tables with sizes; the query tab returns <code>nmp · 827689</code> — the same count the data-qa API showed for user1 after the M3 cut-over.</figcaption>
+    </figure>
+    <div>
+      <h3>What was done</h3>
+      <ul class="tight">
+        <li><code>docker run --network nmp-central -p 127.0.0.1:5050:3000 dbgate/dbgate:7.3.0</code> with <code>CONNECTIONS=mlflow,dab,dataqa</code> and per-connection <code>SERVER_x=postgres USER_x=nmp DATABASE_x=… ALLOWED_DATABASES_x=…</code> — exactly the shape a registry renderer would emit.</li>
+        <li>All three connections appeared with their labels; no wizard, no "add connection" button (env-defined lists lock it, which is what we want).</li>
+        <li>Opened a data-qa table in the grid, ran a query, switched to DAB with <code>USE_SEPARATE_SCHEMAS_dab=1</code> (schemas load lazily; 2 813 tables did not stall the UI).</li>
+        <li>Memory 70 MB idle, 234 MB after the DAB metadata load. CPU idle 0.05 %.</li>
+      </ul>
+      <h3>What was noticed</h3>
+      <ul class="tight">
+        <li>First visit asks about anonymous analytics (declined). Worth pre-setting via <code>SETTINGS_…</code> if a key exists; otherwise a one-time click.</li>
+        <li>An <em>Upgrade</em> button sits in the toolbar (Premium features: editable query results, AI chat). Cosmetic.</li>
+        <li>With separate schemas on, DAB opens on <code>public</code> (pgvector's functions); you pick <code>dataagentbench</code> from the schema dropdown. Could be avoided by dropping the flag — the trade-off is a slower first load.</li>
+        <li>Env-defined connections are read at container start, so a registry change needs <code>make db-init</code> then a restart of the service — the plan folds that into the target.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="plan">
+  <div class="eyebrow">Proposal · option A</div>
+  <h2>How it sits in the platform</h2>
+  <p class="sub">One new compose service; the registry stays the source of truth; nothing a sibling has to change.</p>
+
+  <div class="fig">
+  <svg viewBox="0 0 960 300" width="100%" role="img" aria-labelledby="archT" style="font-family:var(--sans);font-size:13px">
+    <title id="archT">Browser talks to the dbgate service on the nmp-central network; dbgate talks to postgres; db_init renders .dbgate.env from the registry</title>
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+    </defs>
+    <g id="host" fill="none" stroke="var(--line-strong)" stroke-dasharray="4 4"><rect x="10" y="10" width="940" height="280" rx="12"/></g>
+    <text x="24" y="32" fill="var(--faint)" font-family="var(--mono)" font-size="11">HOST · macOS</text>
+    <g id="net" fill="none" stroke="var(--accent)" stroke-opacity="0.5"><rect x="300" y="50" width="630" height="225" rx="10"/></g>
+    <text x="314" y="70" fill="var(--accent)" font-family="var(--mono)" font-size="11">compose project nmp-central · network nmp-central</text>
+
+    <g id="browser"><title>Chrome on the host</title>
+      <rect x="40" y="90" width="200" height="64" rx="8" fill="var(--panel-2)" stroke="var(--line-strong)"/>
+      <text x="140" y="117" text-anchor="middle" fill="var(--ink)" font-weight="600">Browser</text>
+      <text x="140" y="137" text-anchor="middle" fill="var(--muted)" font-family="var(--mono)" font-size="11">http://127.0.0.1:5050</text>
+    </g>
+    <g id="dbgate"><title>dbgate service, new</title>
+      <rect x="330" y="90" width="230" height="64" rx="8" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="445" y="117" text-anchor="middle" fill="var(--ink)" font-weight="600">dbgate  <tspan fill="var(--accent)" font-family="var(--mono)" font-size="11">NEW</tspan></text>
+      <text x="445" y="137" text-anchor="middle" fill="var(--muted)" font-family="var(--mono)" font-size="11">dbgate/dbgate:7.3.0 · :3000</text>
+    </g>
+    <g id="postgres"><title>postgres service, existing</title>
+      <rect x="670" y="90" width="230" height="64" rx="8" fill="var(--panel-2)" stroke="var(--line-strong)"/>
+      <text x="785" y="117" text-anchor="middle" fill="var(--ink)" font-weight="600">postgres</text>
+      <text x="785" y="137" text-anchor="middle" fill="var(--muted)" font-family="var(--mono)" font-size="11">pgvector:pg16 · mlflow · dab · dataqa</text>
+    </g>
+    <g id="mlflow"><title>mlflow and minio, unchanged</title>
+      <rect x="670" y="200" width="230" height="44" rx="8" fill="var(--panel)" stroke="var(--line)"/>
+      <text x="785" y="227" text-anchor="middle" fill="var(--muted)">mlflow · minio  (unchanged)</text>
+    </g>
+    <g id="registry"><title>registry and db_init on the host</title>
+      <rect x="40" y="200" width="200" height="64" rx="8" fill="var(--panel-2)" stroke="var(--line-strong)"/>
+      <text x="140" y="227" text-anchor="middle" fill="var(--ink)" font-weight="600">make db-init</text>
+      <text x="140" y="247" text-anchor="middle" fill="var(--muted)" font-family="var(--mono)" font-size="11">registry/projects.yaml</text>
+    </g>
+
+    <g stroke="var(--ink)" stroke-width="1.5" fill="none" color="var(--ink)">
+      <path id="e-browser-dbgate" d="M240,122 L330,122" marker-end="url(#arr)"><title>host port 5050 published on 127.0.0.1 only</title></path>
+      <path id="e-dbgate-pg" d="M560,122 L670,122" marker-end="url(#arr)"><title>postgres:5432 as nmp, one connection per database</title></path>
+    </g>
+    <g stroke="var(--amber)" stroke-width="1.5" fill="none" color="var(--amber)" stroke-dasharray="5 3">
+      <path id="e-init-env" d="M240,232 L300,232 L300,180 L445,180 L445,154" marker-end="url(#arr)"><title>db_init writes .dbgate.env, compose env_file</title></path>
+    </g>
+    <text x="285" y="112" text-anchor="middle" fill="var(--muted)" font-family="var(--mono)" font-size="10">5050→3000</text>
+    <text x="615" y="112" text-anchor="middle" fill="var(--muted)" font-family="var(--mono)" font-size="10">5432</text>
+    <text x="372" y="176" fill="var(--amber)" font-family="var(--mono)" font-size="10">.dbgate.env (env_file)</text>
+  </svg>
+  </div>
+
+  <div class="split" style="margin-top:18px">
+    <div>
+      <h3>docker-compose.yml — the new service</h3>
+<pre><code>  dbgate:
+    image: dbgate/dbgate:7.3.0          # pin; bump deliberately like mlflow
+    env_file:
+      - path: .dbgate.env               # written by `make db-init`
+        required: false                 # first `up` before db-init still starts
+    ports:
+      - "127.0.0.1:${DBGATE_PORT:-5050}:3000"   # host-only
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped</code></pre>
+      <h3>.dbgate.env — rendered from the registry (gitignored)</h3>
+<pre><code># generated by scripts/db_init.py — do not edit
+CONNECTIONS=mlflow,dab,dataqa
+LABEL_dab=P6 DataAgentBench · dab
+ENGINE_dab=postgres@dbgate-plugin-postgres
+SERVER_dab=postgres
+PORT_dab=5432
+USER_dab=nmp
+PASSWORD_dab=nmp
+DATABASE_dab=dab
+ALLOWED_DATABASES_dab=dab
+USE_SEPARATE_SCHEMAS_dab=1
+# … same block for mlflow and dataqa</code></pre>
+    </div>
+    <div>
+      <h3>scripts/db_init.py — one more renderer</h3>
+<pre><code>def render_dbgate_env(reg, projects, readonly=False) -&gt; str:
+    """Connection list for the dbgate service, one per project database.
+    Superuser nmp (D16), fenced to that database; env read at container start."""
+    ids = [p.database.name for p in projects]
+    out = ["# generated by scripts/db_init.py — do not edit",
+           f"CONNECTIONS={','.join(ids)}"]
+    for p in projects:
+        db = p.database
+        out += [f"LABEL_{db.name}={p.id} {p.name} · {db.name}",
+                f"ENGINE_{db.name}=postgres@dbgate-plugin-postgres",
+                f"SERVER_{db.name}=postgres", f"PORT_{db.name}=5432",
+                f"USER_{db.name}={reg.postgres_superuser}",
+                f"PASSWORD_{db.name}={superuser_password(reg)}",
+                f"DATABASE_{db.name}={db.name}",
+                f"ALLOWED_DATABASES_{db.name}={db.name}"]
+        if readonly: out.append(f"READONLY_{db.name}=1")
+        if db.big: out.append(f"USE_SEPARATE_SCHEMAS_{db.name}=1")
+    return "\n".join(out) + "\n"</code></pre>
+      <p class="sub" style="font-size:13.5px">Pure function, unit-tested next to <code>render_env</code>. The <code>big</code> flag is one optional registry key (<code>database.ui_separate_schemas: true</code>) so DAB gets lazy schema loading and the others do not — or drop the flag entirely and accept a slower first DAB load.</p>
+      <h3>Makefile</h3>
+<pre><code>db-init:   … && $(COMPOSE) up -d --no-deps dbgate   # reload connections
+db-ui:     open http://127.0.0.1:$(DBGATE_PORT)     # convenience
+status:    + one line: DB UI http://127.0.0.1:5050 (healthy|down)
+mode:      validation → DBGATE_PORT=15050 (D12)</code></pre>
+    </div>
+  </div>
+
+  <h3 style="margin-top:22px">Build steps</h3>
+  <div class="steps">
+    <div class="step"><b>Service + port + validation mode</b> compose service above; <code>DBGATE_PORT</code> in <code>.env.example</code>; Makefile validation block exports <code>15050</code>; <code>.gitignore</code> gets <code>.dbgate.env</code>. <span class="tag">~1 h</span></div>
+    <div class="step"><b>Registry renderer</b> <code>render_dbgate_env</code> in <code>db_init.py</code>, written on every run beside <code>.db-urls.env</code>; <code>--dbgate-readonly</code> flag; tests in <code>tests/test_db_init.py</code> (labels, one connection per db, superuser identity, readonly flag, big-schema flag). <span class="tag">~1.5 h</span></div>
+    <div class="step"><b>Wire into make + status + CI</b> <code>db-init</code> restarts the service; <code>status</code> prints the URL and health; CI <code>stack</code> job asserts the healthcheck passes after <code>db-init</code> (D12 ports). <span class="tag">~1 h</span></div>
+    <div class="step"><b>Contract + docs</b> PLATFORM.md Postgres table gets a <em>Browse / query</em> row and a rule: the UI is for humans; agents keep using <code>make db-psql</code>. Runbook section in <code>docs/runbooks/central-postgres.md</code>; README; <code>platform-db</code> skill mentions the URL. <span class="tag">~45 min</span></div>
+    <div class="step"><b>Validate</b> <code>make up · db-init · check</code>, open the UI, run one query per database; <code>no-mistakes</code> on <code>sql-frontend</code>, PR for your review (you said the central app should not auto-deploy — nothing here touches AWS). <span class="tag">~30 min + pipeline</span></div>
+    <div class="step"><b>Remove the trial</b> <code>docker rm -f dbgate-trial</code> once the compose service is up on the same port. <span class="tag">1 min</span></div>
+  </div>
+
+  <h3 style="margin-top:22px">Risks and how they are handled</h3>
+  <div class="cards">
+    <div class="card"><h3>Superuser in a browser tab</h3><p>The UI connects as <code>nmp</code> (D16). Mitigations: published on <code>127.0.0.1</code> only; <code>ALLOWED_DATABASES</code> fences each connection to its own database; optional <code>READONLY</code> twin; <code>SHELL_CONNECTION</code> stays off so no one can point it at another server; backups exist (<code>make db-backup</code>).</p></div>
+    <div class="card"><h3>Env read once at start</h3><p>Adding a project database means <code>make db-init</code> → the target restarts <code>dbgate</code>. Documented in the runbook; <code>status</code> shows the connection count so a stale list is visible.</p></div>
+    <div class="card"><h3>GPL-3 image</h3><p>We run it, we don't ship it or link to it. No obligation attaches. Premium nags are cosmetic; no feature we need is Premium-only.</p></div>
+    <div class="card"><h3>Port choice</h3><p><code>5050</code> is free now (checked), memorable beside 5000/5432, and pgAdmin's conventional port so nobody is surprised. 3000 (DbGate's default) collides with half the Vite/Next dev servers in the portfolio.</p></div>
+    <div class="card"><h3>Validation mode</h3><p>D12 already offsets ports by 10 000; <code>15050</code> follows the pattern. CI runs the healthcheck only — no browser.</p></div>
+    <div class="card"><h3>AWS</h3><p>Out of scope (D19: no project databases in AWS). The service is not in <code>compose.aws.yml</code>.</p></div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
+<section id="decide">
+  <div class="eyebrow">Decisions · resolved 2026-09-22 · built on branch <code>sql-frontend</code></div>
+  <h2>What was decided and built</h2>
+  <p class="sub">Every question above was answered with the recommended option; the six scope items were all submitted and built. Receipt: <code>ai_specs/s04_db_ui.md</code>; decisions recorded as D20–D24 in <code>AGENTS.md</code>.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>ID</th><th>Decision</th><th>Where it landed</th></tr></thead>
+    <tbody>
+      <tr><td class="k">D20</td><td>DbGate Community as compose service <code>dbgate</code>, pinned <code>7.3.0</code></td><td><code>docker-compose.yml</code></td></tr>
+      <tr><td class="k">D21</td><td>Port <code>5050</code>; validation mode <code>15050</code></td><td><code>Makefile</code>, <code>.env.example</code>, <code>tests/test_make_mode.py</code></td></tr>
+      <tr><td class="k">D22</td><td>One read-write connection per database as <code>nmp</code>, fenced with <code>ALLOWED_DATABASES</code>; rendered from the registry; <code>--dbgate-readonly</code> flips all; <code>ui_separate_schemas: true</code> for DAB</td><td><code>scripts/db_init.py</code> <code>render_dbgate_env</code>, <code>scripts/_registry.py</code>, <code>registry/projects.yaml</code>, <code>tests/test_db_init.py</code></td></tr>
+      <tr><td class="k">D23</td><td>No web login; published on <code>127.0.0.1</code> only</td><td><code>docker-compose.yml</code></td></tr>
+      <tr><td class="k">D24</td><td>MCP server off; M4 decides</td><td><code>AGENTS.md</code></td></tr>
+      <tr><td class="k">S1–S6</td><td>service · renderer + tests · make/status/CI · PLATFORM.md/runbooks/README/skill · no-mistakes + PR · trial removed</td><td>all <b>addressed</b> — see the receipt</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout" style="margin-top:16px"><b>Use it:</b> <code>make db-ui</code> → <a href="http://127.0.0.1:5050/">http://127.0.0.1:5050</a>. After adding a database to the registry, <code>make db-init</code> re-renders the connections and reloads the service; <code>make status</code> shows the count.</div>
+</section>
+
+<!-- ============================================================ -->
+<section id="sources">
+  <div class="eyebrow">Sources</div>
+  <h2>Checked today</h2>
+  <ul class="src">
+    <li>DbGate env-variable reference (connections, <code>READONLY_</code>, <code>ALLOWED_DATABASES_</code>, <code>USE_SEPARATE_SCHEMAS_</code>, <code>LOGIN/PASSWORD</code>, <code>SHELL_CONNECTION</code>): <a href="https://docs.dbgate.io/dbgate/customization/env-variables/index.html">docs.dbgate.io</a></li>
+    <li>DbGate news — 7.3.0 (2026-09-15), MCP server in Community Docker 7.2.3 (2026-07-21), pg backup/restore 7.2.4: <a href="https://www.dbgate.io/news/">dbgate.io/news</a> · <a href="https://www.dbgate.io/news/2026-08-19-database-tools-feature-comparison/">vendor feature matrix</a></li>
+    <li>pgweb CLI options and bookmarks: <a href="https://github.com/sosedoff/pgweb">github.com/sosedoff/pgweb</a> · <a href="https://github.com/sosedoff/pgweb/releases">releases</a> (0.17.0)</li>
+    <li>CloudBeaver Docker deployment: <a href="https://github.com/dbeaver/cloudbeaver/wiki/CloudBeaver-Community-deployment-from-docker-image">wiki</a></li>
+    <li>Adminer / AdminNeo images: <a href="https://hub.docker.com/_/adminer">hub.docker.com/_/adminer</a> · <a href="https://github.com/adminneo-org/docker">adminneo-org/docker</a></li>
+    <li>Third-party round-ups used for the long list only: <a href="https://sliplane.io/blog/5-awesome-pgadmin-alternatives">sliplane</a> · <a href="https://dbeverywhere.com/blog/postgres-web-gui-options">dbeverywhere</a> · <a href="https://queryglow.com/blog/best-pgadmin-alternatives">queryglow</a></li>
+    <li>Image sizes and dates: Docker Hub tag API, arm64 layer, queried 2026-09-22. RAM: <code>docker stats</code> on the trial container.</li>
+  </ul>
+</section>
+
+</main>
+</body>
+</html>

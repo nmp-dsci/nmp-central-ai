@@ -13,6 +13,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_PATH = ROOT / "registry" / "projects.yaml"
 IDS_ENV_PATH = ROOT / ".mlflow-ids.env"
 DB_URLS_ENV_PATH = ROOT / ".db-urls.env"
+DBGATE_ENV_PATH = ROOT / ".dbgate.env"  # the DB UI's connection list (D20), env_file in compose
 
 
 SUPERUSER = "superuser"  # the `env:` value that means "the cluster superuser" (D16)
@@ -43,6 +44,8 @@ class Database:
     smoke: str = ""
     status: str = "pending"
     aws: bool = False
+    # DB UI hint: load schemas lazily (DbGate USE_SEPARATE_SCHEMAS) — set for DAB's 2 813 tables
+    ui_separate_schemas: bool = False
 
 
 @dataclass
@@ -132,6 +135,7 @@ def _parse_database(raw: dict[str, Any]) -> Database:
         smoke=(raw.get("smoke") or "").strip(),
         status=raw.get("status", "pending"),
         aws=bool(raw.get("aws", False)),
+        ui_separate_schemas=bool(raw.get("ui_separate_schemas", False)),
     )
 
 

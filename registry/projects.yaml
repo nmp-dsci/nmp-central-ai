@@ -200,6 +200,7 @@ projects:
         "
     database:
       name: dab
+      ui_separate_schemas: true   # 2 813 tables: the DB UI loads schemas lazily (D20)
       roles: [dab_owner, dab_agent]
       extensions: [vector]
       env:

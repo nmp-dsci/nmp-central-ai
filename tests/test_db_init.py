@@ -10,7 +10,7 @@ import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from _registry import SUPERUSER, RegistryError, load_registry  # noqa: E402
-from db_init import render_env, render_sql, url_for  # noqa: E402
+from db_init import render_dbgate_env, render_env, render_sql, url_for  # noqa: E402
 
 BASE = {
     "platform": {
@@ -243,3 +243,59 @@ def test_role_settings_become_alter_role_set(tmp_path: Path) -> None:
         )
     )
     assert "ALTER ROLE ro SET statement_timeout = '15s';" in render_sql(reg, reg.databases)
+
+
+# ---- the DB UI's connection list (D20/D22) -----------------------------------------------------
+
+
+def parse_env(text: str) -> dict[str, str]:
+    """What docker compose's env_file sees: KEY=VALUE per line, comments and blanks dropped."""
+    return dict(
+        line.split("=", 1) for line in text.splitlines() if line and not line.startswith("#")
+    )
+
+
+def two_databases(tmp_path: Path) -> object:
+    return load_registry(
+        write_registry(
+            tmp_path,
+            [
+                proj("P8", "alpha", {"name": "alpha", "roles": ["alpha_app"]}),
+                proj("P9", "beta", {"name": "beta", "ui_separate_schemas": True}),
+            ],
+        )
+    )
+
+
+def test_dbgate_env_has_one_superuser_connection_per_database_fenced_to_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("POSTGRES_PASSWORD", raising=False)
+    reg = two_databases(tmp_path)
+    env = parse_env(render_dbgate_env(reg, reg.databases))  # type: ignore[arg-type]
+    assert env["CONNECTIONS"] == "alpha,beta"
+    for db in ("alpha", "beta"):
+        assert env[f"ENGINE_{db}"] == "postgres@dbgate-plugin-postgres"
+        assert env[f"SERVER_{db}"] == "postgres"  # the compose hostname, not localhost
+        assert env[f"PORT_{db}"] == "5432"
+        assert env[f"USER_{db}"] == "nmp"  # D16: the admin identity, never a project role
+        assert env[f"PASSWORD_{db}"] == "nmp"
+        assert env[f"DATABASE_{db}"] == db
+        assert env[f"ALLOWED_DATABASES_{db}"] == db  # fenced: one database per connection
+        assert f"READONLY_{db}" not in env  # D22: read-write by default
+    assert env["LABEL_alpha"] == "P8 alpha · alpha"
+    # the registry hint becomes DbGate's lazy schema loading, only where declared
+    assert env["USE_SEPARATE_SCHEMAS_beta"] == "1"
+    assert "USE_SEPARATE_SCHEMAS_alpha" not in env
+    # no project role or its password leaks into the UI's config
+    assert "alpha_app" not in "".join(env.values())
+
+
+def test_dbgate_env_readonly_flag_and_superuser_password_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("POSTGRES_PASSWORD", "s3cret")
+    reg = two_databases(tmp_path)
+    env = parse_env(render_dbgate_env(reg, reg.databases, readonly=True))  # type: ignore[arg-type]
+    assert env["READONLY_alpha"] == "1" and env["READONLY_beta"] == "1"
+    assert env["PASSWORD_alpha"] == "s3cret"

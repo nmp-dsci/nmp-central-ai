@@ -1,8 +1,8 @@
 # Runbook — the central Postgres (M3)
 
 One cluster (`nmp-central-postgres-1`, pgvector/pg16, host port 5432, superuser `nmp`), one
-database per project (D13). Everything below runs from `nmp-central-ai`. Decisions D13–D19 are in
-`AGENTS.md`; the plan is `ai_specs/s02_m3_central_db.md`.
+database per project (D13). Everything below runs from `nmp-central-ai`. Decisions D13–D24 are in
+`AGENTS.md`; the plans are `ai_specs/s02_m3_central_db.md` and `ai_specs/s04_db_ui.md`.
 
 | Situation | Do |
 |---|---|
@@ -13,6 +13,7 @@ database per project (D13). Everything below runs from `nmp-central-ai`. Decisio
 | back up one database | `make db-backup DB=dab` → `backups/dab-<utc>.dump` (gitignored) |
 | restore | `make db-init` (database must exist) then `make db-restore DB=dab FILE=backups/dab-<utc>.dump` |
 | psql | `make db-psql DB=dataqa` |
+| browse / query in a browser | `make db-ui` → DbGate at `http://127.0.0.1:5050` (validation `15050`), one connection per project database as `nmp`, fenced to it (D20–D24). Connections come from `.dbgate.env`, which `make db-init` renders from the registry and reloads (DbGate reads it at start only). `make status` shows the connection count. Read-only: `make db-init ARGS=--dbgate-readonly`. Big schema: `ui_separate_schemas: true` on the database block. |
 | server flags | `.env`: `PG_SHARED_BUFFERS`, `PG_WORK_MEM`, `PG_MAINTENANCE_WORK_MEM`, `PG_MAX_WAL_SIZE` (D17 defaults 512MB / 64MB / 512MB / 4GB); `make up` to apply |
 | CI in a sibling | a service container `pgvector/pgvector:pg16` aliased `postgres` on the `nmp-central` network (D18); never the platform |
 
