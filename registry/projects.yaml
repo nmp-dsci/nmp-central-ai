@@ -259,6 +259,19 @@ projects:
       postgres_fdw as `propertyiq_ro` and build their own marts (data-qa-agent first;
       it replaces that project's dlt ingest). No marts live here.
 
+  - id: P8
+    name: vidore-v3-loop
+    path: ../vidore-v3-loop
+    status: migrated
+    mlflow:
+      client: python
+      experiments: [vidore-v3-loop/evals]
+      verify: runs
+      smoke: uv run vidoreloop smoke   # scores a fixed ranking offline, logs one kind=smoke run
+    notes: >-
+      Agentic RAG on ViDoRe V3 (visually rich enterprise PDFs), English datasets one at a time.
+      No database yet; datasets come from the HF Hub at pinned revisions into data/cache/.
+
   # ---- not on the platform, listed so the map is complete ----------------
   - id: X1
     name: v2v-prod-agent
