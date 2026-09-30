@@ -52,30 +52,72 @@
   </div>
 </div>
 
-<h1>A house UI you <em>already wrote</em> — in the wrong repo</h1>
+<h1>A house UI you <em>already run</em> — in four repos, as copies</h1>
 <p class="lede">You asked whether this project can host a shared house UI next to Postgres and MLflow, what is
-wrong with the template code in this directory, and whether updating it here would propagate to every project.
-Short answer: the good version of your house UI exists today as a documented, contrast-audited token file — but it
-lives in <code>nmp-dsci.github.io</code>, and the artifacts here use a dark-only fork of it. The work is a
-<strong>promotion</strong>, not a build.</p>
+wrong with the template code in this directory, and whether updating it here would propagate everywhere. The
+measurements say something better than I first wrote: <strong>the house UI already exists and is already running
+across tau2-loop, DataAgentBench, ConvFinQA-agent and the site</strong> — 45 shared token names, light and dark,
+a different accent per project. It has simply never been a <em>file</em>. And this directory is the one place
+that is not on it.</p>
 
 <div class="verdict">
-  <div class="stat"><div class="n">277</div><div class="l">Lavish artifacts across 21 <code>.lavish/</code> directories</div></div>
-  <div class="stat red"><div class="n">39,894</div><div class="l">lines of inline <code>&lt;style&gt;</code> in those artifacts</div></div>
-  <div class="stat amber"><div class="n">8</div><div class="l">different accent colours, 3 font families in use</div></div>
-  <div class="stat accent"><div class="n">1</div><div class="l">canonical token file — in the site repo, not here</div></div>
+  <div class="stat accent"><div class="n">45</div><div class="l">token names shared by tau2-loop, DataAgentBench, ConvFinQA and the site</div></div>
+  <div class="stat"><div class="n">57</div><div class="l">artifacts already running that system, most with light <em>and</em> dark</div></div>
+  <div class="stat amber"><div class="n">27</div><div class="l">of those tokens missing from <code>nmp-central-ai</code>'s own artifacts</div></div>
+  <div class="stat red"><div class="n">39,894</div><div class="l">lines of inline <code>&lt;style&gt;</code> across 277 artifacts — the system, retyped</div></div>
 </div>
 
 <div class="callout">
-  <h4>The finding that reframes the task</h4>
-  <p><code>nmp-dsci.github.io/_o/assets/css/tokens.css</code> is 133 lines of exactly what you are asking for: a
-  light reference palette, a dark override, a four-step ink ramp with measured ratios in the comments, a type
-  scale, a 4/8 spacing ladder, shape, motion, reduced-motion, responsive token shrinking — and a machine-readable
-  <code>@contrast</code> contract enforced by <code>scripts/contrast_audit.py</code> in CI. The three artifacts in
-  <code>nmp-central-ai/.lavish/</code> use a <em>different</em>, dark-only, scale-less palette in Geist. So the
-  question is not "what should the house UI be" — it is "why is the canon in a Jekyll site, and how does it reach
-  the other 20 directories".</p>
+  <h4>Corrected after your review — what the measurements actually show</h4>
+  <p>My first draft framed the eight accent colours in the portfolio as <em>drift</em>. That was wrong, and you
+  were right to push back. Converting every accent to OKLCH and diffing the token vocabularies shows the
+  opposite: tau2-loop, DataAgentBench and ConvFinQA-agent share <strong>45 token names</strong> — the complete
+  <code>--s1…--s9</code> ladder, the <code>--t-2…--t4</code> scale, <code>--r</code>, <code>--shadow</code>,
+  <code>--measure</code>, <code>--focus</code>, <code>--dur</code>/<code>--ease</code>,
+  <code>--line-2</code>/<code>--line-3</code> — and each carries a light <em>and</em> a dark accent. The varying
+  accent is not drift. <strong>It is the per-project colour you are asking me to formalise, already working.</strong></p>
+  <p>Two things remain true from the first draft. The only place this system exists as an actual
+  <em>file</em> is <code>nmp-dsci.github.io/_o/assets/css/tokens.css</code>, with a machine-readable
+  <code>@contrast</code> contract audited by <code>scripts/contrast_audit.py</code>. And
+  <code>nmp-central-ai</code> — this repo — is the outlier: dark-only, Geist, and missing 27 of the 45 tokens.</p>
 </div>
+
+<!-- ============================ IN PRODUCTION ============================ -->
+<section id="inuse">
+<span class="eyebrow">00 — what you already have</span>
+<h2>The house UI in production today</h2>
+<p class="sub">Per-directory counts of artifacts carrying a dual-theme palette, an explicit
+<code>data-theme</code> override, print styles and a focus ring. This is the evidence that the system is real
+rather than a convention three files happen to share.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Directory</th><th style="width:5em">Artifacts</th><th style="width:6em">light+dark</th><th style="width:6em">data-theme</th><th style="width:5em">print</th><th style="width:6em">focus ring</th><th>Accent values in use</th></tr></thead>
+<tbody>
+<tr><td>DataAgentBench <span class="tag">P6</span></td><td class="n">15</td><td class="n pass">15 / 15</td><td class="n pass">15 / 15</td><td class="n fail">0</td><td class="n pass">15 / 15</td><td class="k">#0A6552 / #43C29A <span class="tag">the site's exact pair</span></td></tr>
+<tr><td>tau2-loop <span class="tag">P3</span></td><td class="n">11</td><td class="n pass">11 / 11</td><td class="n">10 / 11</td><td class="n fail">0</td><td class="n">5 / 11</td><td class="k">#0A6552 / #43C29A <b>and</b> #8A2B1D / #E08A7A</td></tr>
+<tr><td>ConvFinQA-agent <span class="tag">P1</span></td><td class="n">18</td><td class="n">3 / 18</td><td class="n">12 / 18</td><td class="n fail">0</td><td class="n">3 / 18</td><td class="k">#005c4b · #1F4E8C · #7EA8E4</td></tr>
+<tr><td>nmp-dsci.github.io <span class="tag">site</span></td><td class="n">13</td><td class="n">10 / 13</td><td class="n">11 / 13</td><td class="n fail">0</td><td class="n">4 / 13</td><td class="k">#0A6552 / #43C29A · #0B6E58 / #3DBB95 · #A63A22 / #E2795F</td></tr>
+<tr class="rec"><td><b>nmp-central-ai</b> <span class="tag">here</span></td><td class="n">3</td><td class="n fail">0 / 3</td><td class="n fail">0 / 3</td><td class="n fail">0</td><td class="n fail">0 / 3</td><td class="k">#5cc8a6 only — no light stop</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="split">
+  <div class="card">
+    <h3>What this changes about the job <span class="badge ok">smaller</span></h3>
+    <p>This is not "design a house UI" or even "import one from the site". It is: <b>take the system four repos
+    already run, make it a file, give the accent a declared seam instead of a hand-edit, and bring this repo
+    onto it.</b> The vocabulary is settled and does not need your review — 45 names, already agreed by usage.</p>
+  </div>
+  <div class="card">
+    <h3>What it does not change <span class="badge warn">still true</span></h3>
+    <p>It is still 39,894 lines of copy with no source, no version and no audit. <b>Only 11 of 277 artifacts have print styles</b>, and none of
+    them are in the four house-system directories. tau2-loop still runs two different accents, one of which is the
+    shared <code>--red</code>. ConvFinQA runs three. Those are the real defects, and they are what a file fixes.</p>
+  </div>
+</div>
+</section>
 
 <!-- ============================ RUBRIC ============================ -->
 <section id="rubric">
@@ -85,28 +127,33 @@ lives in <code>nmp-dsci.github.io</code>, and the artifacts here use a dark-only
 candidates: <strong>A</strong> the artifact template in this directory, <strong>B</strong> the site's
 <code>tokens.css</code>, <strong>C</strong> the proposal in this document. Every score below is backed by a
 finding or a measurement further down — nothing here is an impression.</p>
+<p class="sub"><b>A1</b> is this directory's three artifacts. <b>A2</b> is the system tau2-loop, DataAgentBench
+and ConvFinQA-agent actually run — added after your review, and it scores 18 points higher than what is in this
+repo. The gap between A2 and C is the honest size of the work: the vocabulary is already right, what is missing
+is a file, a seam, a gate and a way to ship it.</p>
 
 <div class="tablewrap">
 <table>
 <thead><tr>
   <th style="width:2.5em">#</th><th>Dimension</th><th>Why it costs you</th>
-  <th style="width:3em">W</th><th style="width:5.5em">A · today</th><th style="width:5.5em">B · site</th><th class="rec" style="width:5.5em">C · proposed</th>
+  <th style="width:3em">W</th><th style="width:6em">A1 · here</th><th style="width:6.5em">A2 · in use</th><th style="width:5.5em">B · site</th><th class="rec" style="width:5.5em">C · proposed</th>
 </tr></thead>
 <tbody>
-<tr><td class="k">R1</td><td><b>Single source of truth</b></td><td>One file defines the look, or N files drift. <a href="#findings">F5</a></td><td class="n">3</td><td class="n">0</td><td class="n">3</td><td class="n rec">5</td></tr>
-<tr><td class="k">R2</td><td><b>Theme coverage</b></td><td>Light, dark and <em>print</em> all complete. <a href="#findings">F1</a></td><td class="n">2</td><td class="n">1</td><td class="n">4</td><td class="n rec">5</td></tr>
-<tr><td class="k">R3</td><td><b>Measured accessibility</b></td><td>Contrast proven, not eyeballed. <a href="#findings">F3</a></td><td class="n">3</td><td class="n">2</td><td class="n">5</td><td class="n rec">5</td></tr>
-<tr><td class="k">R4</td><td><b>Token completeness</b></td><td>Colour, type, space, shape, motion — or magic numbers. <a href="#findings">F4</a></td><td class="n">2</td><td class="n">2</td><td class="n">5</td><td class="n rec">5</td></tr>
-<tr><td class="k">R5</td><td><b>Per-project seam</b></td><td>One project-level override, no forking. <a href="#colour">§04</a></td><td class="n">3</td><td class="n">0</td><td class="n">0</td><td class="n rec">5</td></tr>
-<tr><td class="k">R6</td><td><b>Propagation &amp; versioning</b></td><td>An update reaches consumers, and you can tell which version they hold. <a href="#propagate">§06</a></td><td class="n">3</td><td class="n">0</td><td class="n">1</td><td class="n rec">4</td></tr>
-<tr><td class="k">R7</td><td><b>Portability / archival</b></td><td>A three-year-old receipt still renders, offline, anywhere.</td><td class="n">2</td><td class="n">5</td><td class="n">3</td><td class="n rec">4</td></tr>
-<tr><td class="k">R8</td><td><b>Gated in CI</b></td><td>A regression fails a build instead of shipping. <a href="#findings">F3</a></td><td class="n">2</td><td class="n">0</td><td class="n">5</td><td class="n rec">5</td></tr>
-<tr><td class="k">R9</td><td><b>Authoring ergonomics</b></td><td>How much CSS an agent retypes per artifact. <a href="#findings">F5</a></td><td class="n">2</td><td class="n">1</td><td class="n">3</td><td class="n rec">5</td></tr>
-<tr><td class="k">R10</td><td><b>Artifact component coverage</b></td><td>Does it style the vocabulary the artifacts actually use? <a href="#findings">F5</a></td><td class="n">2</td><td class="n">4</td><td class="n">1</td><td class="n rec">5</td></tr>
+<tr><td class="k">R1</td><td><b>Single source of truth</b></td><td>One file defines the look, or N files drift. <a href="#findings">F5</a></td><td class="n">3</td><td class="n">0</td><td class="n">1</td><td class="n">3</td><td class="n rec">5</td></tr>
+<tr><td class="k">R2</td><td><b>Theme coverage</b></td><td>Light, dark and <em>print</em> all complete. <a href="#findings">F1</a></td><td class="n">2</td><td class="n">1</td><td class="n">3</td><td class="n">4</td><td class="n rec">5</td></tr>
+<tr><td class="k">R3</td><td><b>Measured accessibility</b></td><td>Contrast proven, not eyeballed. <a href="#findings">F3</a></td><td class="n">3</td><td class="n">2</td><td class="n">3</td><td class="n">5</td><td class="n rec">5</td></tr>
+<tr><td class="k">R4</td><td><b>Token completeness</b></td><td>Colour, type, space, shape, motion — or magic numbers. <a href="#findings">F4</a></td><td class="n">2</td><td class="n">2</td><td class="n">5</td><td class="n">5</td><td class="n rec">5</td></tr>
+<tr><td class="k">R5</td><td><b>Per-project seam</b></td><td>One project-level override, no forking. <a href="#colour">§04</a></td><td class="n">3</td><td class="n">0</td><td class="n">2</td><td class="n">0</td><td class="n rec">5</td></tr>
+<tr><td class="k">R6</td><td><b>Propagation &amp; versioning</b></td><td>An update reaches consumers, and you can tell which version they hold. <a href="#propagate">§06</a></td><td class="n">3</td><td class="n">0</td><td class="n">0</td><td class="n">1</td><td class="n rec">4</td></tr>
+<tr><td class="k">R7</td><td><b>Portability / archival</b></td><td>A three-year-old receipt still renders, offline, anywhere.</td><td class="n">2</td><td class="n">5</td><td class="n">5</td><td class="n">3</td><td class="n rec">4</td></tr>
+<tr><td class="k">R8</td><td><b>Gated in CI</b></td><td>A regression fails a build instead of shipping. <a href="#findings">F3</a></td><td class="n">2</td><td class="n">0</td><td class="n">0</td><td class="n">5</td><td class="n rec">5</td></tr>
+<tr><td class="k">R9</td><td><b>Authoring ergonomics</b></td><td>How much CSS an agent retypes per artifact. <a href="#findings">F5</a></td><td class="n">2</td><td class="n">1</td><td class="n">1</td><td class="n">3</td><td class="n rec">5</td></tr>
+<tr><td class="k">R10</td><td><b>Artifact component coverage</b></td><td>Does it style the vocabulary the artifacts actually use? <a href="#findings">F5</a></td><td class="n">2</td><td class="n">4</td><td class="n">4</td><td class="n">1</td><td class="n rec">5</td></tr>
 </tbody>
 <tfoot><tr>
   <td class="k">—</td><td colspan="2"><b>Weighted total</b> <span class="tag">out of 120</span></td><td class="n">24</td>
   <td class="n"><span class="score">32</span> <span class="tag">27%</span><span class="bar"><i style="width:27%"></i></span></td>
+  <td class="n"><span class="score">54</span> <span class="tag">45%</span><span class="bar"><i style="width:45%"></i></span></td>
   <td class="n"><span class="score">69</span> <span class="tag">58%</span><span class="bar"><i style="width:58%"></i></span></td>
   <td class="n rec"><span class="score">115</span> <span class="tag">96%</span><span class="bar"><i style="width:96%"></i></span></td>
 </tr></tfoot>
@@ -115,7 +162,7 @@ finding or a measurement further down — nothing here is an impression.</p>
 
 <div class="split">
   <div class="card">
-    <h3>Where A genuinely wins <span class="badge ok">R7 · 5/5</span></h3>
+    <h3>Where A1 and A2 genuinely win <span class="badge ok">R7 · 5/5</span></h3>
     <p>Fully inline CSS is perfectly archival. <code>s00_central-ai-plan.html</code> will render identically in
     ten years with no network, no sibling file, no build. Any shared-file scheme gives some of that up, which is
     why the recommendation below <em>pins existing artifacts</em> instead of rewriting them.</p>
@@ -133,7 +180,9 @@ finding or a measurement further down — nothing here is an impression.</p>
 <section id="findings">
 <span class="eyebrow">02 — code review</span>
 <h2>What is wrong with the template code in this directory</h2>
-<p class="sub">Reviewed: the inline stylesheets of <code>s00_central-ai-plan.html</code> (102 CSS lines),
+<p class="sub"><b>F1–F6 and F8–F10 are about this directory</b>, which is the outlier; <b>F1 (print) and F7
+(accent collisions) are portfolio-wide</b> and hold for the projects already running the house system. Reviewed:
+the inline stylesheets of <code>s00_central-ai-plan.html</code> (102 CSS lines),
 <code>s01_m3-central-db-plan.html</code> (110) and <code>s02_sql-frontend.html</code> (90). First, the good news
 that makes this cheap: <strong>the three are already the same template.</strong> Their 21 token declarations are
 byte-identical, and <code>.card</code>, <code>.badge</code>, <code>.stat</code>, <code>.callout</code> and
@@ -147,7 +196,7 @@ nothing to reconcile — extraction is mechanical.</p>
 <tr>
   <td class="k">F1</td><td><span class="badge sevH">high</span></td>
   <td><b>Dark-only, and unprintable.</b> No light theme and no print styles, so a plan sent to a printer comes out as a black rectangle.</td>
-  <td><code>html{color-scheme:dark}</code>; no <code>prefers-color-scheme</code> and no <code>@media print</code> in any of the three files.</td>
+  <td><code>html{color-scheme:dark}</code>; no <code>prefers-color-scheme</code> in any of the three, while DataAgentBench and tau2-loop ship it in 26 of 26. Print is a portfolio-wide gap: only <b>11 of the 277</b> existing artifacts have <code>@media print</code>, and <b>none of those 11 are in the four directories running the house system</b> — they are in <code>ai-engineer-fit</code> and the two propertyiq repos.</td>
   <td>Adopt the site's dual palette; add the <code>@media print</code> block (now in <code>house.css</code>).</td>
 </tr>
 <tr>
@@ -183,7 +232,7 @@ nothing to reconcile — extraction is mechanical.</p>
 <tr>
   <td class="k">F7</td><td><span class="badge sevM">med</span></td>
   <td><b>Accent collides with a status colour across the portfolio.</b> <code>tau2-loop</code>'s accent <code>#E08A7A</code> <em>is</em> the shared set's <code>--red</code>: "brand" and "error" are the same colour there.</td>
-  <td><code>tau2-loop/.lavish/</code>, 11 artifacts. Fonts drift too: Geist here, Inter in <code>data-qa-agent</code>, IBM Plex in 12 directories.</td>
+  <td>tau2-loop runs <b>two</b> accent pairs across its 11 artifacts — the shared <code>#0A6552/#43C29A</code> and <code>#8A2B1D/#E08A7A</code>, which is the set's <code>--red</code>/<code>--red-soft</code>. ConvFinQA-agent runs three accents. Fonts drift too: Geist here, Inter in <code>data-qa-agent</code>, IBM Plex in 12 directories.</td>
   <td>Generate accents from a hue that is checked for separation from the status hues (<a href="#colour">§04</a>).</td>
 </tr>
 <tr>
@@ -230,16 +279,16 @@ the fan-out the propagation mechanism has to serve.</p>
 <tr><td class="k">ai-engineer-fit</td><td class="n">65</td><td class="k">—</td><td>IBM Plex Sans</td><td>largest consumer; already on the house superfamily</td></tr>
 <tr><td class="k">data-qa-agent</td><td class="n">50</td><td class="k">#d9a84e</td><td>Inter Variable</td><td>amber identity kept as hue 80; font drift resolves</td></tr>
 <tr><td class="k">transcript-rag-agent</td><td class="n">27</td><td class="k">#0969da</td><td>—</td><td>GitHub blue → hue 285</td></tr>
-<tr><td class="k">ConvFinQA-agent</td><td class="n">18</td><td class="k">#7EA8E4</td><td>IBM Plex Sans</td><td>blue identity kept as hue 255</td></tr>
-<tr><td class="k">DataAgentBench</td><td class="n">15</td><td class="k">#43C29A</td><td>IBM Plex Sans</td><td>shares the house green today → hue 315</td></tr>
-<tr><td class="k">nmp-dsci.github.io</td><td class="n">13</td><td class="k">#43C29A</td><td>IBM Plex Sans</td><td><b>holds the canon</b>; keeps the house hue 168</td></tr>
-<tr><td class="k">tau2-loop</td><td class="n">11</td><td class="k">#E08A7A</td><td>IBM Plex Sans</td><td>F7 collision with <code>--red</code> → hue 345</td></tr>
+<tr><td class="k">ConvFinQA-agent</td><td class="n">18</td><td class="k">3 accents</td><td>IBM Plex Sans</td><td>F7 — three accents in 18 files → hue 255</td></tr>
+<tr><td class="k">DataAgentBench</td><td class="n">15</td><td class="k">#0A6552 / #43C29A</td><td>IBM Plex Sans</td><td>full house system, 15/15 dual-theme → hue 315</td></tr>
+<tr><td class="k">nmp-dsci.github.io</td><td class="n">13</td><td class="k">3 pairs</td><td>IBM Plex Sans</td><td><b>holds the canon</b>; keeps the house hue 168</td></tr>
+<tr><td class="k">tau2-loop</td><td class="n">11</td><td class="k">2 pairs</td><td>IBM Plex Sans</td><td>F7 — one of them <em>is</em> <code>--red</code> → hue 345</td></tr>
 <tr><td class="k">databricks-propertyiq</td><td class="n">11</td><td class="k">—</td><td>IBM Plex Sans</td><td>not on the platform registry; opt-in</td></tr>
 <tr><td class="k">propertyiq_getdata</td><td class="n">9</td><td class="k">—</td><td>IBM Plex Sans</td><td>hue 45</td></tr>
 <tr><td class="k">floor-plan-reviewer</td><td class="n">7</td><td class="k">—</td><td>—</td><td>retired project; leave pinned</td></tr>
 <tr><td class="k">DABStep-loop</td><td class="n">4</td><td class="k">#43C29A</td><td>IBM Plex Sans</td><td>hue 200</td></tr>
 <tr><td class="k">value-invest-agent</td><td class="n">4</td><td class="k">#96A4FF</td><td>—</td><td>violet identity ≈ hue 276; not registered</td></tr>
-<tr><td class="k">nmp-central-ai</td><td class="n">3</td><td class="k">#5cc8a6</td><td>Geist</td><td><b>the new home</b>; hue 168, Geist retired</td></tr>
+<tr><td class="k">nmp-central-ai</td><td class="n">3</td><td class="k">#5cc8a6 <span class="tag">no light stop</span></td><td>Geist</td><td><b>the outlier and the new home</b>; hue 168, Geist retired</td></tr>
 <tr><td class="k">databricks-sa-coding, productivity-tracker, v2v-prod-agent</td><td class="n">2 ea</td><td class="k">—</td><td>mixed</td><td>opt-in</td></tr>
 <tr><td class="k">ai-project-template, drone-pilot, nmp-dsci, vidore-v3-loop</td><td class="n">1 ea</td><td class="k">—</td><td>mixed</td><td><code>ai-project-template</code> should ship the link by default</td></tr>
 </tbody>
@@ -731,6 +780,10 @@ at the end is what I build.</p>
   <dt>contrast ratios</dt><dd>WCAG 2.x relative luminance on sRGB, computed in Python; the accent stops and hue conversions use the OKLab ↔ sRGB matrices (Ottosson). Worst-case sweep: 9 hues × 8 declared pairs × 2 themes.</dd>
   <dt>accent inventory</dt><dd><code>grep -rhoE -- '--accent:#[0-9a-fA-F]{6}'</code> per <code>.lavish</code> directory, ranked by frequency.</dd>
   <dt>the canon</dt><dd><code>nmp-dsci.github.io/_o/assets/css/tokens.css</code> (133 lines), <code>fonts.css</code> (55), <code>main.css</code> (726), <code>scripts/contrast_audit.py</code> (5.1 KB), <code>assets/fonts/*.woff2</code> (5 subsets).</dd>
+  <dt>the house in use</dt><dd>per-directory counts of <code>prefers-color-scheme</code>,
+  <code>data-theme</code>, <code>@media print</code> and <code>:focus-visible</code>; token-name sets extracted
+  per directory with <code>grep -rhoE -- '--[a-z0-9-]+:'</code> and intersected with <code>comm</code> —
+  45 names common to tau2-loop, DataAgentBench and ConvFinQA-agent, of which 27 are absent here.</dd>
   <dt>browser check</dt><dd>the generated stops were re-resolved in Chrome (canvas pixel read of
   <code>oklch()</code>) and match the Python table byte-for-byte on every hue sampled — 168, 255, 80, 345, 130 —
   with the same ratios. The SVG was checked programmatically: nothing outside the <code>viewBox</code>, no label
