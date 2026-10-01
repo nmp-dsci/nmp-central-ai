@@ -1,12 +1,12 @@
 # CLAUDE.md — nmp-central-ai
 
-> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D24, runbooks). The
+> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D32, runbooks). The
 > outward contract is [`PLATFORM.md`](./PLATFORM.md); the plan of record is
 > `ai_specs/s00_project_plan.md`. This file is a pointer plus the rules that bite.
 
 ## Quick reference
 
-- `make up` · `make status` · `make mlflow-init` · `make db-init` · `make db-ui` · `make check` · `make install-agent-context`
+- `make up` · `make status` · `make mlflow-init` · `make db-init` · `make db-ui` · `make house-ui` · `make check` · `make install-agent-context`
 - `make setup && make lint && make test` for the scripts (uv, ruff, mypy strict, pytest)
 - `make plugin-validate` after touching `plugins/` or `.claude-plugin/`
 
@@ -29,4 +29,8 @@
   the only proof. Treat a red row as a platform bug until shown otherwise.
 - **Public repo.** No secrets, account ids, SSO URLs or real hostnames in code or docs.
   `.env.example` carries names and local-only defaults.
+- **The house UI is one file (D25–D32).** `agent/house/house.css` is the canon; a project owns
+  exactly one thing, `ui.hue` in the registry. Never hand-edit a vendored `.lavish/house.css` —
+  `make install-house-ui` refuses an edited copy, and `make house-ui-check` reports drift. Never put
+  a raw hex in a component rule; add a token and a `@contrast` line instead.
 - Never add `.lavish/` to `.gitignore`.

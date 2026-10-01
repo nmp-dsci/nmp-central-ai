@@ -21,6 +21,8 @@ make db-init       # create every project database, role and extension in the re
 make db-ui         # browse + query every project database in the browser (DbGate, http://127.0.0.1:5050)
 make status        # health
 make check         # prove each registered sibling logs to the server and its database lives here (no paid LLM calls)
+make house-ui      # render each project's accent from registry ui.hue and gate it on WCAG AA
+make install-house-ui        # copy the house UI into every project's .lavish/ (writes into siblings)
 make install-agent-context   # portfolio-level CLAUDE.md / AGENTS.md so agents see PLATFORM.md
 ```
 
