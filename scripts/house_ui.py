@@ -118,7 +118,7 @@ def cmd_render(reg: Registry, out: Path | None) -> int:
     target.mkdir(parents=True, exist_ok=True)
     for p in reg.themed:
         (target / f"{p.id}.css").write_text(render_project_css(p, version))
-    print(f"rendered {len(reg.themed)} project stylesheets into {target.relative_to(ROOT)}")
+    print(f"rendered {len(reg.themed)} project stylesheets into {target}")
     return 0
 
 
