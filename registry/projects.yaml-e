@@ -84,6 +84,8 @@ projects:
     ui:
       hue: 200   # teal-blue, clear of the house green
     status: migrated
+    ui:
+      hue: 200   # teal-blue, clear of the house green
     mlflow:
       client: python
       experiments: [dabstep-loop]
