@@ -101,7 +101,7 @@ projects:
     status: migrated
     mlflow:
       client: python
-      experiments: [tau2-loop]
+      experiments: [tau2-loop, tau2-loop/judge]   # tau2-loop/judge: the s11 tool judge — golden answers (kind=judge-gold, with the evaluation dataset tau2-loop.airline.golden), replays, sweeps and loop cycles
       registered_models: [tau2-loop-airline, tau2-loop-retail, tau2-loop-telecom, tau2-loop-banking_knowledge]
       prompts: [tau2-loop.airline.system, tau2-loop.retail.system, tau2-loop.telecom.system, tau2-loop.banking_knowledge.system]   # the promoted system prompt, one version per agent fingerprint (s04 M2)
       verify: runs
