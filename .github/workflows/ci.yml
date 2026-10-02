@@ -12,6 +12,12 @@ jobs:
       - run: uv run ruff check . && uv run ruff format --check .
       - run: uv run mypy scripts
       - run: uv run pytest -q
+      # D31: the palette is a build artifact, so a hue that misses AA fails here
+      # rather than on someone's screen. Covers both themes x every declared hue.
+      - run: uv run scripts/house_ui_audit.py
+      # the vendored copies live in sibling repos, so CI can only prove the canon
+      # renders; `make house-ui-check` reports drift on a developer's machine.
+      - run: uv run scripts/house_ui.py render --out "$RUNNER_TEMP/house" && uv run scripts/house_ui.py table
   stack:
     runs-on: ubuntu-latest
     steps:

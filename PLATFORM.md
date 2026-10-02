@@ -5,7 +5,7 @@ contract an agent or a person needs to use them. It is imported into every
 sibling's context by the portfolio-level `CLAUDE.md` / `AGENTS.md`.
 
 **Rule zero: never start your own MLflow, Postgres, MinIO, database UI or gateway inside a
-project. Use these.**
+project, and never invent your own design tokens for an artifact. Use these.**
 
 ## Status
 
@@ -27,6 +27,18 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
 | Required run tags | `project`, `git_sha`, `env` (`local` \| `aws`), `billing` where relevant |
 | Experiment ids | `make mlflow-init` here prints them and writes `.mlflow-ids.env`. **Never hardcode an id.** |
 | Registry | `registry/projects.yaml` is the source of truth for who uses what |
+
+## House UI — one look across the portfolio
+
+| | value |
+|---|---|
+| What it is | `agent/house/house.css`: design tokens (colour in light **and** dark, type scale, spacing ladder, shape, motion) plus the component vocabulary the `.lavish/` artifacts already share, and self-hosted IBM Plex (OFL 1.1) |
+| Your project's colour | **one integer**: `ui: {hue: N}` in `registry/projects.yaml`. Both theme stops are generated from it; hues stay 30° apart. Never pick a hex. |
+| Install it | `make install-house-ui` writes `house.css`, `fonts/` and a one-line `project.css` into each project's `.lavish/`. An edited copy is refused unless `FORCE=1`. |
+| Use it | `<link rel="stylesheet" href="house.css">` then `<link rel="stylesheet" href="project.css">`. Nothing else — no inline `<style>` block of tokens. |
+| Verify | `make house-ui` (renders + audits), `make house-ui-check` (which copies are stale). `make check` runs both. |
+| The contract | every legible pair is declared in `@contrast` lines in `house.css` and checked in both themes for every hue. A palette that misses WCAG AA fails the build (D31). |
+| Existing artifacts | the ones written before the house UI keep their inline CSS and are not rewritten (D30). |
 
 ## Rules for agents working in a sibling project
 

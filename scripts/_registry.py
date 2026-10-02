@@ -17,6 +17,7 @@ DBGATE_ENV_PATH = ROOT / ".dbgate.env"  # the DB UI's connection list (D20), env
 
 
 SUPERUSER = "superuser"  # the `env:` value that means "the cluster superuser" (D16)
+HUE_SEPARATION = 30  # degrees; two projects' accents must be told apart at a glance (D28/D32)
 ROLE_OPTIONS = {"BYPASSRLS", "NOBYPASSRLS", "CREATEDB", "NOCREATEDB", "INHERIT", "NOINHERIT"}
 
 
@@ -27,6 +28,13 @@ class DbEnv:
     var: str
     role: str  # a declared role name, or SUPERUSER
     scheme: str = "postgresql"
+
+
+@dataclass(frozen=True)
+class Ui:
+    """A project's house-UI identity (D28). One integer; both theme stops derive from it."""
+
+    hue: int
 
 
 @dataclass
@@ -61,6 +69,7 @@ class Project:
     smoke: str = ""
     notes: str = ""
     database: Database | None = None
+    ui: Ui | None = None
 
     @property
     def on_platform(self) -> bool:
@@ -87,6 +96,11 @@ class Registry:
     @property
     def databases(self) -> list[Project]:
         return [p for p in self.projects if p.database is not None]
+
+    @property
+    def themed(self) -> list[Project]:
+        """Projects that declare a house-UI hue (D28)."""
+        return [p for p in self.projects if p.ui is not None]
 
 
 class RegistryError(ValueError):
@@ -139,6 +153,46 @@ def _parse_database(raw: dict[str, Any]) -> Database:
     )
 
 
+def _parse_ui(raw: dict[str, Any], pid: str) -> Ui:
+    """`ui: {hue: N}` — the only thing a project declares about its look (D28)."""
+    if "hue" not in raw:
+        raise RegistryError(f"{pid}: ui block must declare `hue`")
+    hue = raw["hue"]
+    if not isinstance(hue, int) or isinstance(hue, bool):
+        raise RegistryError(f"{pid}: ui.hue must be a whole number of degrees, got {hue!r}")
+    if not 0 <= hue < 360:
+        raise RegistryError(f"{pid}: ui.hue must be in [0, 360), got {hue}")
+    return Ui(hue=hue)
+
+
+def hue_distance(a: int, b: int) -> int:
+    """Shortest way round the colour wheel, so 350 and 10 are 20 degrees apart, not 340."""
+    d = abs(a - b) % 360
+    return min(d, 360 - d)
+
+
+def validate_ui(reg: Registry) -> None:
+    """Hues are portfolio-global like roles: two projects may not look alike (D28).
+
+    Only project hues are checked against each other. They are deliberately *not* held
+    away from the status hues (amber, red, blue): those are fixed, appear only on
+    badges and callouts, and keeping 30 degrees clear of all three would remove about
+    half the wheel. What F7 found was a project using a status colour's exact value,
+    which `house_ui_audit.py` checks on the rendered hex instead.
+    """
+    seen: list[tuple[str, int]] = []
+    for p in reg.projects:
+        if p.ui is None:
+            continue
+        for other_id, other_hue in seen:
+            if hue_distance(p.ui.hue, other_hue) < HUE_SEPARATION:
+                raise RegistryError(
+                    f"{p.id}: ui.hue {p.ui.hue} is within {HUE_SEPARATION} degrees of "
+                    f"{other_id}'s {other_hue}; the two accents would not be distinguishable"
+                )
+        seen.append((p.id, p.ui.hue))
+
+
 def validate_databases(reg: Registry) -> None:
     """Role and database names are cluster-global (D15): refuse a registry that reuses one."""
     seen_db: dict[str, str] = {}
@@ -184,6 +238,7 @@ def load_registry(path: Path = REGISTRY_PATH) -> Registry:
                 smoke=(ml.get("smoke") or "").strip(),
                 notes=(item.get("notes") or "").strip(),
                 database=_parse_database(db_raw) if db_raw else None,
+                ui=_parse_ui(item["ui"], item["id"]) if item.get("ui") else None,
             )
         )
     reg = Registry(
@@ -197,6 +252,7 @@ def load_registry(path: Path = REGISTRY_PATH) -> Registry:
         postgres_db=plat.get("postgres_db", "nmp"),
     )
     validate_databases(reg)
+    validate_ui(reg)
     return reg
 
 

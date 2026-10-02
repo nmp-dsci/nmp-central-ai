@@ -36,6 +36,8 @@ projects:
   - id: PLATFORM
     name: nmp-central-ai
     path: .
+    ui:
+      hue: 168   # the house hue: the platform and the public site share it
     status: migrated
     mlflow: { client: external }          # the server itself; nothing to smoke
     database:
@@ -52,6 +54,8 @@ projects:
     name: convfinqa-agent
     path: ../ConvFinQA-agent
     status: migrated           # pending | migrated | deferred | excluded | external
+    ui:
+      hue: 255   # blue — the accent these artifacts already use
     mlflow:
       client: python
       experiments: [convfinqa, convfinqa-optimization]
@@ -77,6 +81,8 @@ projects:
   - id: P2
     name: dabstep-loop
     path: ../DABStep-loop
+    ui:
+      hue: 200   # teal-blue, clear of the house green
     status: migrated
     mlflow:
       client: python
@@ -99,6 +105,8 @@ projects:
     name: tau2-loop
     path: ../tau2-loop
     status: migrated
+    ui:
+      hue: 345   # rose — moved off #E08A7A, which is the shared --red (F7)
     mlflow:
       client: python
       experiments: [tau2-loop, tau2-loop/judge]   # tau2-loop/judge: the s11 tool judge — golden answers (kind=judge-gold, with the evaluation dataset tau2-loop.airline.golden), replays, sweeps and loop cycles
@@ -135,6 +143,8 @@ projects:
   - id: P4
     name: transcript-rag-agent
     path: ../transcript-rag-agent
+    ui:
+      hue: 285   # indigo
     status: deferred           # moves right after M1 (M1b)
     mlflow:
       client: python
@@ -147,6 +157,8 @@ projects:
     name: data-qa-agent
     path: ../data-qa-agent
     status: migrated
+    ui:
+      hue: 80   # amber — the accent these artifacts already use
     mlflow:
       client: otlp
       experiments: [data-qa/evals]
@@ -203,6 +215,8 @@ projects:
     name: dataagentbench
     path: ../DataAgentBench
     status: migrated           # MLflow: its client already defaulted to the central server
+    ui:
+      hue: 315   # violet
     mlflow:
       client: python
       experiments: [dataagentbench/evals]
@@ -240,6 +254,8 @@ projects:
     name: propertyiq-getdata
     path: ../propertyiq_getdata
     status: migrated
+    ui:
+      hue: 45   # orange
     mlflow: { client: external }          # ETL only; no MLflow use
     database:
       name: propertyiq
@@ -263,6 +279,8 @@ projects:
     name: vidore-v3-loop
     path: ../vidore-v3-loop
     status: migrated
+    ui:
+      hue: 130   # lime
     mlflow:
       client: python
       experiments: [vidore-v3-loop/evals]

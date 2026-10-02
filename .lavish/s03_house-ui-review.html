@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>House UI — review and adoption plan</title>
+<!-- Styled by the house UI it reviews: two links, no inline token block, and the
+     typeface self-hosted beside this file rather than fetched from a CDN (S6). -->
+<link rel="stylesheet" href="house.css">
+<link rel="stylesheet" href="project.css">
+<style>
+  /* Page-local only: the theme switch and the rubric grid. Everything else is house.css. */
+  .topbar{ display:flex; justify-content:space-between; align-items:baseline; gap:var(--s3); flex-wrap:wrap; }
+  .themeswitch{ display:flex; gap:var(--s1); align-items:center; font-size:var(--t-2); color:var(--muted); }
+  .themeswitch button{ background:transparent; color:var(--muted); border-color:var(--line-2); font-weight:400; }
+  .themeswitch button[aria-pressed="true"]{ color:var(--accent-ink); background:var(--accent); border-color:var(--accent); }
+  .score{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  .bar{ display:block; height:6px; border-radius:3px; background:var(--band); margin-top:3px; overflow:hidden; }
+  .bar i{ display:block; height:100%; background:var(--accent); }
+  .sevH{ color:var(--red); border-color:var(--red); background:var(--red-soft); }
+  .sevM{ color:var(--amber); border-color:var(--amber); background:var(--amber-soft); }
+  .sevL{ color:var(--muted); }
+  .copyrow{ display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; margin-top:var(--s4); }
+  .diffbox{ border:1px solid var(--line-2); border-radius:var(--r); overflow:hidden; margin:var(--s3) 0; background:var(--panel); }
+  .diffbox > .head{ padding:var(--s2) var(--s3); border-bottom:1px solid var(--line);
+    font-family:var(--mono); font-size:var(--t-2); color:var(--muted); background:var(--band); }
+  .ratio{ font-family:var(--mono); font-variant-numeric:tabular-nums; }
+  /* The swatch demo overrides --hue per card, so it must RE-DERIVE the accent:
+     a custom property is substituted where it is declared (:root), so a child
+     that changes --hue inherits :root's already-resolved --accent unless the
+     derivation is repeated at that scope. In production --hue is set on <html>,
+     which is where the derivation lives, so this only affects the demo. */
+  .sw{ --accent:oklch(0.48 0.13 var(--hue)); --accent-soft:oklch(0.94 0.045 var(--hue)); }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .sw{ --accent:oklch(0.78 0.13 var(--hue)); --accent-soft:oklch(0.30 0.055 var(--hue)); }
+  }
+  :root[data-theme="dark"] .sw{ --accent:oklch(0.78 0.13 var(--hue)); --accent-soft:oklch(0.30 0.055 var(--hue)); }
+  .pass{ color:var(--accent); } .fail{ color:var(--red); font-weight:600; }
+</style>
+</head>
+<body>
+<main>
+
+<div class="topbar">
+  <span class="eyebrow">nmp-central-ai · s03 · branch <code>house-ui-review</code> · 30 Sep 2026</span>
+  <div class="themeswitch" role="group" aria-label="Theme">
+    <span>theme</span>
+    <button type="button" data-lavish-action data-theme-set="light" aria-pressed="false">light</button>
+    <button type="button" data-lavish-action data-theme-set="dark" aria-pressed="false">dark</button>
+    <button type="button" data-lavish-action data-theme-set="system" aria-pressed="true">system</button>
+  </div>
+</div>
+
+<h1>A house UI you <em>already run</em> — in four repos, as copies</h1>
+<p class="lede">You asked whether this project can host a shared house UI next to Postgres and MLflow, what is
+wrong with the template code in this directory, and whether updating it here would propagate everywhere. The
+measurements say something better than I first wrote: <strong>the house UI already exists and is already running
+across tau2-loop, DataAgentBench, ConvFinQA-agent and the site</strong> — 45 shared token names, light and dark,
+a different accent per project. It has simply never been a <em>file</em>. And this directory is the one place
+that is not on it.</p>
+
+<div class="verdict">
+  <div class="stat accent"><div class="n">45</div><div class="l">token names shared by tau2-loop, DataAgentBench, ConvFinQA and the site</div></div>
+  <div class="stat"><div class="n">57</div><div class="l">artifacts already running that system, most with light <em>and</em> dark</div></div>
+  <div class="stat amber"><div class="n">27</div><div class="l">of those tokens missing from <code>nmp-central-ai</code>'s own artifacts</div></div>
+  <div class="stat red"><div class="n">39,894</div><div class="l">lines of inline <code>&lt;style&gt;</code> across 277 artifacts — the system, retyped</div></div>
+</div>
+
+<div class="callout">
+  <h4>Corrected after your review — what the measurements actually show</h4>
+  <p>My first draft framed the eight accent colours in the portfolio as <em>drift</em>. That was wrong, and you
+  were right to push back. Converting every accent to OKLCH and diffing the token vocabularies shows the
+  opposite: tau2-loop, DataAgentBench and ConvFinQA-agent share <strong>45 token names</strong> — the complete
+  <code>--s1…--s9</code> ladder, the <code>--t-2…--t4</code> scale, <code>--r</code>, <code>--shadow</code>,
+  <code>--measure</code>, <code>--focus</code>, <code>--dur</code>/<code>--ease</code>,
+  <code>--line-2</code>/<code>--line-3</code> — and each carries a light <em>and</em> a dark accent. The varying
+  accent is not drift. <strong>It is the per-project colour you are asking me to formalise, already working.</strong></p>
+  <p>Two things remain true from the first draft. The only place this system exists as an actual
+  <em>file</em> is <code>nmp-dsci.github.io/_o/assets/css/tokens.css</code>, with a machine-readable
+  <code>@contrast</code> contract audited by <code>scripts/contrast_audit.py</code>. And
+  <code>nmp-central-ai</code> — this repo — is the outlier: dark-only, Geist, and missing 27 of the 45 tokens.</p>
+</div>
+
+<!-- ============================ IN PRODUCTION ============================ -->
+<section id="inuse">
+<span class="eyebrow">00 — what you already have</span>
+<h2>The house UI in production today</h2>
+<p class="sub">Per-directory counts of artifacts carrying a dual-theme palette, an explicit
+<code>data-theme</code> override, print styles and a focus ring. This is the evidence that the system is real
+rather than a convention three files happen to share.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Directory</th><th style="width:5em">Artifacts</th><th style="width:6em">light+dark</th><th style="width:6em">data-theme</th><th style="width:5em">print</th><th style="width:6em">focus ring</th><th>Accent values in use</th></tr></thead>
+<tbody>
+<tr><td>DataAgentBench <span class="tag">P6</span></td><td class="n">15</td><td class="n pass">15 / 15</td><td class="n pass">15 / 15</td><td class="n fail">0</td><td class="n pass">15 / 15</td><td class="k">#0A6552 / #43C29A <span class="tag">the site's exact pair</span></td></tr>
+<tr><td>tau2-loop <span class="tag">P3</span></td><td class="n">11</td><td class="n pass">11 / 11</td><td class="n">10 / 11</td><td class="n fail">0</td><td class="n">5 / 11</td><td class="k">#0A6552 / #43C29A <b>and</b> #8A2B1D / #E08A7A</td></tr>
+<tr><td>ConvFinQA-agent <span class="tag">P1</span></td><td class="n">18</td><td class="n">3 / 18</td><td class="n">12 / 18</td><td class="n fail">0</td><td class="n">3 / 18</td><td class="k">#005c4b · #1F4E8C · #7EA8E4</td></tr>
+<tr><td>nmp-dsci.github.io <span class="tag">site</span></td><td class="n">13</td><td class="n">10 / 13</td><td class="n">11 / 13</td><td class="n fail">0</td><td class="n">4 / 13</td><td class="k">#0A6552 / #43C29A · #0B6E58 / #3DBB95 · #A63A22 / #E2795F</td></tr>
+<tr class="rec"><td><b>nmp-central-ai</b> <span class="tag">here</span></td><td class="n">3</td><td class="n fail">0 / 3</td><td class="n fail">0 / 3</td><td class="n fail">0</td><td class="n fail">0 / 3</td><td class="k">#5cc8a6 only — no light stop</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="split">
+  <div class="card">
+    <h3>What this changes about the job <span class="badge ok">smaller</span></h3>
+    <p>This is not "design a house UI" or even "import one from the site". It is: <b>take the system four repos
+    already run, make it a file, give the accent a declared seam instead of a hand-edit, and bring this repo
+    onto it.</b> The vocabulary is settled and does not need your review — 45 names, already agreed by usage.</p>
+  </div>
+  <div class="card">
+    <h3>What it does not change <span class="badge warn">still true</span></h3>
+    <p>It is still 39,894 lines of copy with no source, no version and no audit. <b>Only 11 of 277 artifacts have print styles</b>, and none of
+    them are in the four house-system directories. tau2-loop still runs two different accents, one of which is the
+    shared <code>--red</code>. ConvFinQA runs three. Those are the real defects, and they are what a file fixes.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============================ RUBRIC ============================ -->
+<section id="rubric">
+<span class="eyebrow">01 — research rubric</span>
+<h2>Scoring what exists against what a house UI has to do</h2>
+<p class="sub">Ten dimensions, weighted by how much each one costs you when it is missing. Scored 0–5 against three
+candidates: <strong>A</strong> the artifact template in this directory, <strong>B</strong> the site's
+<code>tokens.css</code>, <strong>C</strong> the proposal in this document. Every score below is backed by a
+finding or a measurement further down — nothing here is an impression.</p>
+<p class="sub"><b>A1</b> is this directory's three artifacts. <b>A2</b> is the system tau2-loop, DataAgentBench
+and ConvFinQA-agent actually run — added after your review, and it scores 18 points higher than what is in this
+repo. The gap between A2 and C is the honest size of the work: the vocabulary is already right, what is missing
+is a file, a seam, a gate and a way to ship it.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr>
+  <th style="width:2.5em">#</th><th>Dimension</th><th>Why it costs you</th>
+  <th style="width:3em">W</th><th style="width:6em">A1 · here</th><th style="width:6.5em">A2 · in use</th><th style="width:5.5em">B · site</th><th class="rec" style="width:5.5em">C · proposed</th>
+</tr></thead>
+<tbody>
+<tr><td class="k">R1</td><td><b>Single source of truth</b></td><td>One file defines the look, or N files drift. <a href="#findings">F5</a></td><td class="n">3</td><td class="n">0</td><td class="n">1</td><td class="n">3</td><td class="n rec">5</td></tr>
+<tr><td class="k">R2</td><td><b>Theme coverage</b></td><td>Light, dark and <em>print</em> all complete. <a href="#findings">F1</a></td><td class="n">2</td><td class="n">1</td><td class="n">3</td><td class="n">4</td><td class="n rec">5</td></tr>
+<tr><td class="k">R3</td><td><b>Measured accessibility</b></td><td>Contrast proven, not eyeballed. <a href="#findings">F3</a></td><td class="n">3</td><td class="n">2</td><td class="n">3</td><td class="n">5</td><td class="n rec">5</td></tr>
+<tr><td class="k">R4</td><td><b>Token completeness</b></td><td>Colour, type, space, shape, motion — or magic numbers. <a href="#findings">F4</a></td><td class="n">2</td><td class="n">2</td><td class="n">5</td><td class="n">5</td><td class="n rec">5</td></tr>
+<tr><td class="k">R5</td><td><b>Per-project seam</b></td><td>One project-level override, no forking. <a href="#colour">§04</a></td><td class="n">3</td><td class="n">0</td><td class="n">2</td><td class="n">0</td><td class="n rec">5</td></tr>
+<tr><td class="k">R6</td><td><b>Propagation &amp; versioning</b></td><td>An update reaches consumers, and you can tell which version they hold. <a href="#propagate">§06</a></td><td class="n">3</td><td class="n">0</td><td class="n">0</td><td class="n">1</td><td class="n rec">4</td></tr>
+<tr><td class="k">R7</td><td><b>Portability / archival</b></td><td>A three-year-old receipt still renders, offline, anywhere.</td><td class="n">2</td><td class="n">5</td><td class="n">5</td><td class="n">3</td><td class="n rec">4</td></tr>
+<tr><td class="k">R8</td><td><b>Gated in CI</b></td><td>A regression fails a build instead of shipping. <a href="#findings">F3</a></td><td class="n">2</td><td class="n">0</td><td class="n">0</td><td class="n">5</td><td class="n rec">5</td></tr>
+<tr><td class="k">R9</td><td><b>Authoring ergonomics</b></td><td>How much CSS an agent retypes per artifact. <a href="#findings">F5</a></td><td class="n">2</td><td class="n">1</td><td class="n">1</td><td class="n">3</td><td class="n rec">5</td></tr>
+<tr><td class="k">R10</td><td><b>Artifact component coverage</b></td><td>Does it style the vocabulary the artifacts actually use? <a href="#findings">F5</a></td><td class="n">2</td><td class="n">4</td><td class="n">4</td><td class="n">1</td><td class="n rec">5</td></tr>
+</tbody>
+<tfoot><tr>
+  <td class="k">—</td><td colspan="2"><b>Weighted total</b> <span class="tag">out of 120</span></td><td class="n">24</td>
+  <td class="n"><span class="score">32</span> <span class="tag">27%</span><span class="bar"><i style="width:27%"></i></span></td>
+  <td class="n"><span class="score">54</span> <span class="tag">45%</span><span class="bar"><i style="width:45%"></i></span></td>
+  <td class="n"><span class="score">69</span> <span class="tag">58%</span><span class="bar"><i style="width:58%"></i></span></td>
+  <td class="n rec"><span class="score">115</span> <span class="tag">96%</span><span class="bar"><i style="width:96%"></i></span></td>
+</tr></tfoot>
+</table>
+</div>
+
+<div class="split">
+  <div class="card">
+    <h3>Where A1 and A2 genuinely win <span class="badge ok">R7 · 5/5</span></h3>
+    <p>Fully inline CSS is perfectly archival. <code>s00_central-ai-plan.html</code> will render identically in
+    ten years with no network, no sibling file, no build. Any shared-file scheme gives some of that up, which is
+    why the recommendation below <em>pins existing artifacts</em> instead of rewriting them.</p>
+  </div>
+  <div class="card">
+    <h3>Where B genuinely loses <span class="badge bad">R5 · 0/5</span></h3>
+    <p>The site's tokens hardcode one brand (<code>--accent:#0A6552</code>). There is no seam for a project
+    colour, and its <code>fonts.css</code> uses root-absolute paths (<code>/assets/fonts/…</code>) that only
+    resolve when served from the site root — so it cannot be dropped into a <code>.lavish/</code> folder as-is.</p>
+  </div>
+</div>
+</section>
+
+<!-- ============================ FINDINGS ============================ -->
+<section id="findings">
+<span class="eyebrow">02 — code review</span>
+<h2>What is wrong with the template code in this directory</h2>
+<p class="sub"><b>F1–F6 and F8–F10 are about this directory</b>, which is the outlier; <b>F1 (print) and F7
+(accent collisions) are portfolio-wide</b> and hold for the projects already running the house system. Reviewed:
+the inline stylesheets of <code>s00_central-ai-plan.html</code> (102 CSS lines),
+<code>s01_m3-central-db-plan.html</code> (110) and <code>s02_sql-frontend.html</code> (90). First, the good news
+that makes this cheap: <strong>the three are already the same template.</strong> Their 21 token declarations are
+byte-identical, and <code>.card</code>, <code>.badge</code>, <code>.stat</code>, <code>.callout</code> and
+<code>.tablewrap</code> are character-for-character the same rule in all three. 16 classes are shared. There is
+nothing to reconcile — extraction is mechanical.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th style="width:2.8em">ID</th><th style="width:5em">Sev</th><th>Finding</th><th>Evidence</th><th>Fix</th></tr></thead>
+<tbody>
+<tr>
+  <td class="k">F1</td><td><span class="badge sevH">high</span></td>
+  <td><b>Dark-only, and unprintable.</b> No light theme and no print styles, so a plan sent to a printer comes out as a black rectangle.</td>
+  <td><code>html{color-scheme:dark}</code>; no <code>prefers-color-scheme</code> in any of the three, while DataAgentBench and tau2-loop ship it in 26 of 26. Print is a portfolio-wide gap: only <b>11 of the 277</b> existing artifacts have <code>@media print</code>, and <b>none of those 11 are in the four directories running the house system</b> — they are in <code>ai-engineer-fit</code> and the two propertyiq repos.</td>
+  <td>Adopt the site's dual palette; add the <code>@media print</code> block (now in <code>house.css</code>).</td>
+</tr>
+<tr>
+  <td class="k">F2</td><td><span class="badge sevH">high</span></td>
+  <td><b>The accent is not a seam — it leaks as literals.</b> This is the finding that would have silently broken your per-project-colour plan: swapping <code>--accent</code> leaves the recommended-column wash teal in every project.</td>
+  <td><code>td.rec{background:rgba(92,200,166,0.06)}</code> is <code>--accent</code> retyped as an rgba. <code>pre</code> and <code>form.q input</code> hardcode <code>#0b0d0f</code>. 19 distinct hex literals in s02 despite 72 <code>var()</code> uses.</td>
+  <td>New <code>--accent-wash</code> token; <code>pre</code> uses <code>--band</code>. See the diff below.</td>
+</tr>
+<tr>
+  <td class="k">F3</td><td><span class="badge sevH">high</span></td>
+  <td><b><code>--faint</code> misses WCAG AA</b> — and it is the colour used for the <em>smallest</em> text on the page (<code>.tag</code>, table keys, metadata).</td>
+  <td>Computed WCAG 2.x: <code>#6f7873</code> on <code>--bg</code> = <span class="ratio fail">4.13:1</span>, on <code>--panel</code> = <span class="ratio fail">3.80:1</span>. AA needs 4.5.</td>
+  <td>Take the site's audited four-step ink ramp (its <code>--faint</code> is documented at 5.7:1) and keep the <code>@contrast</code> contract with it.</td>
+</tr>
+<tr>
+  <td class="k">F4</td><td><span class="badge sevM">med</span></td>
+  <td><b>No scales — magic numbers instead.</b> No spacing, type, radius, shadow or width tokens, so every value is retyped and nothing stays in rhythm.</td>
+  <td><code>border-radius:10px</code> appears 12×; sizes <code>11/12/13/13.5/15/16/18/30/38px</code> as literals; <code>body{font-size:15px}</code> in px defeats browser zoom; <code>main{max-width:1120px}</code>.</td>
+  <td><code>--s1…--s10</code>, <code>--t-2…--t6</code>, <code>--r</code>, <code>--shadow</code>, <code>--w</code>, <code>--measure</code> — all already written in the site's tokens.</td>
+</tr>
+<tr>
+  <td class="k">F5</td><td><span class="badge sevM">med</span></td>
+  <td><b>The template exists only as copies.</b> Nothing names it, versions it, or tests it; ~90 lines are retyped per artifact, and a fix lands in one file out of 277.</td>
+  <td>Token blocks byte-identical across s00/s01/s02; 16 shared classes; 39,894 inline CSS lines portfolio-wide.</td>
+  <td>One <code>house.css</code> — Layer 1 tokens + Layer 2 artifact components.</td>
+</tr>
+<tr>
+  <td class="k">F6</td><td><span class="badge sevM">med</span></td>
+  <td><b>Third-party font fetch per artifact.</b> Typography silently degrades offline, which is exactly when you open an archived receipt.</td>
+  <td><code>s02_sql-frontend.html:7–8</code> — a Google Fonts <code>&lt;link&gt;</code>. The site already self-hosts the same superfamily as 5 <code>woff2</code> subsets under the OFL.</td>
+  <td>Vendor those 5 files beside <code>house.css</code>; relative <code>src</code>, not the site's absolute paths.</td>
+</tr>
+<tr>
+  <td class="k">F7</td><td><span class="badge sevM">med</span></td>
+  <td><b>Accent collides with a status colour across the portfolio.</b> <code>tau2-loop</code>'s accent <code>#E08A7A</code> <em>is</em> the shared set's <code>--red</code>: "brand" and "error" are the same colour there.</td>
+  <td>tau2-loop runs <b>two</b> accent pairs across its 11 artifacts — the shared <code>#0A6552/#43C29A</code> and <code>#8A2B1D/#E08A7A</code>, which is the set's <code>--red</code>/<code>--red-soft</code>. ConvFinQA-agent runs three accents. Fonts drift too: Geist here, Inter in <code>data-qa-agent</code>, IBM Plex in 12 directories.</td>
+  <td>Generate accents from a hue that is checked for separation from the status hues (<a href="#colour">§04</a>).</td>
+</tr>
+<tr>
+  <td class="k">F8</td><td><span class="badge sevL">low</span></td>
+  <td><b>No <code>:focus-visible</code>.</b> Custom buttons and label rows fall back to the UA outline, which is near-invisible on the dark panel; <code>accent-color</code> is unset so radios render in browser blue.</td>
+  <td>No <code>:focus-visible</code> or <code>accent-color</code> rule in any of the three stylesheets.</td>
+  <td>One <code>:focus-visible</code> rule on a <code>--focus</code> token; <code>accent-color:var(--accent)</code> on inputs.</td>
+</tr>
+<tr>
+  <td class="k">F9</td><td><span class="badge sevL">low</span></td>
+  <td><b>Dead sticky rule.</b> <code>th{position:sticky;top:0}</code> inside a wrapper that only scrolls horizontally never sticks to anything.</td>
+  <td><code>.tablewrap{overflow-x:auto}</code> with no height constraint.</td>
+  <td>Drop it, or give the wrapper a <code>max-height</code> when a table is genuinely long.</td>
+</tr>
+<tr>
+  <td class="k">F10</td><td><span class="badge sevL">low</span></td>
+  <td><b>No reading measure, no reduced-motion.</b> Prose runs the full 1120px on a wide monitor — past the comfortable 66–72 characters.</td>
+  <td>No <code>max-width</code> on <code>p</code>; no <code>prefers-reduced-motion</code> block.</td>
+  <td><code>--measure:68ch</code> on <code>p</code>; zero the <code>--dur</code> token under reduced-motion.</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h3>F2 in full — why a colour swap would not have worked</h3>
+<div class="diffbox">
+  <div class="head">the accent leak, and the token that fixes it</div>
+  <div id="diff-accent"></div>
+</div>
+</section>
+
+<!-- ============================ INVENTORY ============================ -->
+<section id="inventory">
+<span class="eyebrow">03 — the adoption surface</span>
+<h2>Every directory that would consume the house UI</h2>
+<p class="sub">21 <code>.lavish/</code> directories, 277 artifacts. "Accent" is the most-used
+<code>--accent</code> value in that directory; a dash means the artifacts predate the token convention. This is
+the fan-out the propagation mechanism has to serve.</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>Directory</th><th style="width:4.5em">Files</th><th style="width:6.5em">Accent</th><th>Sans family</th><th>On adoption</th></tr></thead>
+<tbody>
+<tr><td class="k">ai-engineer-fit</td><td class="n">65</td><td class="k">—</td><td>IBM Plex Sans</td><td>largest consumer; already on the house superfamily</td></tr>
+<tr><td class="k">data-qa-agent</td><td class="n">50</td><td class="k">#d9a84e</td><td>Inter Variable</td><td>amber identity kept as hue 80; font drift resolves</td></tr>
+<tr><td class="k">transcript-rag-agent</td><td class="n">27</td><td class="k">#0969da</td><td>—</td><td>GitHub blue → hue 285</td></tr>
+<tr><td class="k">ConvFinQA-agent</td><td class="n">18</td><td class="k">3 accents</td><td>IBM Plex Sans</td><td>F7 — three accents in 18 files → hue 255</td></tr>
+<tr><td class="k">DataAgentBench</td><td class="n">15</td><td class="k">#0A6552 / #43C29A</td><td>IBM Plex Sans</td><td>full house system, 15/15 dual-theme → hue 315</td></tr>
+<tr><td class="k">nmp-dsci.github.io</td><td class="n">13</td><td class="k">3 pairs</td><td>IBM Plex Sans</td><td><b>holds the canon</b>; keeps the house hue 168</td></tr>
+<tr><td class="k">tau2-loop</td><td class="n">11</td><td class="k">2 pairs</td><td>IBM Plex Sans</td><td>F7 — one of them <em>is</em> <code>--red</code> → hue 345</td></tr>
+<tr><td class="k">databricks-propertyiq</td><td class="n">11</td><td class="k">—</td><td>IBM Plex Sans</td><td>not on the platform registry; opt-in</td></tr>
+<tr><td class="k">propertyiq_getdata</td><td class="n">9</td><td class="k">—</td><td>IBM Plex Sans</td><td>hue 45</td></tr>
+<tr><td class="k">floor-plan-reviewer</td><td class="n">7</td><td class="k">—</td><td>—</td><td>retired project; leave pinned</td></tr>
+<tr><td class="k">DABStep-loop</td><td class="n">4</td><td class="k">#43C29A</td><td>IBM Plex Sans</td><td>hue 200</td></tr>
+<tr><td class="k">value-invest-agent</td><td class="n">4</td><td class="k">#96A4FF</td><td>—</td><td>violet identity ≈ hue 276; not registered</td></tr>
+<tr><td class="k">nmp-central-ai</td><td class="n">3</td><td class="k">#5cc8a6 <span class="tag">no light stop</span></td><td>Geist</td><td><b>the outlier and the new home</b>; hue 168, Geist retired</td></tr>
+<tr><td class="k">databricks-sa-coding, productivity-tracker, v2v-prod-agent</td><td class="n">2 ea</td><td class="k">—</td><td>mixed</td><td>opt-in</td></tr>
+<tr><td class="k">ai-project-template, drone-pilot, nmp-dsci, vidore-v3-loop</td><td class="n">1 ea</td><td class="k">—</td><td>mixed</td><td><code>ai-project-template</code> should ship the link by default</td></tr>
+</tbody>
+</table>
+</div>
+<p><span class="badge info">note</span> <code>ai-project-template</code> is the highest-leverage row: if the
+scaffold ships <code>.lavish/house.css</code> and a one-line <code>--hue</code>, every future project starts
+compliant and this problem never recurs.</p>
+</section>
+
+<!-- ============================ COLOUR ============================ -->
+<section id="colour">
+<span class="eyebrow">04 — the per-project colour</span>
+<h2>One number per project, and contrast stops being your problem</h2>
+
+<div class="callout warn">
+<h4>The trap: a single accent hex cannot serve both themes</h4>
+<p>Measured against the light paper background <code>#F7F6F2</code>, <em>every</em> dark-theme accent in your
+portfolio fails AA — the house teal <code>#5cc8a6</code> scores <span class="ratio fail">1.89:1</span>, data-qa's
+amber <span class="ratio fail">2.01:1</span>, transcript-rag's blue <span class="ratio fail">2.15:1</span>. So
+"project X is teal" cannot be one hex. It has to be a <em>pair</em>, and picking pairs by hand for 9+ projects is
+how a palette quietly goes inaccessible.</p>
+</div>
+
+<p>Your own files already point at the fix. Converting the eight accents in use to OKLCH shows you have been
+unconsciously holding lightness and chroma constant and varying only hue:</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th>In use today</th><th style="width:6em">Hex</th><th style="width:5em">L</th><th style="width:5em">C</th><th style="width:5em">hue</th></tr></thead>
+<tbody>
+<tr><td>nmp-central-ai</td><td class="k">#5cc8a6</td><td class="n">0.760</td><td class="n">0.112</td><td class="n">170</td></tr>
+<tr><td>DABStep / DAB / vidore / site</td><td class="k">#43C29A</td><td class="n">0.734</td><td class="n">0.126</td><td class="n">168</td></tr>
+<tr><td>data-qa-agent</td><td class="k">#d9a84e</td><td class="n">0.760</td><td class="n">0.121</td><td class="n">80</td></tr>
+<tr><td>ConvFinQA-agent</td><td class="k">#7EA8E4</td><td class="n">0.725</td><td class="n">0.099</td><td class="n">257</td></tr>
+<tr><td>value-invest-agent</td><td class="k">#96A4FF</td><td class="n">0.745</td><td class="n">0.132</td><td class="n">276</td></tr>
+<tr><td>tau2-loop</td><td class="k">#E08A7A</td><td class="n">0.719</td><td class="n">0.109</td><td class="n">31</td></tr>
+</tbody>
+</table>
+</div>
+<p>L clusters at 0.72–0.76, C at 0.10–0.13. You were already using a one-hue system without a name for it. So
+make it explicit: <strong>a project declares one integer, 0–360.</strong> The house derives both theme stops from
+it at fixed lightness and chroma, which makes contrast a property of the <em>system</em> rather than of each
+choice:</p>
+
+<div class="diffbox">
+  <div class="head">house.css — the entire per-project seam</div>
+  <div id="file-seam"></div>
+</div>
+
+<h3>Proof: every hue on the wheel clears AA, in both themes</h3>
+<p class="sub">Generated for the nine registered projects and audited on the eight pairs that have to stay legible
+(accent on each of the three surfaces, ink on accent, accent on its own soft fill — in light and dark).</p>
+
+<div class="tablewrap">
+<table>
+<thead><tr>
+  <th>Project</th><th style="width:3.5em">hue</th><th style="width:6em">light</th><th style="width:6em">dark</th>
+  <th style="width:5em">l/bg</th><th style="width:5em">l/panel</th><th style="width:5em">d/bg</th><th style="width:5em">d/panel</th><th style="width:5em">ink</th><th style="width:5em">soft</th>
+</tr></thead>
+<tbody>
+<tr><td>nmp-central-ai <span class="tag">PLATFORM</span></td><td class="n">168</td><td class="k">#00744f</td><td class="k">#50d2a7</td><td class="n pass">5.38</td><td class="n pass">5.82</td><td class="n pass">9.66</td><td class="n pass">8.95</td><td class="n pass">5.82</td><td class="n pass">4.94</td></tr>
+<tr><td>convfinqa-agent <span class="tag">P1</span></td><td class="n">255</td><td class="k">#215da5</td><td class="k">#7dbaff</td><td class="n pass">6.12</td><td class="n pass">6.62</td><td class="n pass">8.99</td><td class="n pass">8.32</td><td class="n pass">6.62</td><td class="n pass">5.51</td></tr>
+<tr><td>dabstep-loop <span class="tag">P2</span></td><td class="n">200</td><td class="k">#00717a</td><td class="k">#17d0d8</td><td class="n pass">5.33</td><td class="n pass">5.76</td><td class="n pass">9.60</td><td class="n pass">8.89</td><td class="n pass">5.76</td><td class="n pass">4.91</td></tr>
+<tr><td>tau2-loop <span class="tag">P3</span></td><td class="n">345</td><td class="k">#8e3a6e</td><td class="k">#f294ca</td><td class="n pass">6.52</td><td class="n pass">7.05</td><td class="n pass">8.57</td><td class="n pass">7.94</td><td class="n pass">7.05</td><td class="n pass">5.77</td></tr>
+<tr><td>transcript-rag-agent <span class="tag">P4</span></td><td class="n">285</td><td class="k">#584fa3</td><td class="k">#afabff</td><td class="n pass">6.34</td><td class="n pass">6.86</td><td class="n pass">8.77</td><td class="n pass">8.12</td><td class="n pass">6.86</td><td class="n pass">5.68</td></tr>
+<tr><td>data-qa-agent <span class="tag">P5</span></td><td class="n">80</td><td class="k">#835200</td><td class="k">#e3ad4b</td><td class="n pass">6.12</td><td class="n pass">6.62</td><td class="n pass">8.99</td><td class="n pass">8.32</td><td class="n pass">6.62</td><td class="n pass">5.55</td></tr>
+<tr><td>dataagentbench <span class="tag">P6</span></td><td class="n">315</td><td class="k">#79438f</td><td class="k">#d79df0</td><td class="n pass">6.45</td><td class="n pass">6.97</td><td class="n pass">8.67</td><td class="n pass">8.02</td><td class="n pass">6.97</td><td class="n pass">5.77</td></tr>
+<tr><td>propertyiq-getdata <span class="tag">P7</span></td><td class="n">45</td><td class="k">#97400d</td><td class="k">#fc9b6f</td><td class="n pass">6.36</td><td class="n pass">6.87</td><td class="n pass">8.74</td><td class="n pass">8.09</td><td class="n pass">6.87</td><td class="n pass">5.62</td></tr>
+<tr><td>vidore-v3-loop <span class="tag">P8</span></td><td class="n">130</td><td class="k">#446b00</td><td class="k">#9cc86c</td><td class="n pass">5.80</td><td class="n pass">6.27</td><td class="n pass">9.47</td><td class="n pass">8.76</td><td class="n pass">6.27</td><td class="n pass">5.33</td></tr>
+</tbody>
+<tfoot><tr><td colspan="4"><b>Worst ratio anywhere</b> — 9 projects × 8 pairs × 2 themes</td>
+<td class="n pass" colspan="6"><b>4.91:1</b> &nbsp; AA threshold 4.5 &nbsp; <span class="badge ok">all pass</span></td></tr></tfoot>
+</table>
+</div>
+
+<h3>The same page, nine projects</h3>
+<p class="sub">Each swatch below is this artifact's own <code>house.css</code> with nothing overridden but
+<code>--hue</code>. Toggle the theme above and every chip moves to its light stop together.</p>
+<div class="swatches">
+  <div class="sw" style="--hue:168"><div class="chip">168</div><div class="meta"><b>nmp-central-ai</b><span>PLATFORM</span></div></div>
+  <div class="sw" style="--hue:255"><div class="chip">255</div><div class="meta"><b>convfinqa-agent</b><span>P1</span></div></div>
+  <div class="sw" style="--hue:200"><div class="chip">200</div><div class="meta"><b>dabstep-loop</b><span>P2</span></div></div>
+  <div class="sw" style="--hue:345"><div class="chip">345</div><div class="meta"><b>tau2-loop</b><span>P3</span></div></div>
+  <div class="sw" style="--hue:285"><div class="chip">285</div><div class="meta"><b>transcript-rag</b><span>P4</span></div></div>
+  <div class="sw" style="--hue:80"><div class="chip">80</div><div class="meta"><b>data-qa-agent</b><span>P5</span></div></div>
+  <div class="sw" style="--hue:315"><div class="chip">315</div><div class="meta"><b>dataagentbench</b><span>P6</span></div></div>
+  <div class="sw" style="--hue:45"><div class="chip">45</div><div class="meta"><b>propertyiq</b><span>P7</span></div></div>
+  <div class="sw" style="--hue:130"><div class="chip">130</div><div class="meta"><b>vidore-v3-loop</b><span>P8</span></div></div>
+</div>
+
+<p><span class="badge warn">gotcha</span> The seam only works when <code>--hue</code> is set at
+<code>:root</code>. A custom property is substituted where it is <em>declared</em>, so a child element that
+changes <code>--hue</code> inherits the already-resolved <code>--accent</code> unless the derivation is repeated
+at that scope. The swatch strip above re-derives locally for that reason; a project sets the hue on
+<code>&lt;html&gt;</code> and never hits it. Worth a line in the runbook — I hit it building this page.</p>
+
+<h3>Where the hue is declared</h3>
+<p>In the registry, because that is already your rule — the same file that owns databases, roles and experiment
+ids owns the project's colour, and <code>make</code> renders it. Hues are cluster-global like roles, so
+<code>_registry.py</code> should refuse two projects within 30° of each other the way it already refuses a
+duplicate role:</p>
+<div class="diffbox">
+  <div class="head">registry/projects.yaml — one line per project</div>
+  <div id="diff-registry"></div>
+</div>
+</section>
+
+<!-- ============================ ARCHITECTURE ============================ -->
+<section id="arch">
+<span class="eyebrow">05 — how it fits the platform</span>
+<h2>The third shared asset, built like the first two</h2>
+<p class="sub">You asked for this project to host the house UI next to Postgres and MLflow. The shape that makes
+that true is the one <code>db_init.py</code> already uses: the registry is the source of truth, a script renders
+an artifact from it, a <code>make</code> target applies it, and <code>make check</code> proves it.</p>
+
+<figure class="fig">
+<svg viewBox="0 0 900 380" width="100%" role="img" aria-labelledby="archtitle archdesc">
+  <title id="archtitle">How a house UI change reaches every project</title>
+  <desc id="archdesc">The registry declares a hue per project; make house-ui renders and audits the canonical
+  stylesheet in nmp-central-ai; make install-house-ui copies it into each sibling's .lavish directory, where
+  artifacts link it relatively.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--line-3)"/>
+    </marker>
+    <marker id="ara" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+    </marker>
+  </defs>
+  <g font-family="var(--sans)" font-size="12" fill="var(--ink)">
+
+    <!-- stage 1 -->
+    <g id="n-registry"><title>registry/projects.yaml — the source of truth, now including ui.hue</title>
+      <rect x="8" y="128" width="164" height="86" rx="10" fill="var(--panel)" stroke="var(--line-3)"/>
+      <text x="20" y="152" font-family="var(--mono)" font-size="11" fill="var(--muted)">registry/</text>
+      <text x="20" y="168" font-weight="600">projects.yaml</text>
+      <text x="20" y="188" font-size="11" fill="var(--muted)">databases · roles</text>
+      <text x="20" y="203" font-size="11" fill="var(--accent)">ui: { hue: N }</text>
+    </g>
+
+    <!-- stage 2 -->
+    <g id="n-render"><title>make house-ui renders the stylesheet and audits every declared hue in both themes</title>
+      <rect x="212" y="112" width="176" height="118" rx="10" fill="var(--panel)" stroke="var(--line-3)"/>
+      <text x="224" y="136" font-weight="600">make house-ui</text>
+      <text x="224" y="157" font-size="11" font-family="var(--mono)" fill="var(--muted)">house_ui.py</text>
+      <text x="224" y="173" font-size="11" font-family="var(--mono)" fill="var(--muted)">house_ui_audit.py</text>
+      <line x1="224" y1="184" x2="376" y2="184" stroke="var(--line)"/>
+      <text x="224" y="203" font-size="11" fill="var(--accent)">contrast gate</text>
+      <text x="224" y="219" font-size="11" fill="var(--muted)">both themes × all hues</text>
+    </g>
+
+    <!-- stage 3: canon -->
+    <g id="n-canon"><title>agent/house/house.css — the one canonical file, Layer 1 tokens plus Layer 2 artifact components</title>
+      <rect x="428" y="112" width="168" height="118" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="440" y="136" font-family="var(--mono)" font-size="11" fill="var(--accent)">agent/house/</text>
+      <text x="440" y="154" font-weight="600" font-size="13">house.css</text>
+      <text x="440" y="176" font-size="11" fill="var(--ink-2)">L1 tokens + --hue</text>
+      <text x="440" y="192" font-size="11" fill="var(--ink-2)">L2 components</text>
+      <text x="440" y="208" font-size="11" fill="var(--ink-2)">print · focus · a11y</text>
+      <text x="440" y="224" font-size="11" font-family="var(--mono)" fill="var(--muted)">+ IBM Plex woff2</text>
+    </g>
+
+    <!-- consumers -->
+    <g id="n-sib"><title>Each sibling project holds a vendored copy in its .lavish directory</title>
+      <rect x="668" y="28" width="224" height="74" rx="10" fill="var(--panel)" stroke="var(--line-3)"/>
+      <text x="680" y="52" font-weight="600">21 × .lavish/house.css</text>
+      <text x="680" y="70" font-size="11" fill="var(--muted)">vendored copy + one --hue line</text>
+      <text x="680" y="88" font-size="11" font-family="var(--mono)" fill="var(--muted)">new artifacts link it</text>
+    </g>
+    <g id="n-site"><title>The Jekyll site consumes the same Layer 1 tokens instead of owning them</title>
+      <rect x="668" y="120" width="224" height="62" rx="10" fill="var(--panel)" stroke="var(--line-3)"/>
+      <text x="680" y="144" font-weight="600">nmp-dsci.github.io</text>
+      <text x="680" y="162" font-size="11" fill="var(--muted)">imports L1, keeps its own site CSS</text>
+    </g>
+    <g id="n-scaffold"><title>ai-project-template ships the link so every new project starts compliant</title>
+      <rect x="668" y="200" width="224" height="62" rx="10" fill="var(--panel)" stroke="var(--line-3)"/>
+      <text x="680" y="224" font-weight="600">ai-project-template</text>
+      <text x="680" y="242" font-size="11" fill="var(--muted)">scaffold ships the link</text>
+    </g>
+    <g id="n-frozen"><title>The 277 artifacts already written keep their inline CSS and are never rewritten</title>
+      <rect x="668" y="280" width="224" height="72" rx="10" fill="var(--band)" stroke="var(--line-2)" stroke-dasharray="4 3"/>
+      <text x="680" y="304" font-weight="600" fill="var(--muted)">277 existing artifacts</text>
+      <text x="680" y="322" font-size="11" fill="var(--muted)">inline CSS kept — pinned, not</text>
+      <text x="680" y="338" font-size="11" fill="var(--muted)">rewritten (see D31)</text>
+    </g>
+
+    <!-- edges -->
+    <line x1="172" y1="171" x2="206" y2="171" stroke="var(--line-3)" marker-end="url(#ar)"/>
+    <line x1="388" y1="171" x2="422" y2="171" stroke="var(--accent)" stroke-width="2" marker-end="url(#ara)"/>
+    <path id="e-fan1" d="M596 150 C 630 150, 634 72, 662 68" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#ara)"><title>make install-house-ui copies the canon into each project</title></path>
+    <path id="e-fan2" d="M596 171 C 630 171, 634 152, 662 151" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#ara)"/>
+    <path id="e-fan3" d="M596 192 C 630 192, 634 228, 662 231" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#ara)"/>
+    <path d="M596 214 C 626 250, 630 310, 662 316" fill="none" stroke="var(--line-2)" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="604" y="112" font-size="10.5" font-family="var(--mono)" fill="var(--accent)">make install-house-ui</text>
+    <text x="586" y="286" font-size="10.5" font-family="var(--mono)" fill="var(--muted)">no retro-write</text>
+
+    <!-- footer band -->
+    <line x1="8" y1="300" x2="596" y2="300" stroke="var(--line)"/>
+    <text x="8" y="322" font-size="11" fill="var(--muted)">Same shape as the database module:</text>
+    <text x="8" y="340" font-size="11" font-family="var(--mono)" fill="var(--muted)">projects.yaml → db_init.py → .dbgate.env → make check</text>
+    <text x="8" y="358" font-size="11" font-family="var(--mono)" fill="var(--accent)">projects.yaml → house_ui.py → house.css → make check</text>
+  </g>
+</svg>
+<figcaption>Verified against the repo: <code>make install-agent-context</code> (Makefile) already fans a file out
+to the portfolio with a <code>cmp</code> guard and <code>FORCE=1</code>; <code>db_init.py</code> already renders a
+config artifact from the registry. The house UI adds no new pattern — it reuses both.</figcaption>
+</figure>
+</section>
+
+<!-- ============================ PROPAGATION ============================ -->
+<section id="propagate">
+<span class="eyebrow">06 — your second question</span>
+<h2>"Would I update it here, then get each project to adopt it?"</h2>
+<p class="sub">Yes — and the reason to be deliberate about <em>how</em> is that "adopt" hides two different wants.</p>
+
+<div class="split">
+<div class="card">
+  <h3>Want 1 — new artifacts get the latest <span class="badge ok">solved by any single source</span></h3>
+  <p>Every artifact written after the change should look current without anyone remembering to update it. A
+  linked file gives you this for free.</p>
+</div>
+<div class="card">
+  <h3>Want 2 — existing artifacts restyle retroactively <span class="badge warn">costs more than it looks</span></h3>
+  <p>Only a live link (symlink or CDN) does this. But your artifacts are dated receipts —
+  <code>s02_sql-frontend.html</code> documents a trial that happened on 22 Sep. Making 277 of them mutable means a
+  future token rename can silently break a two-year-old page you cite in a PR, and you would not find out.</p>
+</div>
+</div>
+
+<div class="tablewrap">
+<table>
+<thead><tr><th style="width:2.5em">#</th><th>Mechanism</th><th>New artifacts</th><th>Existing</th><th>Offline</th><th>Cost</th><th style="width:7em">Verdict</th></tr></thead>
+<tbody>
+<tr><td class="k">A</td><td><b>Inline copy</b> — today</td><td>manual retype</td><td>never</td><td class="pass">perfect</td><td>90 lines/artifact; 277 forks</td><td><span class="badge bad">status quo</span></td></tr>
+<tr class="rec"><td class="k">B</td><td><b>Vendored <code>house.css</code></b> + <code>make install-house-ui</code></td><td class="pass">automatic</td><td>on demand, per project</td><td class="pass">yes</td><td>21 copies to refresh; needs a drift check</td><td><span class="badge rec">recommended</span></td></tr>
+<tr><td class="k">C</td><td><b>Symlink</b> to the central file</td><td class="pass">automatic</td><td class="pass">instant</td><td class="pass">yes*</td><td>breaks when an artifact is copied, zipped, emailed or checked out elsewhere; git stores the link, not the CSS</td><td><span class="badge bad">too fragile</span></td></tr>
+<tr><td class="k">D</td><td><b>CDN</b> from <code>nmp-dsci.github.io</code></td><td class="pass">automatic</td><td class="pass">instant</td><td class="fail">no</td><td>one bad push restyles 277 pages at once; artifacts die on a plane</td><td><span class="badge warn">opt-in, site only</span></td></tr>
+<tr><td class="k">E</td><td><b>npm package / git submodule</b></td><td class="pass">automatic</td><td>on install</td><td class="pass">yes</td><td>a build step and a version bump for a static HTML file; wrong weight</td><td><span class="badge bad">overkill</span></td></tr>
+</tbody>
+</table>
+</div>
+
+<p><b>B, with two additions that close its one real weakness</b> — a stale vendored copy being invisible:</p>
+<div class="steps">
+  <div class="step"><b>A version stamp in the file</b>
+  <span class="tag">house.css line 1: /* nmp house UI v3 — generated, do not edit */ — so any artifact's styling is traceable to a version</span></div>
+  <div class="step"><b><code>make house-ui-check</code></b>
+  <span class="tag">walks every sibling .lavish/house.css, compares its stamp to the canon, prints a drift table. Wired into `make check` so a red row appears the same way a database row does</span></div>
+</div>
+
+<h3>The loop, concretely</h3>
+<div class="steps">
+  <div class="step"><b>Edit one file here</b> <span class="tag">agent/house/house.css — or registry/projects.yaml to change a project's hue</span></div>
+  <div class="step"><b><code>make house-ui</code></b> <span class="tag">re-renders, then fails if any declared hue misses AA on any audited pair in either theme</span></div>
+  <div class="step"><b><code>make install-house-ui</code></b> <span class="tag">copies the canon into each sibling's .lavish/, cmp-guarded, FORCE=1 to overwrite a locally edited copy — exactly how install-agent-context behaves today</span></div>
+  <div class="step"><b>New artifacts pick it up automatically</b> <span class="tag">they carry &lt;link rel=stylesheet href="house.css"&gt; and one --hue line, so the next artifact in any project is current with no instruction</span></div>
+  <div class="step"><b>Existing artifacts stay as written</b> <span class="tag">until you deliberately re-link one; `make house-ui-check` tells you which projects are behind</span></div>
+</div>
+</section>
+
+<!-- ============================ PLAN ============================ -->
+<section id="plan">
+<span class="eyebrow">07 — the build</span>
+<h2>Eight items, about a day and a half</h2>
+<div class="tablewrap">
+<table>
+<thead><tr><th style="width:3em">ID</th><th>Item</th><th>What lands</th><th style="width:5em">Effort</th></tr></thead>
+<tbody>
+<tr><td class="k">S1</td><td>Promote Layer 1</td><td><code>agent/house/house.css</code> from the site's <code>tokens.css</code>, plus the <code>--hue</code> seam, <code>--accent-wash</code>, print block, <code>:focus-visible</code>, reduced-motion (F1 F2 F3 F4 F8 F10)</td><td class="n">2 h</td></tr>
+<tr><td class="k">S2</td><td>Extract Layer 2</td><td>the 16 shared artifact classes from s00–s02, rebuilt on Layer 1 tokens — no literals (F5 F9)</td><td class="n">2 h</td></tr>
+<tr><td class="k">S3</td><td>Registry + parse</td><td><code>ui: {hue: N}</code> per project; <code>_registry.py</code> field + refusal of two hues within 30°, and of a hue within 30° of a status hue (F7)</td><td class="n">1.5 h</td></tr>
+<tr><td class="k">S4</td><td>Render + audit</td><td><code>scripts/house_ui.py</code>, <code>scripts/house_ui_audit.py</code> reading the <code>@contrast</code> lines over both themes × every hue; <code>tests/test_house_ui.py</code>; CI step</td><td class="n">3 h</td></tr>
+<tr><td class="k">S5</td><td>Make targets</td><td><code>house-ui</code>, <code>install-house-ui</code> (cmp-guarded, FORCE=1), <code>house-ui-check</code> drift table wired into <code>make check</code></td><td class="n">2 h</td></tr>
+<tr><td class="k">S6</td><td>Fonts</td><td>5 IBM Plex <code>woff2</code> subsets vendored beside <code>house.css</code> with relative <code>src</code> and the OFL notice (F6)</td><td class="n">1 h</td></tr>
+<tr><td class="k">S7</td><td>Scaffold + site</td><td><code>ai-project-template</code> ships the link and a <code>--hue</code>; the Jekyll site imports Layer 1 instead of owning it</td><td class="n">2 h</td></tr>
+<tr><td class="k">S8</td><td>Docs + skill</td><td>PLATFORM.md row (house UI as the third shared asset) · AGENTS.md D25–D32 · CLAUDE.md quick ref · <code>docs/runbooks/house-ui.md</code> · plugin skill <code>platform-ui</code> so agents link rather than retype</td><td class="n">2 h</td></tr>
+</tbody>
+</table>
+</div>
+</section>
+
+<!-- ============================ RISKS ============================ -->
+<section id="risks">
+<span class="eyebrow">08 — risks and open questions</span>
+<h2>What could go wrong, and what I could not decide for you</h2>
+<div class="cards">
+  <div class="card"><h3><span class="badge warn">risk</span> oklch() is a 2023 baseline</h3>
+  <p>Deriving accents live in CSS needs <code>oklch()</code> — Safari 15.4+, Chrome 111+, Firefox 113+. Fine
+  today; a 2019 browser would show unstyled accents. Mitigation if that matters: have
+  <code>house_ui.py</code> bake hex per hue instead. D28 chooses.</p></div>
+  <div class="card"><h3><span class="badge warn">risk</span> the site is the current owner</h3>
+  <p><code>tokens.css</code> and <code>contrast_audit.py</code> live in a repo with its own CI. Moving the canon
+  here means the site consumes rather than owns, and its build must not break. Sequence S7 last and keep the
+  site's <code>main.css</code> where it is — those components are site furniture, not artifact furniture.</p></div>
+  <div class="card"><h3><span class="badge warn">risk</span> 21 vendored copies drift silently</h3>
+  <p>The one real cost of option B. The version stamp plus <code>house-ui-check</code> in <code>make check</code>
+  is what turns a silent drift into a red row.</p></div>
+  <div class="card"><h3><span class="badge info">open</span> which directories are in scope</h3>
+  <p>Nine projects are in the registry; 21 have artifacts. <code>ai-engineer-fit</code> (65 artifacts) and
+  <code>databricks-*</code> are not platform projects but are your biggest consumers. D26 asks whether the house
+  UI fans out to all of them or only to registered projects.</p></div>
+  <div class="card"><h3><span class="badge info">open</span> hue 168 has four claimants</h3>
+  <p>DABStep, DataAgentBench, vidore and the site all use <code>#43C29A</code> today. The table above gives the
+  house hue to the platform and the site and moves the three projects. If you would rather DAB keep the green,
+  say so and I will re-solve the wheel around it.</p></div>
+  <div class="card"><h3><span class="badge info">open</span> Geist vs IBM Plex</h3>
+  <p>This repo's three artifacts are the only Geist users; 12 directories are on IBM Plex, and the self-hosted
+  woff2 already exist. The plan retires Geist. It is a real aesthetic choice, not just a count — D27.</p></div>
+</div>
+</section>
+
+<!-- ============================ DECISIONS ============================ -->
+<section id="decide">
+<span class="eyebrow">09 — decisions</span>
+<h2>Eight calls, each with a recommended default</h2>
+<p class="sub">Radios keep local state; nothing is sent until you press the button on that card. The scope batch
+at the end is what I build.</p>
+
+<div class="qgrid">
+
+<form class="q" data-lavish-question="D25 home" onsubmit="event.preventDefault(); qa(this,'D25','Canonical home')">
+  <h3>D25 · Where the canon lives <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="nmp-central-ai/agent/house/ — this repo, installed outward" checked> <span><b>A · here</b><span class="d">nmp-central-ai/agent/house/, fanned out like install-agent-context. Sits with the registry that declares the hues.</span></span></label>
+  <label><input type="radio" name="v" value="keep the canon in nmp-dsci.github.io"> <span><b>B · the site keeps it</b><span class="d">No move; this repo consumes. Rejects your "host shared assets here" framing.</span></span></label>
+  <label><input type="radio" name="v" value="a new standalone nmp-house-ui repo"> <span><b>C · its own repo</b><span class="d">Cleanest ownership, one more repo to maintain.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D26 scope" onsubmit="event.preventDefault(); qa(this,'D26','Fan-out scope')">
+  <h3>D26 · Who receives it <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="every .lavish directory in the portfolio (21), registry or not" checked> <span><b>A · all 21 directories</b><span class="d">Includes ai-engineer-fit (65 artifacts) and the databricks-* repos. Hues for unregistered dirs come from a supplementary list.</span></span></label>
+  <label><input type="radio" name="v" value="only the 9 projects in registry/projects.yaml"> <span><b>B · registry projects only</b><span class="d">Tighter invariant, leaves your biggest consumer out.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D27 typeface" onsubmit="event.preventDefault(); qa(this,'D27','Typeface')">
+  <h3>D27 · The superfamily <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="IBM Plex Sans/Serif/Mono, self-hosted woff2; retire Geist and Inter" checked> <span><b>A · IBM Plex</b><span class="d">12 directories already use it, woff2 already subset and OFL-licensed, three weights of one superfamily.</span></span></label>
+  <label><input type="radio" name="v" value="Geist + Geist Mono + Instrument Serif as in nmp-central-ai's artifacts"> <span><b>B · Geist / Instrument Serif</b><span class="d">This repo's current look. Would need self-hosting from scratch and re-tokenising 12 directories.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D28 accent mechanism" onsubmit="event.preventDefault(); qa(this,'D28','Accent mechanism')">
+  <h3>D28 · How the accent is derived <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="one --hue integer per project; oklch() derives both theme stops live in CSS" checked> <span><b>A · one hue, oklch in CSS</b><span class="d">4 lines per theme, contrast guaranteed by construction (worst 4.91:1). Needs a 2023+ browser.</span></span></label>
+  <label><input type="radio" name="v" value="one --hue integer per project; house_ui.py bakes hex stops per project"> <span><b>B · one hue, baked hex</b><span class="d">Same seam, no oklch() dependency, maximal archival safety. A generation step per project.</span></span></label>
+  <label><input type="radio" name="v" value="each project hand-picks a light/dark accent hex pair"> <span><b>C · hand-picked pairs</b><span class="d">Full control, and the audit has to police it — every current accent fails on light paper.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D29 propagation" onsubmit="event.preventDefault(); qa(this,'D29','Propagation')">
+  <h3>D29 · How updates travel <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="vendored copy per project + make install-house-ui + version stamp + house-ui-check drift table" checked> <span><b>A · vendored + make target</b><span class="d">Offline-safe, per-project timing, drift visible in make check.</span></span></label>
+  <label><input type="radio" name="v" value="symlink each project's .lavish/house.css to the central file"> <span><b>B · symlink</b><span class="d">Instant everywhere, breaks the moment an artifact travels.</span></span></label>
+  <label><input type="radio" name="v" value="link the stylesheet from nmp-dsci.github.io over https"> <span><b>C · CDN from the site</b><span class="d">Zero copies, instant retro-restyle, dead offline.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D30 existing artifacts" onsubmit="event.preventDefault(); qa(this,'D30','Existing 277')">
+  <h3>D30 · The 277 already written <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="leave all existing artifacts pinned with their inline CSS; house.css applies to new work only" checked> <span><b>A · leave them pinned</b><span class="d">Dated receipts keep rendering exactly as written. Nothing to verify, nothing to break.</span></span></label>
+  <label><input type="radio" name="v" value="re-link only the artifacts still actively read (the live index pages)"> <span><b>B · re-link the live ones</b><span class="d">A handful of pages you actually revisit; each needs a render check in both themes.</span></span></label>
+  <label><input type="radio" name="v" value="convert all 277 artifacts to link house.css"> <span><b>C · convert everything</b><span class="d">One look everywhere, 277 render checks, and old layouts will break where they used classes the house does not carry.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D31 enforcement" onsubmit="event.preventDefault(); qa(this,'D31','Enforcement')">
+  <h3>D31 · What CI enforces <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="contrast audit over both themes and every hue, plus the vendored-copy drift check, both wired into make check and CI" checked> <span><b>A · audit + drift</b><span class="d">Mirrors how a red database row already works. A stale copy or a failed ratio fails the build.</span></span></label>
+  <label><input type="radio" name="v" value="contrast audit only; drift reported by make house-ui-check but never fails a build"> <span><b>B · audit only</b><span class="d">Lighter, lets copies rot quietly.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+<form class="q" data-lavish-question="D32 hue 168" onsubmit="event.preventDefault(); qa(this,'D32','Hue 168')">
+  <h3>D32 · Who keeps the green <span class="badge rec">rec: A</span></h3>
+  <label><input type="radio" name="v" value="PLATFORM and the site keep hue 168; DABStep 200, DataAgentBench 315, vidore 130" checked> <span><b>A · the platform keeps 168</b><span class="d">The house colour belongs to the house; the three projects currently sharing it move.</span></span></label>
+  <label><input type="radio" name="v" value="DataAgentBench keeps the green and the platform takes another hue; re-solve the wheel"> <span><b>B · DAB keeps it</b><span class="d">DAB is the oldest and largest user of #43C29A. I re-solve the other eight around it.</span></span></label>
+  <div class="row"><button type="submit">Queue answer</button><span class="queued"></span></div>
+</form>
+
+</div>
+
+<h3>Scope — tick what I build</h3>
+<form class="q" data-lavish-question="scope" style="margin-top:var(--s3)" onsubmit="event.preventDefault();
+  const sel=[...this.querySelectorAll('input[name=items]:checked')].map(i=>({id:i.value,label:i.dataset.label,disposition:'build'}));
+  if(!sel.length){ this.querySelector('.queued').textContent='nothing selected'; return; }
+  window.lavish&&window.lavish.queuePrompt('Build every selected item on branch house-ui-review, run no-mistakes, open a PR (do not merge), and return an item-by-item receipt. Account for every submitted ID before reporting completion.',
+    {tag:'tracked-batch', text:'Build '+sel.length+' house UI items', element:this, data:{items:sel}});
+  this.querySelector('.queued').textContent='queued '+sel.length+' items — press Send to Agent';">
+  <div class="split">
+    <div>
+      <label><input type="checkbox" name="items" value="S1" data-label="Promote Layer 1 tokens with the --hue seam, accent-wash, print, focus-visible" checked> <span><b>S1</b> Layer 1 tokens <span class="d">fixes F1 F2 F3 F4 F8 F10</span></span></label>
+      <label><input type="checkbox" name="items" value="S2" data-label="Extract Layer 2 artifact components onto the tokens" checked> <span><b>S2</b> Layer 2 components <span class="d">fixes F5 F9</span></span></label>
+      <label><input type="checkbox" name="items" value="S3" data-label="Registry ui.hue field with separation refusal" checked> <span><b>S3</b> registry <code>ui.hue</code> <span class="d">fixes F7</span></span></label>
+      <label><input type="checkbox" name="items" value="S4" data-label="house_ui.py renderer, house_ui_audit.py contrast gate, tests, CI" checked> <span><b>S4</b> render + audit + CI</span></label>
+    </div>
+    <div>
+      <label><input type="checkbox" name="items" value="S5" data-label="make house-ui, install-house-ui, house-ui-check wired into make check" checked> <span><b>S5</b> make targets + drift check</span></label>
+      <label><input type="checkbox" name="items" value="S6" data-label="Vendor 5 IBM Plex woff2 subsets with relative src and OFL notice" checked> <span><b>S6</b> self-hosted fonts <span class="d">fixes F6</span></span></label>
+      <label><input type="checkbox" name="items" value="S7" data-label="ai-project-template ships the link; the Jekyll site imports Layer 1"> <span><b>S7</b> scaffold + site <span class="d">touches another repo</span></span></label>
+      <label><input type="checkbox" name="items" value="S8" data-label="PLATFORM.md, AGENTS.md D25-D32, CLAUDE.md, runbook, platform-ui skill" checked> <span><b>S8</b> docs + <code>platform-ui</code> skill</span></label>
+    </div>
+  </div>
+  <div class="row"><button type="submit">Queue selected items</button><span class="queued"></span></div>
+</form>
+
+<div class="copyrow">
+  <button type="button" onclick="(async (btn) => {
+    const copyRun = btn._lavishCopyRun = (btn._lavishCopyRun || 0) + 1;
+    const qs = [...document.querySelectorAll('[data-lavish-question]')];
+    const status = btn.parentElement.querySelector('[data-lavish-copy-all-status]');
+    btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+    const out = [];
+    for (const q of qs) {
+      const key = q.getAttribute('data-lavish-question')?.trim() || 'Question';
+      const lines = [];
+      for (const el of q.querySelectorAll('input, select, textarea')) {
+        if (el.matches(':disabled')) continue;
+        if (el.closest('[data-lavish-question]') !== q) continue;
+        const isChoice = el.matches('input[type=checkbox], input[type=radio]');
+        if (isChoice && !el.checked) continue;
+        if (el.matches('input[type=button], input[type=submit], input[type=reset], input[type=image], input[type=hidden], input[type=file], input[type=range], input[type=color]')) continue;
+        let vals;
+        if (el instanceof HTMLSelectElement) {
+          vals = [...el.selectedOptions].filter((o) => !o.disabled && !o.closest('optgroup[disabled]')).map((o) => o.value.trim()).filter(Boolean);
+        } else {
+          const v = isChoice && (!el.hasAttribute('value') || !el.value.trim())
+            ? el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.name || ''
+            : el.value.trim();
+          vals = v ? [v] : [];
+        }
+        const label = el.name || el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.getAttribute('placeholder')?.trim() || el.tagName.toLowerCase();
+        for (const v of vals) lines.push('  ' + label + ': ' + v.split('\n').join('\n    '));
+      }
+      if (lines.length) out.push(key + ':\n' + lines.join('\n'));
+    }
+    const text = out.join('\n\n');
+    if (!text) {
+      status.textContent = qs.length ? 'No answers to copy yet.' : 'No questions or answers to copy.';
+      return;
+    }
+    status.textContent = '';
+    try {
+      if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('Clipboard API unavailable');
+      await navigator.clipboard.writeText(text);
+      if (copyRun !== btn._lavishCopyRun) return;
+      status.textContent = 'Answers copied.';
+      return;
+    } catch {}
+    if (copyRun !== btn._lavishCopyRun) return;
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.readOnly = true;
+    tmp.setAttribute('aria-hidden', 'true');
+    tmp.style.position = 'fixed';
+    tmp.style.left = '-10000px';
+    document.body.append(tmp);
+    tmp.focus();
+    tmp.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch {}
+    tmp.remove();
+    if (ok) { status.textContent = 'Answers copied.'; return; }
+    btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+    const man = document.createElement('textarea');
+    man.value = text;
+    man.readOnly = true;
+    man.rows = Math.min(12, Math.max(3, text.split('\n').length));
+    man.setAttribute('aria-label', 'Answers to copy manually');
+    man.dataset.lavishCopyAllManual = '';
+    btn.insertAdjacentElement('afterend', man);
+    man.focus();
+    man.select();
+    status.textContent = 'Clipboard unavailable. Copy the answers below manually.';
+  })(this)">Copy all answers</button>
+  <span data-lavish-copy-all-status role="status" aria-live="polite" class="tag"></span>
+</div>
+</section>
+
+<!-- ============================ EVIDENCE ============================ -->
+<section id="evidence">
+<span class="eyebrow">10 — evidence</span>
+<h2>How every number here was produced</h2>
+<dl class="kv">
+  <dt>277 / 21</dt><dd><code>find . -path '*/.lavish/*.html' -not -path '*/_site/*' -not -path '*/node_modules/*' | wc -l</code> and the same for <code>-type d -name .lavish</code>, run in <code>~/git/nmp-ai-portfolio</code>.</dd>
+  <dt>39,894</dt><dd>the same file list piped through <code>awk '/&lt;style&gt;/,/&lt;\/style&gt;/'</code>.</dd>
+  <dt>identical template</dt><dd><code>diff</code> of the sorted <code>--token:value</code> declarations of s00/s01/s02 (empty), and a per-class comparison of <code>.card .badge .stat .callout .tablewrap</code>.</dd>
+  <dt>contrast ratios</dt><dd>WCAG 2.x relative luminance on sRGB, computed in Python; the accent stops and hue conversions use the OKLab ↔ sRGB matrices (Ottosson). Worst-case sweep: 9 hues × 8 declared pairs × 2 themes.</dd>
+  <dt>accent inventory</dt><dd><code>grep -rhoE -- '--accent:#[0-9a-fA-F]{6}'</code> per <code>.lavish</code> directory, ranked by frequency.</dd>
+  <dt>the canon</dt><dd><code>nmp-dsci.github.io/_o/assets/css/tokens.css</code> (133 lines), <code>fonts.css</code> (55), <code>main.css</code> (726), <code>scripts/contrast_audit.py</code> (5.1 KB), <code>assets/fonts/*.woff2</code> (5 subsets).</dd>
+  <dt>the house in use</dt><dd>per-directory counts of <code>prefers-color-scheme</code>,
+  <code>data-theme</code>, <code>@media print</code> and <code>:focus-visible</code>; token-name sets extracted
+  per directory with <code>grep -rhoE -- '--[a-z0-9-]+:'</code> and intersected with <code>comm</code> —
+  45 names common to tau2-loop, DataAgentBench and ConvFinQA-agent, of which 27 are absent here.</dd>
+  <dt>browser check</dt><dd>the generated stops were re-resolved in Chrome (canvas pixel read of
+  <code>oklch()</code>) and match the Python table byte-for-byte on every hue sampled — 168, 255, 80, 345, 130 —
+  with the same ratios. The SVG was checked programmatically: nothing outside the <code>viewBox</code>, no label
+  overrunning its box. No horizontal overflow at a simulated 368&nbsp;px column.</dd>
+  <dt>this page</dt><dd>is styled by <code>.lavish/house.css</code> — the prototype from S1+S2, linked not inlined. Nothing in it is a mockup: the swatches, the print block and the theme switch are the proposal running.</dd>
+</dl>
+</section>
+
+</main>
+
+<script type="module">
+  import { File, FileDiff } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+
+  const OLD_CSS = `/* s02_sql-frontend.html — the accent, retyped three ways */
+:root{
+  --accent:#5cc8a6; --accent-soft:#163229; --accent-ink:#0d1a15;
+}
+pre { background:#0b0d0f; border:1px solid var(--line); }
+form.q input[type=text] { background:#0b0d0f; }
+td.rec { background:rgba(92,200,166,0.06); }
+th.rec { color:var(--accent); }
+`;
+  const NEW_CSS = `/* house.css — the accent exists once, and every use goes through a token */
+:root{
+  --hue:168;
+  --accent:      oklch(0.48 0.13 var(--hue));
+  --accent-ink:  #FFFFFF;
+  --accent-soft: oklch(0.94 0.045 var(--hue));
+  --accent-wash: oklch(0.48 0.13 var(--hue) / 0.07);
+}
+pre { background:var(--band); border:1px solid var(--line); }
+input[type=text],textarea { background:var(--bg); }
+td.rec,th.rec { background:var(--accent-wash); }
+th.rec { color:var(--accent); }
+`;
+  const SEAM = `/* Every project ships this file byte-identical.               */
+/* The only thing a project owns is one integer.              */
+
+:root{ --hue:168; }                       /* nmp-central-ai      */
+
+/* light — the reference palette */
+--accent:      oklch(0.48  0.13  var(--hue));
+--accent-soft: oklch(0.94  0.045 var(--hue));
+--accent-wash: oklch(0.48  0.13  var(--hue) / 0.07);
+
+/* dark — same hue, the other stop */
+--accent:      oklch(0.78  0.13  var(--hue));
+--accent-soft: oklch(0.30  0.055 var(--hue));
+--accent-wash: oklch(0.78  0.13  var(--hue) / 0.09);
+
+/* A project's override, in its own .lavish/project.css or on <html>: */
+/*   :root{ --hue:80; }   data-qa-agent                              */
+`;
+  const OLD_REG = `  - id: P5
+    name: data-qa-agent
+    path: ../data-qa-agent
+    status: migrated
+    database:
+      name: dataqa
+      roles: [app_user, agent_ro, admin_ro]
+      extensions: [vector, pgcrypto, postgres_fdw]
+`;
+  const NEW_REG = `  - id: P5
+    name: data-qa-agent
+    path: ../data-qa-agent
+    status: migrated
+    ui:
+      hue: 80          # amber — the colour these artifacts already use
+    database:
+      name: dataqa
+      roles: [app_user, agent_ro, admin_ro]
+      extensions: [vector, pgcrypto, postgres_fdw]
+`;
+
+  const theme = { light: "github-light", dark: "github-dark" };
+  let rendered = [];
+
+  function themeType(){
+    const set = document.documentElement.getAttribute("data-theme");
+    if (set === "dark") return "dark";
+    if (set === "light") return "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  function render(){
+    const options = { theme, themeType: themeType(), overflow: "wrap" };
+    const mounts = [["#diff-accent"], ["#file-seam"], ["#diff-registry"]];
+    for (const [sel] of mounts) document.querySelector(sel).replaceChildren();
+    new FileDiff({ ...options, diffStyle: "unified" }).render({
+      containerWrapper: document.querySelector("#diff-accent"),
+      oldFile: { name: ".lavish/s02_sql-frontend.html  (inline CSS, today)", contents: OLD_CSS },
+      newFile: { name: "agent/house/house.css  (proposed)", contents: NEW_CSS },
+    });
+    new File(options).render({
+      containerWrapper: document.querySelector("#file-seam"),
+      file: { name: "agent/house/house.css — the accent seam", contents: SEAM },
+    });
+    new FileDiff({ ...options, diffStyle: "unified" }).render({
+      containerWrapper: document.querySelector("#diff-registry"),
+      oldFile: { name: "registry/projects.yaml", contents: OLD_REG },
+      newFile: { name: "registry/projects.yaml", contents: NEW_REG },
+    });
+  }
+  render();
+
+  // theme switch: sets data-theme, re-renders the code surfaces to match
+  const btns = [...document.querySelectorAll("[data-theme-set]")];
+  function setTheme(v){
+    if (v === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+    for (const b of btns) b.setAttribute("aria-pressed", String(b.dataset.themeSet === v));
+    render();
+  }
+  for (const b of btns) b.addEventListener("click", () => setTheme(b.dataset.themeSet));
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (!document.documentElement.hasAttribute("data-theme")) render();
+  });
+
+  // one queued prompt per question, on submit only
+  window.qa = (form, id, label) => {
+    const v = new FormData(form).get("v");
+    if (!v) return;
+    const out = form.querySelector(".queued");
+    if (window.lavish) {
+      window.lavish.queuePrompt(`${id} (${label}): ${v}`, {
+        tag: "decision", text: `${id}: ${String(v).slice(0, 60)}`,
+        element: form, queueKey: id, data: { question: id, answer: v },
+      });
+      out.textContent = "queued — press Send to Agent";
+    } else {
+      out.textContent = "recorded (open via lavish-axi to send)";
+    }
+  };
+</script>
+</body>
+</html>

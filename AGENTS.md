@@ -40,6 +40,14 @@ template (M5).
 | D22 | The UI connects as the superuser `nmp` (D16), **one read-write connection per project database, fenced with `ALLOWED_DATABASES`**; `make db-init ARGS=--dbgate-readonly` flips every connection read-only. Connections are rendered from the registry into `.dbgate.env` (gitignored) — nobody types a host or password into the UI, and "add connection" is disabled by design. |
 | D23 | No web login: the port is published on `127.0.0.1` only, like MLflow and the MinIO console. `LOGIN`/`PASSWORD` become necessary only if the bind is ever widened. |
 | D24 | DbGate's built-in MCP server stays off; M4 decides the portfolio's MCP surface. |
+| D25 | The house UI's canon is `agent/house/house.css` here, installed outward by `make install-house-ui` — the same shape as `install-agent-context`. The site consumes it; it no longer owns it. |
+| D26 | Every project that declares `ui.hue` receives it, registry membership aside; the fan-out is opt-in per project because it writes into sibling repos. |
+| D27 | One superfamily: IBM Plex Sans/Serif/Mono, self-hosted beside `house.css` (OFL 1.1). Geist is retired from this repo's artifacts. |
+| D28 | A project declares **one integer**, `ui.hue`. Both theme stops are derived with `oklch()` at fixed lightness/chroma, so AA is a property of the system, not of each choice. Hues stay 30° apart (`validate_ui`). |
+| D29 | Propagation is a vendored copy plus a version stamp: `make install-house-ui` writes `house.css`, `fonts/` and a one-line `project.css`; an edited copy is refused without `FORCE=1`. No symlinks, no CDN — an artifact must render offline years later. |
+| D30 | The 277 artifacts written before this keep their inline CSS. They are dated receipts; they are not rewritten. |
+| D31 | `make check` and CI run `house_ui_audit.py` over both themes × every declared hue, and `make check` reports vendored-copy drift. A hue that misses AA fails the build. |
+| D32 | The house hue 168 belongs to the platform and the public site. DataAgentBench moves to 315, DABStep-loop to 200, vidore-v3-loop to 130. |
 | D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout

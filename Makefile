@@ -70,6 +70,8 @@ mlflow-db-upgrade: ## run MLflow schema migration after bumping the server image
 check: ## verifier: every registered project logs to the central MLflow AND its database lives here
 	uv run scripts/check_projects.py --uri $(MLFLOW_URI) $(ARGS)
 	uv run scripts/check_databases.py --base-uri $(POSTGRES_URI) --mlflow-uri $(MLFLOW_URI) $(ARGS)
+	uv run scripts/house_ui_audit.py
+	@uv run scripts/house_ui.py check
 
 # ---- central postgres (M3) --------------------------------------------------
 POSTGRES_URI ?= postgresql://localhost:$(or $(POSTGRES_PORT),5432)
@@ -118,6 +120,19 @@ install-agent-context: ## install portfolio-level CLAUDE.md + AGENTS.md so every
 	    echo "$$dst exists and differs; re-run with FORCE=1 to overwrite"; exit 1; fi; \
 	  cp $$src $$dst && echo "installed $$dst"; done
 
+# ---- house UI (D25-D32) ---------------------------------------------------
+house-ui: ## render the per-project stylesheets and fail if any accent misses WCAG AA
+	uv run scripts/house_ui_audit.py
+	uv run scripts/house_ui.py render $(ARGS)
+	uv run scripts/house_ui.py table
+
+install-house-ui: ## copy house.css, fonts and the project's hue into every project's .lavish/
+	@uv run scripts/house_ui_audit.py --quiet
+	uv run scripts/house_ui.py install $(if $(filter 1,$(FORCE)),--force,) $(ARGS)
+
+house-ui-check: ## report which projects hold a stale copy of the house UI
+	@uv run scripts/house_ui.py check
+
 plugin-validate: ## validate the Claude Code plugin + marketplace manifests
 	claude plugin validate . && claude plugin validate plugins/nmp-platform
 
@@ -144,4 +159,4 @@ aws-sleep: ## stop the demo EC2 + RDS between demos
 aws-wake: ## start them again
 	@echo "M2: implemented with infra/terraform/central outputs"; exit 1
 
-.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
+.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context house-ui install-house-ui house-ui-check plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
