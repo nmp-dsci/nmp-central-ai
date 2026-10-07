@@ -48,6 +48,10 @@ template (M5).
 | D30 | The 277 artifacts written before this keep their inline CSS. They are dated receipts; they are not rewritten. |
 | D31 | `make check` and CI run `house_ui_audit.py` over both themes × every declared hue, and `make check` reports vendored-copy drift. A hue that misses AA fails the build. |
 | D32 | The house hue 168 belongs to the platform and the public site. DataAgentBench moves to 315, DABStep-loop to 200, vidore-v3-loop to 130. |
+| D33 | Observability splits from the ledger. Langfuse takes traces, cost, sessions and online eval; MLflow keeps runs, params, artifacts, prompts and the model registry. Neither replaces the other — a full swap was rejected because 2 923 artifacts and the model registry have no home in Langfuse. |
+| D34 | Langfuse is a compose **profile**, not part of `make up`. It adds four containers to a Docker VM that is currently too small, so `make langfuse-up` gates on `langfuse_doctor.py` and `make up` is unchanged. |
+| D35 | Langfuse consumes the platform like any other tenant: database `langfuse` and role `langfuse` are declared in the registry and created by `make db-init` (D13/D15); its blobs go in the existing MinIO. Only ClickHouse and Redis are new, and neither publishes a port — ClickHouse's native 9000 is MinIO's on this host. |
+| D36 | `registry/projects.yaml` says where each project's traces go (`observability.backend`: mlflow \| langfuse \| both). `both` is the reversible migration state. A declared-but-empty block is an error, not an absent one. |
 | D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout
@@ -70,8 +74,8 @@ loader and refuses cluster-global name collisions.
 
 ## Rules
 
-- Never commit `.env`, `.mlflow-ids.env`, `.db-urls.env`, `backups/`, volumes, Terraform state or any real credential.
-- Ports 5000 / 5432 / 9000 / 9001 are the platform's. Siblings must not squat them.
+- Never commit `.env`, `.mlflow-ids.env`, `.db-urls.env`, `.dbgate.env`, `.langfuse.env`, `backups/`, volumes, Terraform state or any real credential.
+- Ports 5000 / 5432 / 9000 / 9001 / 5050 / 3100 are the platform's. Siblings must not squat them.
 - Everything MLflow-related in the siblings is best-effort-silent (they swallow tracking
   errors). `make check` is the only way to know the platform works; run it after any change.
 - `.lavish/` is tracked. Never add it to `.gitignore`.

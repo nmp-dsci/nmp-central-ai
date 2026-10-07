@@ -54,6 +54,33 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
 6. Skills: install the `nmp-platform` plugin once (`/plugin marketplace add ~/git/nmp-ai-portfolio/nmp-central-ai`,
    then `/plugin install nmp-platform@nmp-central-ai`). It carries `platform-mlflow`, `platform-db` and `platform-onboard`.
 
+## Observability — Langfuse for traces, MLflow for the ledger (D33)
+
+**Not a replacement.** The two own different halves, and the split is the contract:
+
+| goes to Langfuse | stays in MLflow |
+|---|---|
+| traces and spans · cost and token accounting · sessions and users · online eval on live traffic · annotation queues | runs · params · metrics · artifacts · prompts · the model registry |
+
+| | value |
+|---|---|
+| Status | **built, not started.** The profile exists; it needs a bigger Docker VM first (D34) |
+| Check first | `make langfuse-doctor` — reports cores, Docker VM memory, free memory and disk against Langfuse's 4-core / 16 GiB / 100 GiB floor |
+| Start it | `make langfuse-up` (gated on the doctor; `GATE=0` overrides deliberately). `make up` never starts it. |
+| URL from the host | `http://127.0.0.1:3100` — host-only like the DB UI (D23); validation mode uses 13100 |
+| URL from a sibling's compose stack | `http://langfuse-web:3000` on the external network `nmp-central` |
+| OTLP traces | `POST <url>/api/public/otel/v1/traces`, Basic auth with the project keys. **HTTP only — Langfuse does not support OTLP over gRPC.** |
+| Where your traces go | `observability.backend` in `registry/projects.yaml`: `mlflow` \| `langfuse` \| `both`. `both` is the reversible middle of a migration. **Never hardcode a backend.** |
+| What it reuses | the cluster Postgres (database `langfuse`, created by `make db-init`) and the existing MinIO (bucket `langfuse`). New: ClickHouse and Redis, neither of which publishes a port. |
+| Secrets | `make langfuse-init` writes `.langfuse.env` (gitignored, 0600). Never put them in compose. |
+
+### Rule 8 for observability
+
+8. Traces may move to Langfuse. **Artifacts, registered models and prompt versions may not** —
+   Langfuse has no artifact store and no model registry, so moving them loses them. If you
+   think a project needs that, you want MLflow. Declare the move in the registry first, run
+   with `backend: both` until `make check` proves both paths, and only then narrow it.
+
 ## Postgres — one database per project (M3)
 
 | | value |

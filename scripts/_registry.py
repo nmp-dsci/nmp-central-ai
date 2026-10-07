@@ -18,6 +18,7 @@ DBGATE_ENV_PATH = ROOT / ".dbgate.env"  # the DB UI's connection list (D20), env
 
 SUPERUSER = "superuser"  # the `env:` value that means "the cluster superuser" (D16)
 HUE_SEPARATION = 30  # degrees; two projects' accents must be told apart at a glance (D28/D32)
+TRACE_BACKENDS = {"mlflow", "langfuse", "both"}  # where a project's traces go (D33)
 ROLE_OPTIONS = {"BYPASSRLS", "NOBYPASSRLS", "CREATEDB", "NOCREATEDB", "INHERIT", "NOINHERIT"}
 
 
@@ -35,6 +36,27 @@ class Ui:
     """A project's house-UI identity (D28). One integer; both theme stops derive from it."""
 
     hue: int
+
+
+@dataclass(frozen=True)
+class Observability:
+    """Where this project's *traces* go (D33).
+
+    Only traces. Runs, params, artifacts, prompts and the model registry stay in
+    MLflow whatever this says — that is the whole point of the split, and the
+    reason this is a separate block from `mlflow:` rather than a field inside it.
+    """
+
+    backend: str  # mlflow | langfuse | both
+    langfuse_project: str = ""
+
+    @property
+    def uses_langfuse(self) -> bool:
+        return self.backend in {"langfuse", "both"}
+
+    @property
+    def uses_mlflow(self) -> bool:
+        return self.backend in {"mlflow", "both"}
 
 
 @dataclass
@@ -70,6 +92,7 @@ class Project:
     notes: str = ""
     database: Database | None = None
     ui: Ui | None = None
+    observability: Observability | None = None
 
     @property
     def on_platform(self) -> bool:
@@ -86,6 +109,8 @@ class Registry:
     postgres_uri_compose: str = "postgresql://postgres:5432"
     postgres_superuser: str = "nmp"
     postgres_db: str = "nmp"  # the maintenance database psql connects to first
+    langfuse_uri: str = "http://127.0.0.1:3100"  # host-only console (D23/D33)
+    langfuse_uri_compose: str = "http://langfuse-web:3000"
 
     def by_id(self, pid: str) -> Project:
         for p in self.projects:
@@ -101,6 +126,18 @@ class Registry:
     def themed(self) -> list[Project]:
         """Projects that declare a house-UI hue (D28)."""
         return [p for p in self.projects if p.ui is not None]
+
+    @property
+    def traced(self) -> list[Project]:
+        """Projects that declare where their traces go (D33)."""
+        return [p for p in self.projects if p.observability is not None]
+
+    @property
+    def on_langfuse(self) -> list[Project]:
+        """Projects whose traces reach Langfuse, so `make check` must prove it."""
+        return [
+            p for p in self.traced if p.observability is not None and p.observability.uses_langfuse
+        ]
 
 
 class RegistryError(ValueError):
@@ -163,6 +200,40 @@ def _parse_ui(raw: dict[str, Any], pid: str) -> Ui:
     if not 0 <= hue < 360:
         raise RegistryError(f"{pid}: ui.hue must be in [0, 360), got {hue}")
     return Ui(hue=hue)
+
+
+def _parse_observability(raw: dict[str, Any], pid: str) -> Observability:
+    """`observability: {backend: …, langfuse_project: …}` — the trace destination (D33)."""
+    backend = raw.get("backend")
+    if backend not in TRACE_BACKENDS:
+        raise RegistryError(
+            f"{pid}: observability.backend must be one of {sorted(TRACE_BACKENDS)}, got {backend!r}"
+        )
+    project = str(raw.get("langfuse_project") or "").strip()
+    obs = Observability(backend=backend, langfuse_project=project)
+    if obs.uses_langfuse and not project:
+        raise RegistryError(f"{pid}: observability.backend {backend!r} needs a langfuse_project")
+    if project and not obs.uses_langfuse:
+        raise RegistryError(
+            f"{pid}: observability declares langfuse_project {project!r} but backend is 'mlflow'"
+        )
+    return obs
+
+
+def validate_observability(reg: Registry) -> None:
+    """Langfuse project names are instance-global, like roles and databases (D15/D33)."""
+    seen: dict[str, str] = {}
+    for p in reg.traced:
+        obs = p.observability
+        assert obs is not None
+        if not obs.langfuse_project:
+            continue
+        if obs.langfuse_project in seen:
+            raise RegistryError(
+                f"langfuse_project {obs.langfuse_project!r} declared by both "
+                f"{seen[obs.langfuse_project]} and {p.id}"
+            )
+        seen[obs.langfuse_project] = p.id
 
 
 def hue_distance(a: int, b: int) -> int:
@@ -239,6 +310,14 @@ def load_registry(path: Path = REGISTRY_PATH) -> Registry:
                 notes=(item.get("notes") or "").strip(),
                 database=_parse_database(db_raw) if db_raw else None,
                 ui=_parse_ui(item["ui"], item["id"]) if item.get("ui") else None,
+                # `in`, not `.get()`: `observability:` with an empty body is a typo'd
+                # block, and silently treating it as absent is how the duplicate-`ui:`
+                # bug survived review. Declared means validated.
+                observability=(
+                    _parse_observability(item["observability"] or {}, item["id"])
+                    if "observability" in item
+                    else None
+                ),
             )
         )
     reg = Registry(
@@ -250,9 +329,12 @@ def load_registry(path: Path = REGISTRY_PATH) -> Registry:
         postgres_uri_compose=plat.get("postgres_uri_compose", "postgresql://postgres:5432"),
         postgres_superuser=plat.get("postgres_superuser", "nmp"),
         postgres_db=plat.get("postgres_db", "nmp"),
+        langfuse_uri=plat.get("langfuse_uri", "http://127.0.0.1:3100"),
+        langfuse_uri_compose=plat.get("langfuse_uri_compose", "http://langfuse-web:3000"),
     )
     validate_databases(reg)
     validate_ui(reg)
+    validate_observability(reg)
     return reg
 
 

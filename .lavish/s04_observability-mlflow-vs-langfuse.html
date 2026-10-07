@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Observability: MLflow vs Langfuse — nmp-central-ai</title>
+<link rel="stylesheet" href="house.css">
+<link rel="stylesheet" href="project.css">
+<style>
+  /* page-local only: the scorecard instrument. Tokens come from house.css. */
+  .hero{ border-bottom:1px solid var(--line-2); padding-bottom:var(--s5); margin-bottom:var(--s6); }
+  .scoreboard{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));
+    gap:var(--s3); margin:var(--s5) 0; }
+  .vs{ background:var(--panel); border:1px solid var(--line-2); border-radius:var(--r); padding:var(--s4); min-width:0; }
+  .vs.lead{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft) inset; font-size:inherit; color:inherit; max-width:none; }
+  .vs h3{ margin:0 0 var(--s1); font-size:var(--t0); }
+  .vs .pct{ font-family:var(--serif); font-size:var(--t5); line-height:1; color:var(--ink); }
+  .vs.lead .pct{ color:var(--accent); }
+  .vs .of{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); display:block; margin-top:var(--s1); }
+  .vs ul{ margin:var(--s3) 0 0; padding-left:var(--s4); font-size:var(--t-1); color:var(--muted); }
+
+  /* scorecard */
+  .filters{ display:flex; flex-wrap:wrap; gap:var(--s2); align-items:center; margin:var(--s4) 0 var(--s3); }
+  .filters button{ font:inherit; font-size:var(--t-1); font-family:var(--mono); cursor:pointer;
+    background:var(--panel); color:var(--ink); border:1px solid var(--line-2);
+    border-radius:var(--r-sm); padding:4px 10px; }
+  .filters button[aria-pressed="true"]{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  table.sc{ width:100%; border-collapse:collapse; font-size:var(--t-1); }
+  table.sc th, table.sc td{ padding:var(--s2) var(--s3); border-bottom:1px solid var(--line-3);
+    vertical-align:top; text-align:left; }
+  table.sc thead th{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted);
+    text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; position:sticky; top:0;
+    background:var(--bg); z-index:1; }
+  tr.catrow th{ background:var(--accent-wash); font-family:var(--sans); font-size:var(--t0);
+    color:var(--ink); padding-top:var(--s4); }
+  .ceyebrow{ font-family:var(--mono); font-size:var(--t-2); color:var(--accent); margin-right:var(--s2); }
+  .csum{ display:block; font-family:var(--mono); font-size:var(--t-2); color:var(--muted);
+    font-weight:400; margin-top:2px; }
+  .clead{ color:var(--accent); }
+  td.fid{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); white-space:nowrap; }
+  td.fname{ min-width:min(220px,40vw); }
+  td.fname b{ font-weight:600; }
+  td.fname .why{ display:block; color:var(--muted); font-size:var(--t-2); margin-top:2px;
+    max-width:52ch; overflow-wrap:break-word; }
+  td.num{ font-family:var(--mono); color:var(--muted); text-align:center; }
+  td.score{ white-space:nowrap; }
+  .sbar{ display:inline-block; width:46px; height:7px; background:var(--line-2);
+    border-radius:99px; overflow:hidden; vertical-align:middle; }
+  .sbar-f{ display:block; height:100%; border-radius:99px; }
+  .sbar-f.mf{ background:var(--blue); }
+  .sbar-f.lf{ background:var(--accent); }
+  .snum{ font-family:var(--mono); font-size:var(--t-2); margin-left:6px; color:var(--ink); }
+  td.verd{ white-space:normal; }
+  tr[hidden]{ display:none; }
+
+  /* legend + figures */
+  .legend{ display:flex; flex-wrap:wrap; gap:var(--s3); font-family:var(--mono);
+    font-size:var(--t-2); color:var(--muted); margin-top:var(--s2); }
+  .legend i{ display:inline-block; width:22px; height:7px; border-radius:99px; vertical-align:middle; margin-right:6px; }
+  .i-mf{ background:var(--blue); } .i-lf{ background:var(--accent); }
+  figure{ margin:0 0 var(--s4); }
+  figure svg{ width:100%; height:auto; display:block; }
+  .figcap{ font-size:var(--t-2); color:var(--muted); font-family:var(--mono); margin-top:var(--s2); }
+
+  /* decision form */
+  fieldset{ border:1px solid var(--line-2); border-radius:var(--r); padding:var(--s4);
+    margin:0 0 var(--s3); background:var(--panel); min-width:0; }
+  legend{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted);
+    text-transform:uppercase; letter-spacing:.06em; padding:0 var(--s2); }
+  .opt{ display:flex; gap:var(--s2); align-items:flex-start; padding:var(--s2) 0;
+    border-bottom:1px solid var(--line-3); }
+  .opt:last-of-type{ border-bottom:0; }
+  .opt input{ margin-top:3px; flex:none; }
+  .opt span.t{ display:block; }
+  .opt span.d{ display:block; color:var(--muted); font-size:var(--t-2); margin-top:2px; }
+  form button[type=submit]{ font:inherit; font-size:var(--t-1); cursor:pointer;
+    background:var(--accent); color:var(--accent-ink); border:1px solid var(--accent);
+    border-radius:var(--r-sm); padding:6px 14px; margin-top:var(--s3); }
+  .copybar{ margin-top:var(--s4); display:flex; flex-wrap:wrap; gap:var(--s2); align-items:center; }
+  .copybar button{ font:inherit; font-size:var(--t-1); font-family:var(--mono); cursor:pointer;
+    background:var(--panel); color:var(--ink); border:1px solid var(--line-2);
+    border-radius:var(--r-sm); padding:6px 12px; }
+  .copybar textarea{ width:100%; margin-top:var(--s2); font-family:var(--mono);
+    font-size:var(--t-2); border:1px solid var(--line-2); border-radius:var(--r-sm); padding:var(--s2); }
+  .copybar [role=status]{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); }
+</style>
+</head>
+<body>
+<main class="wrap">
+<header class="hero">
+  <p class="eyebrow">nmp-central-ai &middot; observability review &middot; 2026-10-02 &middot; branch <code>observability</code></p>
+  <h1>Should MLflow be replaced by Langfuse?</h1>
+  <p class="lede">A measured comparison of the two as <b>self-hosted, open-source</b> platforms, scored
+  across 52 features weighted by what this portfolio actually does. Plus the industry-standard
+  question, and the other self-hosted options worth knowing about.</p>
+  <p class="sub">Every number about the current stack was read from the live platform on 2026-10-02
+  (MLflow 3.16.1, Postgres, MinIO) and from the sibling repos — not estimated. Section 10 lists the commands.</p>
+</header>
+
+<section id="verdict">
+  <h2>The short answer</h2>
+  <div class="callout">
+    <p><b>Do not swap. Split the job.</b> Scored on the whole feature surface the two land almost level
+    &mdash; <b>MLflow 72%</b> vs <b>Langfuse 74%</b> weighted &mdash; but that near-tie hides
+    the real shape: they lead in different halves. Langfuse wins
+    <b>GenAI observability 48&ndash;26</b>. MLflow wins the <b>run-and-model ledger 40&ndash;9</b>.
+    A swap would buy you the first by giving up the second.</p>
+    <p>The decisive local fact: this portfolio uses MLflow <em>as a ledger far more than as a tracer</em>.
+    There are 9,928 recorded metrics across 835 keys, 743 params and 2,923 report artifacts &mdash; and
+    <b>zero</b> of those metrics use a step series. Langfuse has no artifact store and no params table,
+    so a pure swap orphans 81.9&nbsp;MB of evaluation reports and the sweep-comparison habit built on them.</p>
+  </div>
+
+  <div class="scoreboard">
+    <div class="vs">
+      <h3>MLflow 3.16.1 <span class="badge info">incumbent</span></h3>
+      <div class="pct">72%</div>
+      <span class="of">408 / 565 weighted &middot; 176 / 260 raw</span>
+      <ul>
+        <li>Owns runs, params, artifacts, models</li>
+        <li>Apache-2.0 throughout, nothing gated</li>
+        <li>1 container on infrastructure you already run</li>
+        <li>Thin on cost, sessions, live dashboards</li>
+      </ul>
+    </div>
+    <div class="vs lead">
+      <h3>Langfuse v4 <span class="badge rec">challenger</span></h3>
+      <div class="pct">74%</div>
+      <span class="of">419 / 565 weighted &middot; 186 / 260 raw</span>
+      <ul>
+        <li>Purpose-built trace UI, cost and sessions</li>
+        <li>MIT core; 9 features sit behind an EE key</li>
+        <li>Adds ClickHouse + Redis + web + worker</li>
+        <li>No model registry, no artifact store</li>
+      </ul>
+    </div>
+    <div class="vs">
+      <h3>Recommended shape</h3>
+      <p style="margin:var(--s2) 0 0"><b>Coexist on one seam.</b> Langfuse takes traces, cost and
+      sessions over OTLP. MLflow keeps experiments, prompts, artifacts and the model registry.</p>
+      <span class="of">Option B &middot; section 7</span>
+      <ul>
+        <li>Your 13 OTLP call sites already speak the right protocol</li>
+        <li>Nothing in the 357 instrumented lines gets deleted</li>
+        <li>Reversible: point the exporter back</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <div class="stat accent"><div class="n">48&ndash;26</div><div class="l">Langfuse leads on tracing &amp; observability (category A)</div></div>
+    <div class="stat"><div class="n">40&ndash;9</div><div class="l">MLflow leads on the run &amp; model ledger (category D)</div></div>
+    <div class="stat amber"><div class="n">4</div><div class="l">features Langfuse scores <b>0</b> on &mdash; no equivalent exists</div></div>
+    <div class="stat"><div class="n">3</div><div class="l">features MLflow self-hosted can't really do (Databricks-gated or absent)</div></div>
+  </div>
+</section>
+
+<section id="today">
+  <h2>01 &nbsp;What is actually running today</h2>
+  <p class="sub">Measured on the live stack, not inferred from the registry. This is the surface any
+  replacement has to cover.</p>
+
+  <div class="verdict">
+    <div class="stat"><div class="n">1,480</div><div class="l">traces / 26,279 spans</div></div>
+    <div class="stat"><div class="n">128</div><div class="l">runs across 10 experiments</div></div>
+    <div class="stat"><div class="n">9,928</div><div class="l">metrics, 835 distinct keys, <b>all step 0</b></div></div>
+    <div class="stat"><div class="n">65</div><div class="l">prompt versions (2 prompts)</div></div>
+    <div class="stat"><div class="n">5</div><div class="l">model versions (1 real model)</div></div>
+    <div class="stat"><div class="n">2,923</div><div class="l">artifacts, 81.9 MB of .json + .md</div></div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 760 330" role="img" aria-labelledby="f1t f1d">
+      <title id="f1t">One MLflow server doing four separate jobs for seven projects</title>
+      <desc id="f1d">Seven project repositories send data to a single MLflow server, which acts at
+      once as a trace store, a run ledger, a prompt registry and a model registry, backed by Postgres
+      and MinIO.</desc>
+      <g font-family="var(--mono)" font-size="11">
+        <text x="8" y="14" fill="var(--muted)">7 sibling repos</text>
+        <g id="f1-projects">
+          <g fill="var(--panel)" stroke="var(--line-2)">
+            <rect x="8" y="26" width="118" height="26" rx="5"/><rect x="8" y="58" width="118" height="26" rx="5"/>
+            <rect x="8" y="90" width="118" height="26" rx="5"/><rect x="8" y="122" width="118" height="26" rx="5"/>
+            <rect x="8" y="154" width="118" height="26" rx="5"/><rect x="8" y="186" width="118" height="26" rx="5"/>
+            <rect x="8" y="218" width="118" height="26" rx="5"/>
+          </g>
+          <g fill="var(--ink)" font-size="10.5">
+            <text x="18" y="43">P1 convfinqa</text><text x="18" y="75">P2 dabstep-loop</text>
+            <text x="18" y="107">P3 tau2-loop</text><text x="18" y="139">P5 data-qa (OTLP)</text>
+            <text x="18" y="171">P6 dataagentbench</text><text x="18" y="203">P8 vidore-v3</text>
+            <text x="18" y="235">P4 transcript-rag</text>
+          </g>
+        </g>
+        <g stroke="var(--line)" fill="none" stroke-width="1.2">
+          <path d="M126 39 C160 39 160 150 196 150"/><path d="M126 71 C160 71 160 150 196 150"/>
+          <path d="M126 103 C165 103 165 150 196 150"/><path d="M126 135 C175 135 175 150 196 150"/>
+          <path d="M126 167 C175 167 175 150 196 150"/><path d="M126 199 C165 199 165 150 196 150"/>
+          <path d="M126 231 C160 231 160 150 196 150"/>
+        </g>
+        <text x="140" y="268" fill="var(--muted)" font-size="10">357 lines</text>
+        <text x="140" y="281" fill="var(--muted)" font-size="10">64 files</text>
+
+        <g id="f1-server">
+          <rect x="198" y="108" width="150" height="84" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="273" y="136" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">MLflow 3.16.1</text>
+          <text x="273" y="152" text-anchor="middle" fill="var(--muted)">:5000</text>
+          <text x="273" y="172" text-anchor="middle" fill="var(--accent)" font-size="10">one server</text>
+          <text x="273" y="184" text-anchor="middle" fill="var(--accent)" font-size="10">four jobs</text>
+        </g>
+
+        <g stroke="var(--accent)" fill="none" stroke-width="1.2">
+          <path d="M348 126 L430 58"/><path d="M348 140 L430 118"/>
+          <path d="M348 158 L430 178"/><path d="M348 172 L430 238"/>
+        </g>
+        <g id="f1-roles">
+          <g fill="var(--panel)" stroke="var(--line-2)">
+            <rect x="432" y="38" width="200" height="42" rx="6"/><rect x="432" y="98" width="200" height="42" rx="6"/>
+            <rect x="432" y="158" width="200" height="42" rx="6"/><rect x="432" y="218" width="200" height="42" rx="6"/>
+          </g>
+          <g fill="var(--ink)" font-size="11.5" font-weight="600">
+            <text x="444" y="58">trace store</text><text x="444" y="118">run ledger</text>
+            <text x="444" y="178">prompt registry</text><text x="444" y="238">model registry</text>
+          </g>
+          <g fill="var(--muted)" font-size="10">
+            <text x="444" y="72">1,480 traces · 26,279 spans</text>
+            <text x="444" y="132">128 runs · 9,928 metrics</text>
+            <text x="444" y="192">2 prompts · 65 versions</text>
+            <text x="444" y="252">1 model · 5 versions</text>
+          </g>
+          <g font-size="10">
+            <text x="640" y="63" fill="var(--accent)">Langfuse: strong</text>
+            <text x="640" y="123" fill="var(--amber)">Langfuse: partial</text>
+            <text x="640" y="183" fill="var(--accent)">Langfuse: strong</text>
+            <text x="640" y="243" fill="var(--red)">Langfuse: none</text>
+          </g>
+        </g>
+        <g id="f1-storage">
+          <rect x="198" y="236" width="150" height="56" rx="6" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="273" y="256" text-anchor="middle" fill="var(--ink)" font-size="11">Postgres 67 MB</text>
+          <text x="273" y="274" text-anchor="middle" fill="var(--ink)" font-size="11">MinIO 81.9 MB</text>
+          <text x="273" y="288" text-anchor="middle" fill="var(--muted)" font-size="9.5">reusable by Langfuse</text>
+        </g>
+        <path d="M273 192 L273 236" stroke="var(--line)" fill="none" stroke-dasharray="3 3"/>
+      </g>
+    </svg>
+    <p class="figcap">Fig 1 — the four jobs, and how well Langfuse covers each. Only the fourth has no
+    counterpart at all; the second has a partial one.</p>
+  </figure>
+
+  <div class="callout warn">
+    <p><b>The measurement that changes the answer.</b> I expected step-wise metric curves to be the
+    blocker &mdash; Langfuse has no concept of them. They turned out to be unused:
+    <code>max(step) = 0</code> across all 9,928 rows. The metrics here are flat scorecards
+    (<code>passed</code>, <code>errors</code>, <code>cost_usd</code>, <code>duration_s</code>,
+    <code>scorecard_train_sql_passed</code>&hellip;), which Langfuse <b>scores</b> can represent.
+    The real blockers are duller: the artifact store and the params table.</p>
+  </div>
+</section>
+<section id="rubric">
+  <h2>02 &nbsp;The rubric</h2>
+  <p class="sub">52 features &mdash; the union of what either platform offers, so a gap on one side is
+  visible as a low score rather than a missing row. Both are scored <b>as self-hosted open-source
+  deployments only</b>: Databricks-managed MLflow features and Langfuse Cloud features score as absent,
+  because neither is on the table here.</p>
+
+  <div class="split">
+    <div class="card">
+      <h3>Score 0&ndash;5</h3>
+      <dl class="kv">
+        <dt>5</dt><dd>First-class; the thing the product is built around</dd>
+        <dt>4</dt><dd>Fully supported, minor rough edges</dd>
+        <dt>3</dt><dd>Works, but you build part of it yourself</dd>
+        <dt>2</dt><dd>Possible only by convention or workaround</dd>
+        <dt>1</dt><dd>Nominally present; gated, stubbed, or needs a proxy</dd>
+        <dt>0</dt><dd>No equivalent exists</dd>
+      </dl>
+    </div>
+    <div class="card">
+      <h3>Weight 1&ndash;3</h3>
+      <p>Weights are <b>this portfolio's</b> usage, taken from measurement, not generic importance.
+      That is why a model registry weighs 1 (one model, five versions) while an artifact store weighs
+      3 (2,923 objects).</p>
+      <dl class="kv">
+        <dt>3</dt><dd>Measurably used today, or directly asked for</dd>
+        <dt>2</dt><dd>Used lightly, or clearly wanted next</dd>
+        <dt>1</dt><dd>Unused and unlikely to be missed</dd>
+      </dl>
+      <p class="small">Both a raw and a weighted total are shown, so you can see the verdict with and
+      without my weighting.</p>
+    </div>
+  </div>
+</section>
+
+<section id="scorecard">
+  <h2>03 &nbsp;Scorecard &mdash; all 52 features</h2>
+  <p class="sub">Filter to see where one platform has nothing to offer. Totals per category are in the
+  banded rows.</p>
+
+  <div class="filters" role="group" aria-label="Filter the scorecard">
+    <button type="button" data-f="all" aria-pressed="true">all 52</button>
+    <button type="button" data-f="mlflow-only" aria-pressed="false">only MLflow</button>
+    <button type="button" data-f="langfuse-only" aria-pressed="false">only Langfuse</button>
+    <button type="button" data-f="both" aria-pressed="false">both offer it</button>
+    <button type="button" data-f="w3" aria-pressed="false">weight 3 only</button>
+    <span class="legend"><span><i class="i-mf"></i>MLflow</span><span><i class="i-lf"></i>Langfuse</span></span>
+  </div>
+
+  <div class="tw">
+    <table class="sc">
+      <thead>
+        <tr><th>ID</th><th>Feature &amp; local evidence</th><th>W</th><th>MLflow</th><th>Langfuse</th><th>Verdict</th></tr>
+      </thead>
+      <tbody id="scbody">
+<tr class="catrow" data-cat="A"><th colspan="6"><span class="ceyebrow">A</span> GenAI tracing &amp; observability<span class="csum">MLflow <b>26</b>/50 &middot; Langfuse <b>48</b>/50 &middot; <span class="clead">Langfuse</span></span></th></tr>
+<tr data-cat="A" data-group="both" data-w="3"><td class="fid">A1</td><td class="fname"><b>Span/trace capture (decorators, manual spans)</b><span class="why">7 @mlflow.trace + 6 start_span in portfolio; both first-class</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="3"><td class="fid">A2</td><td class="fname"><b>Auto-instrumentation breadth</b><span class="why">23 autolog call sites; LF covers via OTel instrumentors + native SDKs</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="3"><td class="fid">A3</td><td class="fname"><b>OTLP ingestion (vendor-neutral in)</b><span class="why">13 /v1/traces + 8 OTEL_EXPORTER sites. LF: HTTP only, no gRPC</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="3"><td class="fid">A4</td><td class="fname"><b>Trace debugging UI</b><span class="why">LF timeline/IO diffing is the product; MLflow trace UI is newer, thinner</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:60%"></span></span><span class="snum">3</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="2"><td class="fid">A5</td><td class="fname"><b>Sessions / multi-turn threading</b><span class="why">LF first-class sessions; MLflow approximates with tags</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="A" data-group="langfuse-only" data-w="1"><td class="fid">A6</td><td class="fname"><b>End-user attribution</b><span class="why">LF user IDs + per-user views; MLflow has no notion</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:20%"></span></span><span class="snum">1</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge ok">Langfuse (MLflow stub)</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="3"><td class="fid">A7</td><td class="fname"><b>Cost &amp; token tracking</b><span class="why">cost_usd is a top-10 metric key here, logged by hand; LF prices models natively</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="A" data-group="langfuse-only" data-w="3"><td class="fid">A8</td><td class="fname"><b>Production monitoring dashboards</b><span class="why">MLflow monitoring dashboards are Databricks-managed; OSS &#x27;coming soon&#x27;</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:20%"></span></span><span class="snum">1</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge ok">Langfuse (MLflow stub)</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="2"><td class="fid">A9</td><td class="fname"><b>Latency / throughput analytics</b><span class="why">duration_s hand-logged today; LF charts it natively</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="A" data-group="both" data-w="2"><td class="fid">A10</td><td class="fname"><b>Trace search/filter at volume</b><span class="why">26,279 spans in Postgres today; LF uses ClickHouse</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr class="catrow" data-cat="B"><th colspan="6"><span class="ceyebrow">B</span> Evaluation &amp; scoring<span class="csum">MLflow <b>23</b>/35 &middot; Langfuse <b>30</b>/35 &middot; <span class="clead">Langfuse</span></span></th></tr>
+<tr data-cat="B" data-group="both" data-w="3"><td class="fid">B1</td><td class="fname"><b>Offline eval harness</b><span class="why">4 genai.evaluate sites; LF dataset experiments equivalent</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="B" data-group="both" data-w="2"><td class="fid">B2</td><td class="fname"><b>Built-in LLM judges</b><span class="why">both ship hallucination/relevance style judges</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="B" data-group="both" data-w="3"><td class="fid">B3</td><td class="fname"><b>Custom scorers / scores</b><span class="why">835 distinct metric keys here; LF scores are numeric/categorical/boolean/text</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="B" data-group="langfuse-only" data-w="2"><td class="fid">B4</td><td class="fname"><b>Online eval on live production traces</b><span class="why">MLflow: Databricks-gated. LF: OSS evaluators on incoming traces</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:20%"></span></span><span class="snum">1</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge ok">Langfuse (MLflow stub)</span></td></tr>
+<tr data-cat="B" data-group="both" data-w="2"><td class="fid">B5</td><td class="fname"><b>Human annotation / labelling queues</b><span class="why">LF annotation queues are OSS; 0 assessments logged here so far</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="B" data-group="both" data-w="2"><td class="fid">B6</td><td class="fname"><b>Datasets &amp; versioning</b><span class="why">0 datasets in MLflow DB today; LF datasets drive experiments</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:60%"></span></span><span class="snum">3</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="B" data-group="both" data-w="3"><td class="fid">B7</td><td class="fname"><b>Run comparison UI</b><span class="why">MLflow run-compare is mature; LF compares dataset runs, not arbitrary runs</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:60%"></span></span><span class="snum">3</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr class="catrow" data-cat="C"><th colspan="6"><span class="ceyebrow">C</span> Prompt lifecycle<span class="csum">MLflow <b>19</b>/30 &middot; Langfuse <b>25</b>/30 &middot; <span class="clead">Langfuse</span></span></th></tr>
+<tr data-cat="C" data-group="both" data-w="3"><td class="fid">C1</td><td class="fname"><b>Prompt registry with versions</b><span class="why">65 prompt versions live here — the most-used registry feature</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="C" data-group="both" data-w="3"><td class="fid">C2</td><td class="fname"><b>Aliases / labels for promotion</b><span class="why">set_prompt_alias in use; LF labels equivalent</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="C" data-group="both" data-w="2"><td class="fid">C3</td><td class="fname"><b>Prompt-to-trace lineage</b><span class="why">LF links prompt version to every trace that used it</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:60%"></span></span><span class="snum">3</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="C" data-group="both" data-w="1"><td class="fid">C4</td><td class="fname"><b>Playground / iterate in UI</b><span class="why">LF playground is OSS; MLflow has none self-hosted</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="C" data-group="both" data-w="2"><td class="fid">C5</td><td class="fname"><b>Prompt A/B tied to eval</b><span class="why">both can; LF ties it to datasets + scores</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:60%"></span></span><span class="snum">3</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="C" data-group="both" data-w="1"><td class="fid">C6</td><td class="fname"><b>Protected prompt labels (OSS)</b><span class="why">LF gates protected labels behind EE; MLflow does not gate</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:60%"></span></span><span class="snum">3</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:20%"></span></span><span class="snum">1</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr class="catrow" data-cat="D"><th colspan="6"><span class="ceyebrow">D</span> ML lifecycle (model &amp; run ledger)<span class="csum">MLflow <b>40</b>/40 &middot; Langfuse <b>9</b>/40 &middot; <span class="clead">MLflow</span></span></th></tr>
+<tr data-cat="D" data-group="both" data-w="3"><td class="fid">D1</td><td class="fname"><b>Scalar metric per run</b><span class="why">9,928 metric rows, all step=0 — LF scores can carry this shape</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:60%"></span></span><span class="snum">3</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="D" data-group="mlflow-only" data-w="1"><td class="fid">D2</td><td class="fname"><b>Step-wise metric time series</b><span class="why">measured: max step = 0, zero rows with step&gt;0 — unused here</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:0%"></span></span><span class="snum">0</span></td><td class="verd"><span class="badge bad">MLflow only</span></td></tr>
+<tr data-cat="D" data-group="both" data-w="3"><td class="fid">D3</td><td class="fname"><b>Params per run</b><span class="why">743 param rows; LF has run metadata, not a params table</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="D" data-group="both" data-w="2"><td class="fid">D4</td><td class="fname"><b>Programmatic run query (search_runs)</b><span class="why">6 search_runs sites; LF offers API + metrics endpoint instead</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:60%"></span></span><span class="snum">3</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="D" data-group="mlflow-only" data-w="3"><td class="fid">D5</td><td class="fname"><b>Generic artifact store</b><span class="why">2,923 objects / 81.9 MB of .json + .md reports; LF has media attachments only</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:20%"></span></span><span class="snum">1</span></td><td class="verd"><span class="badge bad">MLflow (Langfuse stub)</span></td></tr>
+<tr data-cat="D" data-group="mlflow-only" data-w="1"><td class="fid">D6</td><td class="fname"><b>Model registry (versions, stages)</b><span class="why">1 real model, 5 versions. LF has none at all</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:0%"></span></span><span class="snum">0</span></td><td class="verd"><span class="badge bad">MLflow only</span></td></tr>
+<tr data-cat="D" data-group="mlflow-only" data-w="1"><td class="fid">D7</td><td class="fname"><b>Model packaging &amp; serving</b><span class="why">unused here — no model binaries in the artifact store</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:0%"></span></span><span class="snum">0</span></td><td class="verd"><span class="badge bad">MLflow only</span></td></tr>
+<tr data-cat="D" data-group="mlflow-only" data-w="1"><td class="fid">D8</td><td class="fname"><b>Classic-ML autologging</b><span class="why">unused here; LF is GenAI-only by design</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:0%"></span></span><span class="snum">0</span></td><td class="verd"><span class="badge bad">MLflow only</span></td></tr>
+<tr class="catrow" data-cat="E"><th colspan="6"><span class="ceyebrow">E</span> Self-hosting &amp; operations<span class="csum">MLflow <b>29</b>/40 &middot; Langfuse <b>26</b>/40 &middot; <span class="clead">MLflow</span></span></th></tr>
+<tr data-cat="E" data-group="both" data-w="3"><td class="fid">E1</td><td class="fname"><b>Container footprint</b><span class="why">MLflow: 1 server. LF: web+worker+clickhouse+redis (pg/minio reusable)</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="3"><td class="fid">E2</td><td class="fname"><b>Resource floor</b><span class="why">LF docs recommend 4 cores / 16 GiB / 100 GiB disk</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="3"><td class="fid">E3</td><td class="fname"><b>Reuses this stack&#x27;s Postgres + MinIO</b><span class="why">LF needs pg + S3 — both already run here (same Chainguard MinIO)</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="3"><td class="fid">E4</td><td class="fname"><b>Backup / restore story</b><span class="why">make db-backup covers MLflow today; LF compose explicitly lacks backup, + ClickHouse</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="2"><td class="fid">E5</td><td class="fname"><b>Upgrade tooling</b><span class="why">mlflow-db-upgrade vs LF&#x27;s documented v2-v3-v4 migrations</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="1"><td class="fid">E6</td><td class="fname"><b>HA / horizontal scale</b><span class="why">LF splits web/worker and ships Helm; MLflow server is single-process</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="1"><td class="fid">E7</td><td class="fname"><b>Ingest throughput headroom</b><span class="why">LF: queue + ClickHouse, 90B+ observations/mo claimed</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="E" data-group="both" data-w="2"><td class="fid">E8</td><td class="fname"><b>Retention / TTL controls (OSS)</b><span class="why">MLflow: manual deletes. LF: retention policies are EE-gated</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr class="catrow" data-cat="F"><th colspan="6"><span class="ceyebrow">F</span> Governance &amp; licensing<span class="csum">MLflow <b>16</b>/35 &middot; Langfuse <b>21</b>/35 &middot; <span class="clead">Langfuse</span></span></th></tr>
+<tr data-cat="F" data-group="both" data-w="3"><td class="fid">F1</td><td class="fname"><b>OSI licence, no feature gating</b><span class="why">MLflow Apache-2.0 throughout; LF MIT except ee/ dirs</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:60%"></span></span><span class="snum">3</span></td><td class="verd"><span class="badge info">MLflow stronger</span></td></tr>
+<tr data-cat="F" data-group="both" data-w="1"><td class="fid">F2</td><td class="fname"><b>Audit logs (OSS)</b><span class="why">MLflow none; LF EE-gated</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:20%"></span></span><span class="snum">1</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:20%"></span></span><span class="snum">1</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="F" data-group="both" data-w="1"><td class="fid">F3</td><td class="fname"><b>RBAC (OSS)</b><span class="why">LF org roles OSS, project RBAC EE; MLflow has no auth model</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:20%"></span></span><span class="snum">1</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="F" data-group="both" data-w="1"><td class="fid">F4</td><td class="fname"><b>SSO (OSS)</b><span class="why">LF SSO is OSS; MLflow needs a reverse proxy</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="F" data-group="both" data-w="2"><td class="fid">F5</td><td class="fname"><b>PII masking (OSS)</b><span class="why">LF server-side masking is EE; SDK-side masking is OSS</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:40%"></span></span><span class="snum">2</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="F" data-group="both" data-w="2"><td class="fid">F6</td><td class="fname"><b>Vendor independence</b><span class="why">Databricks steers MLflow; ClickHouse now owns Langfuse (LICENSE copyright)</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:60%"></span></span><span class="snum">3</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:60%"></span></span><span class="snum">3</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="F" data-group="both" data-w="2"><td class="fid">F7</td><td class="fname"><b>Multi-tenant projects &amp; keys</b><span class="why">LF orgs/projects/API keys; MLflow has only experiments</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr class="catrow" data-cat="G"><th colspan="6"><span class="ceyebrow">G</span> Ecosystem &amp; portability<span class="csum">MLflow <b>23</b>/30 &middot; Langfuse <b>27</b>/30 &middot; <span class="clead">Langfuse</span></span></th></tr>
+<tr data-cat="G" data-group="both" data-w="3"><td class="fid">G1</td><td class="fname"><b>OTel GenAI semconv alignment</b><span class="why">both map gen_ai.*; the conventions themselves are still &#x27;Development&#x27;</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="G" data-group="both" data-w="3"><td class="fid">G2</td><td class="fname"><b>Python SDK maturity</b><span class="why">MLflow is the older, broader Python surface</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:100%"></span></span><span class="snum">5</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="G" data-group="both" data-w="1"><td class="fid">G3</td><td class="fname"><b>JS/TS SDK</b><span class="why">LF ships first-class JS/TS; relevant if a frontend ever traces</span></td><td class="num">1</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:40%"></span></span><span class="snum">2</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge info">Langfuse stronger</span></td></tr>
+<tr data-cat="G" data-group="both" data-w="2"><td class="fid">G4</td><td class="fname"><b>Framework integration breadth</b><span class="why">LF covers more GenAI frameworks; MLflow covers more ML frameworks</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="G" data-group="both" data-w="3"><td class="fid">G5</td><td class="fname"><b>Get your data back out</b><span class="why">MLflow: SQL + API. LF: API + ClickHouse SQL</span></td><td class="num">3</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:80%"></span></span><span class="snum">4</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+<tr data-cat="G" data-group="both" data-w="2"><td class="fid">G6</td><td class="fname"><b>Community momentum</b><span class="why">stars 2026-10-02: MLflow 28.2k Apache-2.0 / Langfuse 35.3k MIT-core</span></td><td class="num">2</td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f mf" style="width:80%"></span></span><span class="snum">4</span></td><td class="score"><span class="sbar" aria-hidden="true"><span class="sbar-f lf" style="width:100%"></span></span><span class="snum">5</span></td><td class="verd"><span class="badge">both, comparable</span></td></tr>
+      </tbody>
+      <tfoot>
+        <tr class="catrow"><th colspan="6">
+          Totals <span class="csum">raw MLflow <b>176</b>/260 (68%) vs Langfuse
+          <b>186</b>/260 (72%) &nbsp;&middot;&nbsp; weighted MLflow <b>408</b>/565 (72%)
+          vs Langfuse <b>419</b>/565 (74%)</span>
+        </th></tr>
+      </tfoot>
+    </table>
+  </div>
+  <p class="figcap">Weighting moves the needle by two points. The verdict does not rest on it.</p>
+</section>
+
+<section id="gaps">
+  <h2>04 &nbsp;Where one platform simply has nothing</h2>
+  <p class="sub">The rows that decide this, pulled out of the table.</p>
+
+  <h3>Only MLflow &mdash; Langfuse scores 0</h3>
+  <div class="cards">
+    <div class="card">
+      <h4>D6 &middot; Model registry</h4>
+      <p>Versions, aliases, stage transitions. Langfuse has no concept of a registered model.</p>
+      <p class="cost">local exposure: 1 model, 5 versions (<code>tau2-loop-airline</code>)</p>
+    </div>
+    <div class="card">
+      <h4>D7 &middot; Model packaging &amp; serving</h4>
+      <p><code>mlflow.pyfunc</code>, <code>models:/</code> URIs, <code>mlflow models serve</code>.</p>
+      <p class="cost">local exposure: none — no model binaries in the artifact store</p>
+    </div>
+    <div class="card">
+      <h4>D8 &middot; Classic-ML autologging</h4>
+      <p>sklearn, XGBoost, PyTorch, transformers. Langfuse is GenAI-only by design.</p>
+      <p class="cost">local exposure: none today</p>
+    </div>
+    <div class="card">
+      <h4>D2 &middot; Step-wise metric series</h4>
+      <p>Loss curves over steps/epochs. Langfuse scores are point-in-time.</p>
+      <p class="cost">local exposure: none — <code>max(step)=0</code></p>
+    </div>
+  </div>
+  <p class="small">Three of these four are unused here. That is why the swap is <em>arguable</em> at all
+  &mdash; but note D5 (artifact store, Langfuse scores 1) is <b>not</b> in this list and is heavily used.</p>
+
+  <h3>Only Langfuse &mdash; MLflow self-hosted is a stub</h3>
+  <div class="cards">
+    <div class="card rec">
+      <h4>A8 &middot; Production monitoring dashboards</h4>
+      <p>Quality/latency/cost trends over live traffic. In MLflow this is a
+      <b>Databricks-managed</b> capability; the OSS server has no monitoring dashboard.</p>
+      <p class="cost">weight 3 — this is the thing you asked for</p>
+    </div>
+    <div class="card rec">
+      <h4>A7 &middot; Cost &amp; token accounting</h4>
+      <p>Model price tables, cost per trace/session/user, aggregated. You currently hand-log
+      <code>cost_usd</code> as a metric.</p>
+      <p class="cost">weight 3 — <code>cost_usd</code> is a top-10 metric key</p>
+    </div>
+    <div class="card">
+      <h4>A5 / A6 &middot; Sessions and users</h4>
+      <p>Multi-turn threads and per-end-user views as first-class objects, not tag conventions.</p>
+      <p class="cost">relevant to tau2-loop's multi-turn work</p>
+    </div>
+    <div class="card">
+      <h4>B4 / B5 &middot; Online eval + annotation queues</h4>
+      <p>Run judges continuously against production traces; queue traces for human labelling. Both OSS
+      in Langfuse; Databricks-gated or thin in MLflow.</p>
+      <p class="cost">0 assessments logged here so far</p>
+    </div>
+  </div>
+</section>
+<section id="seam">
+  <h2>05 &nbsp;Where the seam would go</h2>
+  <p class="sub">One concept: your instrumentation already speaks OTLP in 13 places, and Langfuse ingests
+  OTLP over HTTP. That line is the whole migration for the tracing half.</p>
+
+  <figure>
+    <svg viewBox="0 0 770 280" role="img" aria-labelledby="f2t f2d">
+      <title id="f2t">Option B: one exporter, two destinations split by role</title>
+      <desc id="f2d">Application code emits OTLP traces which go to Langfuse for observability, while
+      the MLflow client continues to write runs, prompts and artifacts to MLflow. Both share the
+      existing Postgres and MinIO.</desc>
+      <g font-family="var(--mono)" font-size="11">
+        <g id="f2-app">
+          <rect x="6" y="96" width="132" height="80" rx="7" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="72" y="124" text-anchor="middle" fill="var(--ink)" font-size="11.5" font-weight="600">your agent code</text>
+          <text x="72" y="142" text-anchor="middle" fill="var(--muted)" font-size="10">64 files</text>
+          <text x="72" y="157" text-anchor="middle" fill="var(--muted)" font-size="10">357 lines</text>
+        </g>
+
+        <path d="M138 120 L306 74" stroke="var(--accent)" stroke-width="1.8" fill="none"/>
+        <text x="146" y="76" fill="var(--accent)" font-size="9.5">OTLP /v1/traces</text>
+        <text x="146" y="87" fill="var(--muted)" font-size="9">13 sites, portable</text>
+
+        <path d="M138 155 L306 200" stroke="var(--blue)" stroke-width="1.8" fill="none"/>
+        <text x="146" y="190" fill="var(--blue)" font-size="9.5">mlflow client</text>
+        <text x="146" y="201" fill="var(--muted)" font-size="9">runs + artifacts</text>
+
+        <g id="f2-langfuse">
+          <rect x="308" y="28" width="196" height="88" rx="7" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="406" y="52" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">Langfuse v4</text>
+          <text x="406" y="68" text-anchor="middle" fill="var(--muted)" font-size="10">:3100 · web + worker</text>
+          <text x="406" y="86" text-anchor="middle" fill="var(--accent)" font-size="10">traces · cost · sessions</text>
+          <text x="406" y="100" text-anchor="middle" fill="var(--accent)" font-size="10">online eval · annotation</text>
+        </g>
+
+        <g id="f2-mlflow">
+          <rect x="308" y="162" width="196" height="88" rx="7" fill="var(--panel)" stroke="var(--blue)" stroke-width="1.5"/>
+          <text x="406" y="186" text-anchor="middle" fill="var(--ink)" font-size="12" font-weight="600">MLflow 3.16.1</text>
+          <text x="406" y="202" text-anchor="middle" fill="var(--muted)" font-size="10">:5000 · unchanged</text>
+          <text x="406" y="220" text-anchor="middle" fill="var(--blue)" font-size="10">runs · params · artifacts</text>
+          <text x="406" y="234" text-anchor="middle" fill="var(--blue)" font-size="10">prompts · model registry</text>
+        </g>
+
+        <g stroke="var(--line)" fill="none" stroke-dasharray="3 3">
+          <path d="M504 72 C534 72 534 126 560 126"/>
+          <path d="M504 206 C534 206 534 126 560 126"/>
+        </g>
+        <g id="f2-shared">
+          <rect x="562" y="74" width="202" height="104" rx="7" fill="var(--panel)" stroke="var(--line-2)"/>
+          <text x="663" y="96" text-anchor="middle" fill="var(--ink)" font-size="11" font-weight="600">already running here</text>
+          <text x="663" y="118" text-anchor="middle" fill="var(--ink)" font-size="10">Postgres 16 + pgvector</text>
+          <text x="663" y="134" text-anchor="middle" fill="var(--ink)" font-size="10">MinIO (Chainguard)</text>
+          <text x="663" y="156" text-anchor="middle" fill="var(--muted)" font-size="9">Langfuse needs both —</text>
+          <text x="663" y="168" text-anchor="middle" fill="var(--muted)" font-size="9">no new stateful service</text>
+        </g>
+        <g id="f2-new">
+          <rect x="562" y="192" width="202" height="58" rx="7" fill="var(--amber-soft)" stroke="var(--amber)"/>
+          <text x="663" y="212" text-anchor="middle" fill="var(--ink)" font-size="10.5" font-weight="600">genuinely new</text>
+          <text x="663" y="228" text-anchor="middle" fill="var(--ink)" font-size="10">ClickHouse + Redis</text>
+          <text x="663" y="242" text-anchor="middle" fill="var(--muted)" font-size="9">+ web + worker = 4 containers</text>
+        </g>
+      </g>
+    </svg>
+    <p class="figcap">Fig 2 — Option B. The dashed lines are reuse, not new infrastructure: Langfuse's
+    Postgres and S3 dependencies are services <code>nmp-central</code> already publishes. Langfuse's own
+    compose file even pulls the same Chainguard MinIO image this repo moved to in PR&nbsp;#10.</p>
+  </figure>
+
+  <div class="callout">
+    <p><b>Why this is cheap.</b> Langfuse accepts OTLP over HTTP at
+    <code>/api/public/otel/v1/traces</code> with Basic auth. Your OTLP projects (P5 data-qa is already
+    pure OTLP) change an endpoint and an auth header. The MLflow-SDK projects keep their
+    <code>@mlflow.trace</code> decorators <em>or</em> switch to an OTel exporter &mdash; your call, per project.</p>
+    <p class="small"><b>One constraint to design around:</b> Langfuse supports OTLP over HTTP only.
+    gRPC is not supported, so any exporter configured for <code>grpc</code> must move to
+    <code>http/protobuf</code>.</p>
+  </div>
+</section>
+
+<section id="standard">
+  <h2>06 &nbsp;What is the industry standard?</h2>
+  <p class="sub">Two different questions hide in this one, and they have different answers.</p>
+
+  <div class="split">
+    <div class="card rec">
+      <h3>The wire format &mdash; <span class="badge rec">this is the standard</span></h3>
+      <p><b>OpenTelemetry GenAI semantic conventions</b> (<code>gen_ai.*</code>) are what every serious
+      vendor now ingests, MLflow and Langfuse included. Instrument to OTel and the backend becomes a
+      deployment choice rather than a rewrite.</p>
+      <p><b>But it is not stable.</b> As of mid-2026 every <code>gen_ai.*</code> attribute, span, metric
+      and event in the registry still carries the <em>Development</em> stability badge &mdash; none is
+      marked Stable. In June 2026 (semconv v1.42.0) the GenAI conventions were moved out of the main
+      repository into a dedicated <code>semantic-conventions-genai</code> repo, which has no tagged
+      release yet, so there is no versioned schema URL to pin against.</p>
+      <p class="small">Practical read: the core shape (operation, provider, model, token usage) has held
+      since v1.37.0. Instrument the core now and expect to <em>add</em> attributes, not rewrite them.</p>
+    </div>
+    <div class="card">
+      <h3>The product &mdash; <span class="badge info">Langfuse leads</span></h3>
+      <p>Among self-hostable LLM-observability products Langfuse is the clear adoption leader by the
+      crude-but-public measure: <b>35.3k</b> GitHub stars vs MLflow's 28.2k, with the broadest
+      framework integration surface and an MIT core.</p>
+      <p>There is no standards body here and no neutral benchmark. "Industry standard" for the
+      <em>platform</em> layer means "most widely adopted", and that is Langfuse &mdash; while
+      MLflow remains the standard for the <em>ML lifecycle</em> layer, which is a different job.</p>
+      <p class="small">Governance note: Langfuse was acquired by <b>ClickHouse</b> in early 2026 &mdash;
+      the repository's own LICENSE now reads "Copyright (c) 2023-2026 ClickHouse, Inc." Its database
+      dependency and its owner are now the same company.</p>
+    </div>
+  </div>
+</section>
+
+<section id="alts">
+  <h2>07 &nbsp;Other self-hosted options</h2>
+  <p class="sub">Stars, licences and last-push dates read from the GitHub API on 2026-10-02, so the
+  staleness signal is real rather than remembered.</p>
+
+  <div class="tw">
+    <table>
+      <thead>
+        <tr><th>Project</th><th>Licence</th><th>Stars</th><th>Self-host shape</th><th>Verdict for you</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>Langfuse</b> v4</td>
+          <td>MIT, except <code>ee/</code></td>
+          <td class="num">35,296</td>
+          <td>6 services; you already run 2 of them</td>
+          <td><span class="badge rec">the one to adopt</span> GenAI-only, so additive not replacing</td>
+        </tr>
+        <tr>
+          <td><b>MLflow</b> 3.16.1</td>
+          <td>Apache-2.0, no gating</td>
+          <td class="num">28,229</td>
+          <td>1 server + Postgres + S3</td>
+          <td><span class="badge info">incumbent</span> keep for the ledger; you are on the latest release</td>
+        </tr>
+        <tr>
+          <td><b>Opik</b> (Comet)</td>
+          <td>Apache-2.0</td>
+          <td class="num">22,332</td>
+          <td>~12 containers: MySQL, ClickHouse, <b>ZooKeeper</b>, Redis, MinIO, 4 backends, Jaeger, collector</td>
+          <td><span class="badge warn">heavy</span> closest functional rival, but 3&times; the operational surface; self-host drops user management</td>
+        </tr>
+        <tr>
+          <td><b>Arize Phoenix</b></td>
+          <td><b>ELv2</b> — not OSI</td>
+          <td class="num">11,679</td>
+          <td>Light; single container viable</td>
+          <td><span class="badge warn">licence</span> fine internally, but you may not offer it as a service. Strong OTel/OpenInference lineage</td>
+        </tr>
+        <tr>
+          <td><b>SigNoz</b></td>
+          <td>MIT, except <code>ee/</code></td>
+          <td class="num">32,262</td>
+          <td>ClickHouse-based APM stack</td>
+          <td><span class="badge info">adjacent</span> general APM with LLM support, not GenAI-first. Right answer only if you also want infra APM</td>
+        </tr>
+        <tr>
+          <td><b>Laminar</b></td>
+          <td>Apache-2.0</td>
+          <td class="num">3,293</td>
+          <td>Rust backend, compact</td>
+          <td><span class="badge">small</span> traces + evals + SQL access to your data; least mature of the serious set</td>
+        </tr>
+        <tr>
+          <td><b>OpenLLMetry</b> (Traceloop)</td>
+          <td>Apache-2.0</td>
+          <td class="num">7,466</td>
+          <td>SDK only — no backend</td>
+          <td><span class="badge info">complement</span> instrumentation layer you could point <em>at</em> Langfuse</td>
+        </tr>
+        <tr>
+          <td><b>OpenLIT</b></td>
+          <td>Apache-2.0</td>
+          <td class="num">2,812</td>
+          <td>OTel-native, ClickHouse</td>
+          <td><span class="badge">small</span> viable but thin community relative to Langfuse</td>
+        </tr>
+        <tr>
+          <td><b>Helicone</b></td>
+          <td>Apache-2.0</td>
+          <td class="num">6,193</td>
+          <td>Gateway + logging</td>
+          <td><span class="badge bad">do not adopt</span> acquired by Mintlify in March 2026 and in <b>maintenance mode</b>: security patches only, no roadmap</td>
+        </tr>
+        <tr>
+          <td><b>LangSmith</b></td>
+          <td>proprietary</td>
+          <td class="num">&mdash;</td>
+          <td>Self-host = enterprise licence</td>
+          <td><span class="badge bad">excluded</span> fails your self-hosted-and-open requirement</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="figcap">I could not verify a canonical <b>Lunary</b> repository &mdash;
+  <code>lunary-ai/lunary</code> returns 404 as of 2026-10-02 &mdash; so it is left out rather than
+  listed on memory.</p>
+
+  <div class="callout warn">
+    <p><b>The one that would have bitten you.</b> Helicone appears near the top of most "best
+    self-hosted LLM observability 2026" listicles, which were written before or around the Mintlify
+    acquisition. It is Apache-2.0 and still runs, but feature development has stopped. Its GitHub
+    last-push date (2026-09-16) is already the stalest in this table.</p>
+  </div>
+</section>
+<section id="options">
+  <h2>08 &nbsp;Four directions, with their real costs</h2>
+
+  <div class="cards">
+    <div class="card">
+      <h3>A &middot; Full swap</h3>
+      <p>Retire MLflow. Everything moves to Langfuse.</p>
+      <ul>
+        <li>Rewrite 357 lines across 64 files</li>
+        <li>Re-home 2,923 artifacts with no destination</li>
+        <li>Lose the model registry outright</li>
+        <li>743 params become tags or metadata</li>
+        <li>PLATFORM.md rule zero and 9 registry blocks rewritten</li>
+      </ul>
+      <p class="cost">cost: high &middot; benefit: one system &middot; <b>not recommended</b></p>
+    </div>
+    <div class="card rec">
+      <h3>B &middot; Coexist on one seam <span class="badge rec">recommended</span></h3>
+      <p>Langfuse owns observability. MLflow keeps the ledger.</p>
+      <ul>
+        <li>Traces, cost, sessions, online eval &rarr; Langfuse</li>
+        <li>Runs, params, artifacts, prompts, models &rarr; MLflow</li>
+        <li>Change an endpoint, not an instrumentation model</li>
+        <li>Reversible per project</li>
+        <li>Adds 4 containers to <code>nmp-central</code></li>
+      </ul>
+      <p class="cost">cost: moderate &middot; benefit: the gaps you asked about, closed</p>
+    </div>
+    <div class="card">
+      <h3>C &middot; Trial on one project</h3>
+      <p>Stand Langfuse up; point only P5 data-qa (already pure OTLP) at it for a fortnight.</p>
+      <ul>
+        <li>Smallest possible commitment</li>
+        <li>Proves the ClickHouse operational burden before it is portfolio-wide</li>
+        <li>Answers "is the trace UI actually better" with your own traces</li>
+      </ul>
+      <p class="cost">cost: low &middot; benefit: evidence &middot; <b>do this first regardless</b></p>
+    </div>
+    <div class="card">
+      <h3>D &middot; Stay on MLflow</h3>
+      <p>Close the gaps inside MLflow instead.</p>
+      <ul>
+        <li>Keep hand-logging <code>cost_usd</code> and <code>duration_s</code></li>
+        <li>Build your own dashboards over the trace tables</li>
+        <li>No ClickHouse, no Redis, no new ops surface</li>
+        <li>Accept: no sessions, no users, no online eval</li>
+      </ul>
+      <p class="cost">cost: none now &middot; benefit: simplicity &middot; the gaps stay open</p>
+    </div>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 740 180" role="img" aria-labelledby="f3t f3d">
+      <title id="f3t">Operational footprint of each option</title>
+      <desc id="f3d">Bar chart comparing container count and memory floor: MLflow alone is four
+      containers, Option B adds four more, and Opik would add about twelve.</desc>
+      <g font-family="var(--mono)" font-size="11">
+        <text x="0" y="12" fill="var(--muted)">containers in the nmp-central stack</text>
+        <g>
+          <text x="0" y="46" fill="var(--ink)">today</text>
+          <rect x="120" y="34" width="144" height="16" rx="3" fill="var(--blue)"/>
+          <text x="274" y="47" fill="var(--muted)">4 — mlflow, postgres, minio, dbgate</text>
+        </g>
+        <g>
+          <text x="0" y="82" fill="var(--ink)">option B</text>
+          <rect x="120" y="70" width="144" height="16" rx="3" fill="var(--blue)"/>
+          <rect x="266" y="70" width="144" height="16" rx="3" fill="var(--accent)"/>
+          <text x="420" y="83" fill="var(--muted)">8 — + clickhouse, redis, lf-web, lf-worker</text>
+        </g>
+        <g>
+          <text x="0" y="118" fill="var(--ink)">option A</text>
+          <rect x="120" y="106" width="108" height="16" rx="3" fill="var(--accent)"/>
+          <text x="238" y="119" fill="var(--muted)">6 — mlflow retired, dbgate kept</text>
+        </g>
+        <g>
+          <text x="0" y="154" fill="var(--ink)">if Opik</text>
+          <rect x="120" y="142" width="144" height="16" rx="3" fill="var(--blue)"/>
+          <rect x="266" y="142" width="396" height="16" rx="3" fill="var(--amber)"/>
+          <text x="120" y="174" fill="var(--muted)" font-size="10">~16 — adds MySQL and ZooKeeper to a stack that already standardises on Postgres</text>
+        </g>
+      </g>
+    </svg>
+    <p class="figcap">Fig 3 — Langfuse doubles the stack. Opik quadruples it and introduces a second
+    relational database. Langfuse's documented floor is 4 cores / 16 GiB / 100 GiB disk.</p>
+  </figure>
+</section>
+
+<section id="plan">
+  <h2>09 &nbsp;If you pick B, the plan</h2>
+  <p class="sub">Written so it fits the conventions this repo already enforces: registry-as-source-of-truth,
+  a <code>make</code> target per capability, <code>make check</code> as the only proof.</p>
+
+  <div class="steps">
+    <div class="step"><b>Add Langfuse to the compose stack, reusing what exists</b>
+      Point it at the running Postgres (new database <code>langfuse</code>, declared in
+      <code>registry/projects.yaml</code> so <code>db-init</code> creates it) and the running MinIO
+      (new bucket). Only ClickHouse and Redis are genuinely new services.
+      <span class="tag">respects D13 one-database-per-project; no project-local Postgres</span></div>
+    <div class="step"><b>Keep the port discipline</b>
+      Langfuse web on :3100, and in validation mode :13100, mirroring the existing
+      5000/15000 pattern. Publish on <code>127.0.0.1</code> only, like the DB UI.
+      <span class="tag">the stack's ports are a documented contract — PLATFORM.md must change in the same commit</span></div>
+    <div class="step"><b>Declare it in the registry, not in code</b>
+      An <code>observability:</code> block per project (which backend, which Langfuse project, which
+      keys var). Generated <code>.env</code> blocks, never hardcoded URLs.
+      <span class="tag">same pattern as mlflow: / database: / ui:</span></div>
+    <div class="step"><b>Move P5 data-qa first</b>
+      It is already pure OTLP with no MLflow SDK calls, so it is an endpoint and an auth header.
+      Run both backends in parallel for a fortnight and compare.
+      <span class="tag">this is option C, executed as step 4 of B</span></div>
+    <div class="step"><b>Then the SDK projects, one at a time</b>
+      For each: add the OTel exporter alongside the existing MLflow tracing, verify traces land in both,
+      then retire the MLflow trace export only. Runs, params and artifacts keep going to MLflow untouched.
+      <span class="tag">7 projects, 64 files — but only the trace lines move</span></div>
+    <div class="step"><b>Decide the prompt registry question explicitly</b>
+      65 prompt versions live in MLflow and Langfuse's prompt management is better. Either keep prompts in
+      MLflow (no migration) or write a one-off migrator and accept that
+      <b>protected prompt labels are EE-gated</b> in Langfuse.
+      <span class="tag">the one genuinely contested row in the scorecard — C6</span></div>
+    <div class="step"><b>Extend <code>make check</code></b>
+      A red row for "project's traces reach Langfuse" alongside the existing MLflow and database checks.
+      Until that exists, the migration is unproven.
+      <span class="tag">the repo's own rule: make check is the only proof</span></div>
+    <div class="step"><b>Add backup for ClickHouse before it holds anything you want</b>
+      <code>make db-backup</code> covers Postgres today. The Langfuse compose file ships no backup, and
+      traces will be the largest dataset on the box.
+      <span class="tag">rule 7 territory — do this before, not after</span></div>
+  </div>
+</section>
+
+<section id="risks">
+  <h2>10 &nbsp;Risks and open questions</h2>
+  <div class="tw">
+    <table>
+      <thead><tr><th>#</th><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td class="num">R1</td>
+          <td><b>ClickHouse is a second database to operate</b> — backup, upgrade, disk growth. The
+          compose deployment explicitly lacks HA and backup.</td>
+          <td><span class="badge bad">high</span></td>
+          <td>Option C first. Add backup before cutover. Accept trace loss as tolerable, or budget for it properly.</td></tr>
+        <tr><td class="num">R2</td>
+          <td><b>Resource floor</b> — 4 cores / 16 GiB / 100 GiB recommended, on a box already running
+          MLflow, Postgres, MinIO, DbGate and several project stacks.</td>
+          <td><span class="badge warn">medium</span></td>
+          <td>Measure headroom before step 1. This may be the fact that decides it.</td></tr>
+        <tr><td class="num">R3</td>
+          <td><b>Artifacts have no home in Langfuse</b> — 2,923 .json/.md evaluation reports.</td>
+          <td><span class="badge warn">medium</span></td>
+          <td>Option B keeps MLflow, so this never becomes a problem. It is the main reason A is rejected.</td></tr>
+        <tr><td class="num">R4</td>
+          <td><b>Two systems means two places to look</b> — the cost of B is cognitive, not technical.</td>
+          <td><span class="badge warn">medium</span></td>
+          <td>Make the split a documented rule in PLATFORM.md: traces in Langfuse, ledger in MLflow. Never ambiguous.</td></tr>
+        <tr><td class="num">R5</td>
+          <td><b>OTel GenAI conventions are unstable</b> — all attributes still "Development", no tagged
+          release to pin.</td>
+          <td><span class="badge info">low</span></td>
+          <td>Instrument the stable core only. Both backends map it; churn means added attributes, not rewrites.</td></tr>
+        <tr><td class="num">R6</td>
+          <td><b>Governance concentration</b> — ClickHouse now owns Langfuse and Langfuse requires
+          ClickHouse.</td>
+          <td><span class="badge info">low</span></td>
+          <td>MIT core means a fork is possible. OTel instrumentation means your data is portable regardless.</td></tr>
+        <tr><td class="num">R7</td>
+          <td><b>EE gating could move</b> — 9 features are already behind a licence key, including audit
+          logs, retention policies and project-level RBAC.</td>
+          <td><span class="badge info">low</span></td>
+          <td>None are needed for a single-operator portfolio. Re-check if this ever becomes multi-user.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Open questions I could not answer from here</h3>
+  <ul>
+    <li><b>Headroom.</b> I did not measure free RAM and disk on this machine. R2 may be decisive and is
+    cheap to check.</li>
+    <li><b>Is the MLflow trace UI actually inadequate for you?</b> I scored it 3 against Langfuse's 5 on
+    product reputation and feature surface, but you are the one who has been reading 1,480 traces in it.
+    If it has been fine, the case for B weakens considerably.</li>
+    <li><b>Does the Databricks relationship matter?</b> Two projects here are Databricks-external
+    (X2, X3). If any workload ever moves to Databricks, managed MLflow gets you A8 and B4 without
+    Langfuse at all.</li>
+  </ul>
+</section>
+<section id="decide">
+  <h2>11 &nbsp;Your decisions <span class="badge ok">answered</span></h2>
+  <p class="sub">You chose <b>B &mdash; coexist</b>, parked the prompt question, and selected <b>S1, S2, S3</b>. Section 13 is the receipt. The controls stay live if you want to change an answer or add scope.</p>
+
+  <div class="qgrid">
+    <form data-lavish-question="direction" onsubmit="event.preventDefault();
+      const c = new FormData(event.currentTarget).get('direction');
+      if (c) window.lavish?.queuePrompt('Proceed with observability direction: ' + c,
+        { tag: 'direction', text: 'Direction: ' + c, element: event.currentTarget,
+          data: { question: 'direction', answer: c } });">
+      <fieldset>
+        <legend>Which direction</legend>
+        <label class="opt"><input type="radio" name="direction" value="B — coexist: Langfuse for traces/cost/sessions, MLflow keeps runs/params/artifacts/prompts/models">
+          <span class="t"><b>B &mdash; coexist on one seam</b> <span class="badge rec">recommended</span>
+          <span class="d">Langfuse takes observability, MLflow keeps the ledger</span></span></label>
+        <label class="opt"><input type="radio" name="direction" value="C — trial Langfuse on P5 data-qa only, two weeks, both backends in parallel">
+          <span class="t"><b>C &mdash; trial on P5 only first</b>
+          <span class="d">Smallest commitment; proves the ops burden before committing</span></span></label>
+        <label class="opt"><input type="radio" name="direction" value="A — full swap: retire MLflow entirely and move everything to Langfuse">
+          <span class="t"><b>A &mdash; full swap</b>
+          <span class="d">I advise against this; artifacts and the model registry have no home</span></span></label>
+        <label class="opt"><input type="radio" name="direction" value="D — stay on MLflow, close the gaps there instead">
+          <span class="t"><b>D &mdash; stay on MLflow</b>
+          <span class="d">No new ops surface; the cost/session/dashboard gaps stay open</span></span></label>
+        <button type="submit">Queue this answer</button>
+      </fieldset>
+    </form>
+
+    <form data-lavish-question="prompts" onsubmit="event.preventDefault();
+      const c = new FormData(event.currentTarget).get('prompts');
+      if (c) window.lavish?.queuePrompt('Prompt registry decision: ' + c,
+        { tag: 'prompts', text: 'Prompts: ' + c, element: event.currentTarget,
+          data: { question: 'prompts', answer: c } });">
+      <fieldset>
+        <legend>The 65 prompt versions</legend>
+        <label class="opt"><input type="radio" name="prompts" value="keep prompts in MLflow — no migration, no EE exposure">
+          <span class="t"><b>Keep them in MLflow</b>
+          <span class="d">No migration. Protected labels stay ungated.</span></span></label>
+        <label class="opt"><input type="radio" name="prompts" value="migrate prompts to Langfuse and accept that protected labels are EE-gated">
+          <span class="t"><b>Migrate to Langfuse</b>
+          <span class="d">Better prompt UX and trace lineage; protected labels need an EE key</span></span></label>
+        <label class="opt"><input type="radio" name="prompts" value="decide later — park the prompt question until after the trace migration proves out">
+          <span class="t"><b>Decide after the trial</b>
+          <span class="d">Park it; the trace migration does not depend on it</span></span></label>
+        <button type="submit">Queue this answer</button>
+      </fieldset>
+    </form>
+  </div>
+
+  <form data-lavish-question="scope" onsubmit="event.preventDefault();
+    const selected = [...event.currentTarget.querySelectorAll('input[name=items]:checked')]
+      .map((i) => ({ id: i.value, label: i.dataset.label, disposition: i.dataset.disposition }));
+    if (selected.length) window.lavish?.queuePrompt(
+      'Build every selected scope item and return an item-by-item receipt. Account for every submitted ID before reporting completion.',
+      { tag: 'tracked-batch', text: 'Build ' + selected.length + ' scope items',
+        element: event.currentTarget, data: { items: selected } });">
+    <fieldset>
+      <legend>Scope to build &mdash; tick what you want done</legend>
+      <label class="opt"><input type="checkbox" name="items" value="S1" data-label="Measure host headroom (RAM, cores, disk) against Langfuse's 4-core/16GiB/100GiB floor" data-disposition="build">
+        <span class="t"><b>S1</b> &mdash; measure this machine's headroom against Langfuse's floor
+        <span class="d">Answers risk R2 before anything is installed. Cheap, do it first.</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S2" data-label="Add langfuse services to docker-compose reusing the existing Postgres and MinIO, on 127.0.0.1 only, with validation-mode ports" data-disposition="build">
+        <span class="t"><b>S2</b> &mdash; add Langfuse to the compose stack, reusing Postgres + MinIO
+        <span class="d">Includes the :3100 / :13100 validation-mode port pair</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S3" data-label="Add an observability: block to registry/projects.yaml as the source of truth for which backend each project traces to" data-disposition="build">
+        <span class="t"><b>S3</b> &mdash; registry <code>observability:</code> block as source of truth
+        <span class="d">No hardcoded URLs; generated env blocks, like mlflow: and database:</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S4" data-label="Point P5 data-qa-agent at Langfuse over OTLP while keeping MLflow in parallel, and compare" data-disposition="build">
+        <span class="t"><b>S4</b> &mdash; migrate P5 data-qa's traces (parallel, reversible)
+        <span class="d">Already pure OTLP: endpoint plus auth header</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S5" data-label="Extend make check with a row proving each project's traces reach Langfuse" data-disposition="build">
+        <span class="t"><b>S5</b> &mdash; extend <code>make check</code> to prove traces land
+        <span class="d">The repo's rule: make check is the only proof</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S6" data-label="Add ClickHouse backup to the make db-backup family before it holds production traces" data-disposition="build">
+        <span class="t"><b>S6</b> &mdash; ClickHouse backup before cutover
+        <span class="d">Closes R1. The compose deployment ships no backup.</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S7" data-label="Update PLATFORM.md, CLAUDE.md and AGENTS.md with the split rule: traces in Langfuse, ledger in MLflow, plus new decision records" data-disposition="build">
+        <span class="t"><b>S7</b> &mdash; document the split rule and add decision records
+        <span class="d">Closes R4 — the cost of option B is ambiguity, so remove it</span></span></label>
+      <label class="opt"><input type="checkbox" name="items" value="S8" data-label="Write a one-off migrator for the 65 MLflow prompt versions into Langfuse prompt management" data-disposition="build">
+        <span class="t"><b>S8</b> &mdash; prompt migrator for the 65 versions
+        <span class="d">Only if you chose "migrate" above</span></span></label>
+      <button type="submit">Queue selected items</button>
+    </fieldset>
+  </form>
+
+  <div class="copybar">
+    <button type="button" onclick="(async (btn) => {
+      const copyRun = btn._lavishCopyRun = (btn._lavishCopyRun || 0) + 1;
+      const qs = [...document.querySelectorAll('[data-lavish-question]')];
+      const status = btn.parentElement.querySelector('[data-lavish-copy-all-status]');
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const out = [];
+      for (const q of qs) {
+        const key = q.getAttribute('data-lavish-question')?.trim() || 'Question';
+        const lines = [];
+        for (const el of q.querySelectorAll('input, select, textarea')) {
+          if (el.matches(':disabled')) continue;
+          if (el.closest('[data-lavish-question]') !== q) continue;
+          const isChoice = el.matches('input[type=checkbox], input[type=radio]');
+          if (isChoice && !el.checked) continue;
+          if (el.matches('input[type=button], input[type=submit], input[type=reset], input[type=image], input[type=hidden], input[type=file], input[type=range], input[type=color]')) continue;
+          let vals;
+          if (el instanceof HTMLSelectElement) {
+            vals = [...el.selectedOptions].filter((o) => !o.disabled && !o.closest('optgroup[disabled]')).map((o) => o.value.trim()).filter(Boolean);
+          } else {
+            const v = isChoice && (!el.hasAttribute('value') || !el.value.trim())
+              ? el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.name || ''
+              : el.value.trim();
+            vals = v ? [v] : [];
+          }
+          const label = el.name || el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.getAttribute('placeholder')?.trim() || el.tagName.toLowerCase();
+          for (const v of vals) lines.push('  ' + label + ': ' + v.split('\n').join('\n    '));
+        }
+        if (lines.length) out.push(key + ':\n' + lines.join('\n'));
+      }
+      const text = out.join('\n\n');
+      if (!text) {
+        status.textContent = qs.length ? 'No answers to copy yet.' : 'No questions or answers to copy.';
+        return;
+      }
+      status.textContent = '';
+      try {
+        if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('Clipboard API unavailable');
+        await navigator.clipboard.writeText(text);
+        if (copyRun !== btn._lavishCopyRun) return;
+        status.textContent = 'Answers copied.';
+        return;
+      } catch {}
+      if (copyRun !== btn._lavishCopyRun) return;
+      const tmp = document.createElement('textarea');
+      tmp.value = text; tmp.readOnly = true; tmp.setAttribute('aria-hidden', 'true');
+      tmp.style.position = 'fixed'; tmp.style.left = '-10000px';
+      document.body.append(tmp); tmp.focus(); tmp.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch {}
+      tmp.remove();
+      if (ok) { status.textContent = 'Answers copied.'; return; }
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const man = document.createElement('textarea');
+      man.value = text; man.readOnly = true;
+      man.rows = Math.min(12, Math.max(3, text.split('\n').length));
+      man.setAttribute('aria-label', 'Answers to copy manually');
+      man.dataset.lavishCopyAllManual = '';
+      btn.insertAdjacentElement('afterend', man);
+      man.focus(); man.select();
+      status.textContent = 'Clipboard unavailable. Copy the answers below manually.';
+    })(this)">Copy all answers</button>
+    <span data-lavish-copy-all-status role="status" aria-live="polite"></span>
+  </div>
+</section>
+
+<section id="evidence">
+  <h2>12 &nbsp;Evidence</h2>
+  <p class="sub">Everything claimed about the current stack is reproducible. Everything claimed about the
+  products was read from their own documentation or the GitHub API on 2026-10-02, not from memory &mdash;
+  Langfuse v4 and the Helicone acquisition both postdate my training data.</p>
+
+  <h3>Local measurements</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Claim</th><th>How it was measured</th></tr></thead>
+      <tbody>
+        <tr><td>1,480 traces · 26,279 spans · 128 runs · 9,928 metrics · 743 params</td>
+          <td><code>docker exec nmp-central-postgres-1 psql -U nmp -d mlflow -c "select count(*) …"</code></td></tr>
+        <tr><td><b>max(step) = 0</b> — no metric uses a step series</td>
+          <td><code>select max(step), count(*) from metrics where step&gt;0</code> &rarr; <code>0, 0</code></td></tr>
+        <tr><td>835 distinct metric keys; top keys <code>duration_s</code>, <code>errors</code>, <code>passed</code>, <code>cost_usd</code></td>
+          <td><code>select key, count(*) from metrics group by 1 order by 2 desc</code></td></tr>
+        <tr><td>2 of 4 registered models are prompts (65 versions); 1 real model with 5 versions</td>
+          <td><code>select … from registered_model_tags where key='mlflow.prompt.is_prompt'</code></td></tr>
+        <tr><td>2,923 artifacts · 81.9 MB · 1,728 .json + 1,029 .md, no model binaries</td>
+          <td><code>boto3 list_objects_v2</code> against the <code>mlflow-artifacts</code> bucket</td></tr>
+        <tr><td>67 MB Postgres database</td><td><code>pg_size_pretty(pg_database_size('mlflow'))</code></td></tr>
+        <tr><td>64 files · 357 lines mention mlflow across 7 siblings</td>
+          <td><code>grep -rl --include='*.py' --include='*.ts' '\bmlflow\b'</code></td></tr>
+        <tr><td>API mix: 30 log_metric · 23 autolog · 18 log_artifact · 13 /v1/traces · 7 @mlflow.trace · 6 search_runs</td>
+          <td><code>grep -rhoE "mlflow\.[a-z_]+" | sort | uniq -c | sort -rn</code></td></tr>
+        <tr><td>MLflow 3.16.1 is the current latest release</td>
+          <td><code>curl localhost:5000/version</code> vs the PyPI JSON API</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>External sources</h3>
+  <ul class="small">
+    <li><b>Langfuse self-hosting, licence split and OTLP</b> — langfuse.com/self-hosting,
+    /self-hosting/license-key, /integrations/native/opentelemetry, /self-hosting/deployment/docker-compose</li>
+    <li><b>Langfuse ownership</b> — the repository's own <code>LICENSE</code>: "Copyright (c) 2023-2026
+    ClickHouse, Inc.", MIT Expat outside <code>ee/</code></li>
+    <li><b>Container lists</b> — read directly from each project's <code>docker-compose.yml</code> via the
+    GitHub contents API (Langfuse 6 services; Opik ~12 including MySQL and ZooKeeper)</li>
+    <li><b>Stars, licences, last-push dates</b> — <code>gh api repos/&lt;owner&gt;/&lt;repo&gt;</code>, 2026-10-02</li>
+    <li><b>Phoenix ELv2 / SigNoz MIT+ee</b> — each repository's <code>LICENSE</code> file, read directly</li>
+    <li><b>Helicone maintenance mode</b> — Mintlify acquisition March 2026, corroborated by Langfuse's own
+    integration page and independent coverage</li>
+    <li><b>MLflow production monitoring is Databricks-managed</b> — docs.databricks.com/mlflow3/genai
+    and mlflow.org/releases/3 ("available only in Managed MLflow on Databricks, with open source support coming soon")</li>
+    <li><b>OTel GenAI conventions still unstable</b> — all <code>gen_ai.*</code> entries badged
+    Development; moved to <code>semantic-conventions-genai</code> at semconv v1.42.0, June 2026, no tagged release</li>
+  </ul>
+
+  <div class="callout">
+    <p><b>Where I would push back on my own rubric.</b> The weights are mine, derived from measured usage,
+    and they favour the status quo by construction: a feature is weighted low precisely because you do not
+    use it yet. If the reason you do not use sessions, users and online eval is that MLflow made them
+    awkward, then A5, A6 and B4 deserve weight 3, and Langfuse's lead widens. The raw unweighted score
+    (68% vs 72%) is the version of the verdict that does not assume your past usage predicts
+    your future needs.</p>
+  </div>
+</section>
+
+<section id="built">
+  <h2>13 &nbsp;Walkthrough &mdash; what was built</h2>
+  <p class="sub">You chose <b>B (coexist)</b>, parked the prompt question, and selected
+  <b>S1&ndash;S3</b>. All three are built and the gates are green. Nothing has been started:
+  S1 found a blocker, and S2 was shaped around it.</p>
+
+  <div class="callout red">
+    <p><b>The blocker, first.</b> Langfuse's floor is 4 cores / 16 GiB / 100 GiB. This host is
+    comfortable &mdash; 10 cores, 32 GiB &mdash; but the <b>Docker VM is 7.7 GiB with 3.1 GiB
+    already in use</b>, so only ~4.6 GiB is free against the ~5 GiB the four new containers need.
+    Three of four checks fail. It is a <em>Docker Desktop setting</em>, not a hardware limit:
+    Settings &rarr; Resources &rarr; Memory, raise to ~20 GiB. Disk is close too (95.8 GiB free
+    against 100), though <code>docker system df</code> shows ~67 GB reclaimable.</p>
+    <p class="small">This is exactly what S1 was for, so rather than report it once I made it
+    repeatable: <code>make langfuse-doctor</code>, which also <em>gates</em>
+    <code>make langfuse-up</code>. A half-started ClickHouse on a full VM takes the rest of the
+    stack with it.</p>
+  </div>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>ID</th><th>What you asked for</th><th>What landed</th><th>Proof</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="num"><b>S1</b></td>
+          <td>Measure host headroom against Langfuse's floor</td>
+          <td><code>scripts/langfuse_doctor.py</code> &mdash; reports cores, Docker VM memory,
+          free memory and disk. <code>--gate</code> exits 1 when Langfuse would not fit, and
+          <code>make langfuse-up</code> runs it first.</td>
+          <td><span class="badge bad">3 of 4 fail</span> gate exit 1, report exit 0</td>
+        </tr>
+        <tr>
+          <td class="num"><b>S2</b></td>
+          <td>Langfuse in compose, reusing Postgres + MinIO, 127.0.0.1 only, validation ports</td>
+          <td>Four services behind compose profile <code>langfuse</code>: clickhouse, redis,
+          langfuse-web, langfuse-worker. Postgres and MinIO are reused, not duplicated.
+          Ports 3100 live / 13100 validation, host-only.</td>
+          <td><span class="badge ok">verified</span> <code>make up</code> still starts exactly 5 services</td>
+        </tr>
+        <tr>
+          <td class="num"><b>S3</b></td>
+          <td>Registry as the source of truth for trace destination</td>
+          <td><code>observability: {backend, langfuse_project}</code> on all 7 tracing projects,
+          with an <code>Observability</code> dataclass, validation, and
+          <code>reg.traced</code> / <code>reg.on_langfuse</code>.</td>
+          <td><span class="badge ok">12 new tests</span> 53 pass overall</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Three decisions I made inside your scope</h3>
+  <div class="cards">
+    <div class="card">
+      <h4>Langfuse is a profile, not part of <code>make up</code></h4>
+      <p>Because of S1. The definition is complete and reviewable now; nothing starts until the
+      VM can hold it. <code>make up</code> is byte-for-byte unchanged in behaviour.</p>
+      <p class="cost">D34</p>
+    </div>
+    <div class="card">
+      <h4>ClickHouse and Redis publish no ports</h4>
+      <p>ClickHouse's native port is <b>9000</b> &mdash; which MinIO already owns on this host.
+      Rather than remap it, neither service is published at all; only <code>langfuse-web</code>
+      is reachable, and only on <code>127.0.0.1</code>.</p>
+      <p class="cost">would have been a startup collision</p>
+    </div>
+    <div class="card">
+      <h4>Langfuse gets a registry entry</h4>
+      <p>It needs a Postgres database, and this repo's rule is that <code>db-init</code> creates
+      every database and role from the registry (D13/D15). So Langfuse is declared there as a
+      tenant &mdash; not an MLflow client &mdash; and no URL is hardcoded in compose.</p>
+      <p class="cost">D35 · <code>CONNECTIONS=…,langfuse</code> now in the DB UI</p>
+    </div>
+  </div>
+
+  <h3>Two bugs the build caught</h3>
+  <div class="split">
+    <div class="card">
+      <h4><span class="badge bad">real</span> <code>.gitignore</code> would not have ignored the secrets</h4>
+      <p>I first wrote <code>.langfuse.env&nbsp;&nbsp;# comment</code> on one line. Git has no
+      trailing comments in ignore files, so the pattern would have been the whole literal string
+      and <b>the secrets file would have been committable</b> &mdash; in a public repo.</p>
+      <p class="cost">caught by <code>git check-ignore -v</code>, which now confirms the match</p>
+    </div>
+    <div class="card">
+      <h4><span class="badge warn">latent</span> an empty block read as an absent one</h4>
+      <p><code>item.get("observability")</code> treats <code>observability: {}</code> as "not
+      declared", so a typo'd block would pass silently. Changed to <code>in</code>: declared
+      means validated. This is the same class as the duplicated <code>ui:</code> key that
+      survived review last time, so that regression now has a test too.</p>
+      <p class="cost">both covered in <code>tests/test_observability.py</code></p>
+    </div>
+  </div>
+
+  <h3>The gate</h3>
+  <div class="verdict">
+    <div class="stat accent"><div class="n">53</div><div class="l">tests pass (12 new)</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">ruff findings · 45 files formatted</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">mypy issues, strict, 10 modules</div></div>
+    <div class="stat"><div class="n">5</div><div class="l">services still started by <code>make up</code></div></div>
+  </div>
+  <p class="small">The live stack was never touched: MLflow, Postgres, MinIO and DbGate are
+  still up and healthy on their original ports, and <code>make status</code> now reports
+  <code>langfuse off (profile not started)</code> without failing.</p>
+
+  <h3>What is deliberately still open</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>ID</th><th>Item</th><th>Why it is not done</th></tr></thead>
+      <tbody>
+        <tr><td class="num">S4</td><td>Move P5 data-qa's traces</td>
+          <td>You did not select it, and it cannot be proven until Langfuse can actually start</td></tr>
+        <tr><td class="num">S5</td><td><code>make check</code> proves traces land</td>
+          <td>You did not select it. Until it exists, a migration is unproven &mdash; this repo's own rule</td></tr>
+        <tr><td class="num">S6</td><td>ClickHouse backup</td>
+          <td>You did not select it. Treat trace data as expendable until it exists</td></tr>
+        <tr><td class="num">S8</td><td>Prompt migrator</td>
+          <td><b>Parked by your decision</b> &mdash; the 65 versions stay in MLflow for now</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Where it all lives</h3>
+  <dl class="kv">
+    <dt>new</dt><dd><code>scripts/langfuse_doctor.py</code> · <code>tests/test_observability.py</code> ·
+      <code>docs/runbooks/observability.md</code> · <code>ai_specs/s06_observability.md</code></dd>
+    <dt>changed</dt><dd><code>docker-compose.yml</code> · <code>Makefile</code> ·
+      <code>registry/projects.yaml</code> · <code>scripts/_registry.py</code> ·
+      <code>tests/test_make_mode.py</code> · <code>.env.example</code> · <code>.gitignore</code></dd>
+    <dt>docs</dt><dd><code>PLATFORM.md</code> (rule 8) · <code>AGENTS.md</code> (D33&ndash;D36) · <code>CLAUDE.md</code></dd>
+    <dt>next</dt><dd>raise the Docker VM, then <code>make langfuse-doctor</code> &rarr;
+      <code>make db-init</code> &rarr; <code>make langfuse-up</code></dd>
+  </dl>
+</section>
+
+</main>
+<script>
+(function () {
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.filters button'));
+  var rows = Array.prototype.slice.call(document.querySelectorAll('#scbody tr'));
+  function apply(f) {
+    buttons.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.f === f)); });
+    rows.forEach(function (tr) {
+      if (tr.classList.contains('catrow')) { tr.hidden = (f !== 'all'); return; }
+      var show = f === 'all'
+        || (f === 'w3' ? tr.dataset.w === '3' : tr.dataset.group === f);
+      tr.hidden = !show;
+    });
+  }
+  buttons.forEach(function (b) { b.addEventListener('click', function () { apply(b.dataset.f); }); });
+})();
+</script>
+</body>
+</html>
