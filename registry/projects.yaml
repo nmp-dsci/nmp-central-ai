@@ -21,6 +21,13 @@
 #   smoke:      zero-LLM proof the project works against its database, run by check_databases.py
 #   status:     pending | migrated   (check_databases.py skips pending)
 #   aws:        false for every project database (D19: the AWS stack is a demo, MLflow only)
+#
+# observability (D33, where this project's TRACES go — nothing else moves):
+#   backend:          mlflow | langfuse | both. `both` is the migration state: export to each
+#                     and compare before retiring one. Runs, params, artifacts, prompts and the
+#                     model registry stay in MLflow regardless — that is the split, not a stage.
+#   langfuse_project: the Langfuse project receiving them. Instance-global, so unique here (D15),
+#                     and required when (and only when) backend is langfuse or both.
 
 platform:
   mlflow_uri: http://localhost:5000
@@ -30,6 +37,8 @@ platform:
   postgres_superuser: nmp
   postgres_db: nmp                                   # maintenance database (POSTGRES_DB)
   docker_network: nmp-central
+  langfuse_uri: http://127.0.0.1:3100            # host-only console (D23/D33); 13100 in validation
+  langfuse_uri_compose: http://langfuse-web:3000 # from a sibling's compose stack
   experiment_naming: "<project>/<purpose> for new experiments; existing flat names kept as-is in M1"
 
 projects:
@@ -56,6 +65,8 @@ projects:
     status: migrated           # pending | migrated | deferred | excluded | external
     ui:
       hue: 255   # blue — the accent these artifacts already use
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: python
       experiments: [convfinqa, convfinqa-optimization]
@@ -84,6 +95,8 @@ projects:
     ui:
       hue: 200   # teal-blue, clear of the house green
     status: migrated
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: python
       experiments: [dabstep-loop]
@@ -107,9 +120,11 @@ projects:
     status: migrated
     ui:
       hue: 345   # rose — moved off #E08A7A, which is the shared --red (F7)
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: python
-      experiments: [tau2-loop, tau2-loop/judge]   # tau2-loop/judge: the s11 tool judge — golden answers (kind=judge-gold, with the evaluation dataset tau2-loop.airline.golden), replays, sweeps and loop cycles
+      experiments: [tau2-loop, tau2-loop/airline, tau2-loop/retail, tau2-loop/telecom, tau2-loop/banking_knowledge, tau2-loop/judge]   # tau2-loop/<domain>: each domain's eval runs, conversation traces and loop cycles since 6 Oct 2026; tau2-loop: the grandfathered flat name, every run before that, takes nothing new; tau2-loop/judge: the s11 tool judge — golden answers (kind=judge-gold, with the evaluation dataset tau2-loop.airline.golden), replays, sweeps and loop cycles
       registered_models: [tau2-loop-airline, tau2-loop-retail, tau2-loop-telecom, tau2-loop-banking_knowledge]
       prompts: [tau2-loop.airline.system, tau2-loop.retail.system, tau2-loop.telecom.system, tau2-loop.banking_knowledge.system]   # the promoted system prompt, one version per agent fingerprint (s04 M2)
       verify: runs
@@ -146,6 +161,8 @@ projects:
     ui:
       hue: 285   # indigo
     status: deferred           # moves right after M1 (M1b)
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: python
       experiments: [yt-agent-v1]
@@ -159,6 +176,8 @@ projects:
     status: migrated
     ui:
       hue: 80   # amber — the accent these artifacts already use
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: otlp
       experiments: [data-qa/evals]
@@ -217,6 +236,8 @@ projects:
     status: migrated           # MLflow: its client already defaulted to the central server
     ui:
       hue: 315   # violet
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: python
       experiments: [dataagentbench/evals]
@@ -281,6 +302,8 @@ projects:
     status: migrated
     ui:
       hue: 130   # lime
+    observability:
+      backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
     mlflow:
       client: python
       experiments: [vidore-v3-loop/evals]
@@ -291,6 +314,22 @@ projects:
       No database yet; datasets come from the HF Hub at pinned revisions into data/cache/.
 
   # ---- not on the platform, listed so the map is complete ----------------
+  # Langfuse is a platform service, not a sibling repo, but its database lives on the
+  # shared cluster like everyone else's — so it is declared here and `make db-init`
+  # creates it (D13/D15). No mlflow block: it is not an MLflow client.
+  - id: LANGFUSE
+    name: langfuse
+    path: .
+    status: pending
+    notes: observability backend (D33); started by `make langfuse-up`, not by `make up`
+    database:
+      name: langfuse
+      roles: [langfuse]
+      env:
+        LANGFUSE_DATABASE_URL: langfuse
+      status: pending
+      aws: false
+
   - id: X1
     name: v2v-prod-agent
     path: ../v2v-prod-agent

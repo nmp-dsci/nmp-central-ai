@@ -1,12 +1,13 @@
 # CLAUDE.md — nmp-central-ai
 
-> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D32, runbooks). The
+> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D36, runbooks). The
 > outward contract is [`PLATFORM.md`](./PLATFORM.md); the plan of record is
 > `ai_specs/s00_project_plan.md`. This file is a pointer plus the rules that bite.
 
 ## Quick reference
 
 - `make up` · `make status` · `make mlflow-init` · `make db-init` · `make db-ui` · `make house-ui` · `make check` · `make install-agent-context`
+- `make langfuse-doctor` before `make langfuse-up` (observability profile, D33–D36)
 - `make setup && make lint && make test` for the scripts (uv, ruff, mypy strict, pytest)
 - `make plugin-validate` after touching `plugins/` or `.claude-plugin/`
 
@@ -33,4 +34,11 @@
   exactly one thing, `ui.hue` in the registry. Never hand-edit a vendored `.lavish/house.css` —
   `make install-house-ui` refuses an edited copy, and `make house-ui-check` reports drift. Never put
   a raw hex in a component rule; add a token and a `@contrast` line instead.
+- **Observability is split from the ledger (D33).** Traces, cost and sessions belong in
+  Langfuse; runs, params, artifacts, prompts and the model registry stay in MLflow. Never move
+  an artifact or a registered model to Langfuse — it has nowhere to put them. The registry's
+  `observability.backend` is the only place that says where a project's traces go.
+- **Langfuse is a profile, never part of `make up` (D34).** It needs four more containers than
+  the Docker VM currently holds; `make langfuse-up` refuses until `make langfuse-doctor` passes.
+  Its secrets live in `.langfuse.env` (gitignored, `make langfuse-init`) — never in compose.
 - Never add `.lavish/` to `.gitignore`.

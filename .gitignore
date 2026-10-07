@@ -5,6 +5,8 @@
 .mlflow-ids.env
 .db-urls.env
 .dbgate.env
+# SALT / ENCRYPTION_KEY / NEXTAUTH_SECRET, written by `make langfuse-init`
+.langfuse.env
 backups/
 volumes/
 *.log

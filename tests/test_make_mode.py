@@ -21,6 +21,7 @@ ISOLATE = (
     "PLATFORM_NETWORK",
     "MLFLOW_PORT",
     "DBGATE_PORT",
+    "LANGFUSE_PORT",
 )
 
 
@@ -43,6 +44,7 @@ def test_a_plain_checkout_drives_the_live_stack() -> None:
             "network": "nmp-central-validate",
             "mlflow": "http://localhost:15000",
             "dbui": "http://127.0.0.1:15050",
+            "langfuse": "http://127.0.0.1:13100",
         }
     else:
         assert got == {
@@ -51,6 +53,7 @@ def test_a_plain_checkout_drives_the_live_stack() -> None:
             "network": "nmp-central",
             "mlflow": "http://localhost:5000",
             "dbui": "http://127.0.0.1:5050",
+            "langfuse": "http://127.0.0.1:3100",
         }
 
 
@@ -62,6 +65,8 @@ def test_a_validation_trigger_gets_its_own_project_network_and_ports(trigger: st
     assert got["mlflow"] != "http://localhost:5000"
     # the DB UI holds the superuser identity: validation gets its own port too (D21)
     assert got["dbui"] == "http://127.0.0.1:15050"
+    # same reasoning for the Langfuse console: it can read every project's traces (D33)
+    assert got["langfuse"] == "http://127.0.0.1:13100"
 
 
 def test_validation_down_also_drops_its_volumes_and_live_down_keeps_them() -> None:
