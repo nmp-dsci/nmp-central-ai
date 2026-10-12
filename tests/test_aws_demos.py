@@ -9,6 +9,7 @@ import pytest
 import yaml
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import aws_demos  # noqa: E402
 from _registry import AwsDemo, RegistryError, load_registry  # noqa: E402
 from aws_demos import Demo, plan_sleep, plan_wake  # noqa: E402
 
@@ -147,3 +148,24 @@ def test_no_plan_ever_deletes() -> None:
         for wf in ["active", "disabled_manually", ""]:
             for step in plan_sleep(demo(status, wf)) + plan_wake(demo(status, wf)):
                 assert "delete" not in step
+
+
+def test_sleep_refuses_to_pause_when_the_workflow_state_is_unreadable() -> None:
+    steps = plan_sleep(demo("RUNNING", workflow="unknown (gh: not logged in)"))
+    assert len(steps) == 1 and steps[0].startswith("skip:")
+
+
+def test_sleep_pauses_when_the_workflow_file_is_missing() -> None:
+    assert plan_sleep(demo("RUNNING", workflow="missing")) == ["pause"]
+
+
+def test_wake_no_wait_defers_the_workflow_and_is_not_a_failure(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(aws_demos, "act", lambda d, step: calls.append(step))
+    monkeypatch.setattr(aws_demos, "read_service", lambda d: None)
+    rc = aws_demos.run([demo("PAUSED", workflow="disabled_manually")], "wake", False, False, 1)
+    assert rc == 0
+    assert calls == ["resume"]
+    assert "make demos-wake" in capsys.readouterr().out

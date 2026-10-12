@@ -60,6 +60,8 @@ def plan_sleep(d: Demo) -> list[str]:
     """Steps that take one demo to PAUSED with its deploys off. Empty means already asleep."""
     if d.deploying:
         return ["skip: a deploy is running; sleep again once it finishes"]
+    if d.demo.workflow and d.workflow.startswith("unknown"):
+        return [f"skip: deploy workflow state {d.workflow}; fix gh and retry"]
     steps: list[str] = []
     if d.workflow == WORKFLOW_ON:
         steps.append("disable-workflow")
@@ -105,31 +107,22 @@ def aws_reachable() -> str | None:
 
 
 def read_service(d: Demo) -> None:
-    query = (
-        f"ServiceSummaryList[?ServiceName=='{d.demo.service}']"
-        ".{arn:ServiceArn,status:Status,url:ServiceUrl}"
-    )
-    rows = json.loads(
-        _run(
-            [
-                "aws",
-                "apprunner",
-                "list-services",
-                "--region",
-                d.demo.region,
-                "--max-results",
-                "20",
-                "--query",
-                query,
-                "--output",
-                "json",
-            ]
-        )
-    )
-    if rows:
-        d.arn, d.status, d.url = rows[0]["arn"], rows[0]["status"], rows[0]["url"] or ""
-    else:
-        d.arn, d.status, d.url = "", ABSENT, ""
+    token = ""
+    while True:
+        cmd = ["aws", "apprunner", "list-services", "--region", d.demo.region]
+        cmd += ["--max-results", "20", "--output", "json"]
+        if token:
+            cmd += ["--next-token", token]
+        page = json.loads(_run(cmd))
+        for row in page.get("ServiceSummaryList", []):
+            if row.get("ServiceName") == d.demo.service:
+                d.arn, d.status = row["ServiceArn"], row["Status"]
+                d.url = row.get("ServiceUrl") or ""
+                return
+        token = page.get("NextToken") or ""
+        if not token:
+            d.arn, d.status, d.url = "", ABSENT, ""
+            return
 
 
 def read_workflow(d: Demo) -> None:
@@ -255,6 +248,12 @@ def run(demos: list[Demo], verb: str, dry_run: bool, wait: bool, timeout: int) -
             failed.append(f"{d.label}: still {d.status}, wanted {want}")
     for d in late:
         if d.status != "RUNNING":
+            if not wait:
+                print(
+                    f"  {d.label}: deploys stay off until the service is RUNNING; "
+                    "re-run `make demos-wake` to enable them"
+                )
+                continue
             failed.append(f"{d.label}: deploys left off because the service is {d.status}")
             continue
         try:
