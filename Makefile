@@ -197,4 +197,16 @@ aws-sleep: ## stop the demo EC2 + RDS between demos
 aws-wake: ## start them again
 	@echo "M2: implemented with infra/terraform/central outputs"; exit 1
 
-.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade langfuse-doctor langfuse-init langfuse-up langfuse-down langfuse-logs check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context house-ui install-house-ui house-ui-check plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake
+# ---- aws: the siblings' App Runner demos (D37) --------------------------------
+# Driven by `aws_demo:` blocks in the registry. Needs AWS_PROFILE (after `aws sso login`)
+# and a logged-in `gh`. ARGS="--only P1,P5 --dry-run" limits and previews.
+demos-status: ## each AWS demo: App Runner state, deploy workflow, URL
+	@uv run scripts/aws_demos.py status $(ARGS)
+
+demos-sleep: ## pause every AWS demo (URL + image kept) and turn its deploys off
+	uv run scripts/aws_demos.py sleep $(ARGS)
+
+demos-wake: ## resume them, wait for RUNNING, turn deploys back on
+	uv run scripts/aws_demos.py wake $(ARGS)
+
+.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade langfuse-doctor langfuse-init langfuse-up langfuse-down langfuse-logs check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context house-ui install-house-ui house-ui-check plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake demos-status demos-sleep demos-wake

@@ -106,6 +106,17 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
    `make -C ~/git/nmp-ai-portfolio/nmp-central-ai db-backup DB=<db>`. In CI, use a throwaway
    service container `pgvector/pgvector:pg16` aliased `postgres` on the `nmp-central` network (D18).
 
+## AWS demos — sleep and wake (D37)
+
+| | value |
+|---|---|
+| What | the always-on App Runner demos (`convfinqa-demo`, `dabstep-demo`, `yt-agent-demo`, `data-qa-demo`), declared as `aws_demo:` in `registry/projects.yaml` |
+| Commands | `make demos-status` · `make demos-sleep` · `make demos-wake` (`ARGS="--only P1 --dry-run"`); needs `AWS_PROFILE` after `aws sso login`, and `gh` |
+| While asleep | the service is **paused** and its `deploy-aws.yml` is **disabled**. Do not re-enable the workflow or run a deploy by hand: App Runner rejects deployments to a paused service. Wake first. |
+| Never | `delete-service` on a demo (new URL; App Runner takes no new customers), delete its ECR repo, the shared `data-qa-tfstate-*` bucket or the GitHub OIDC provider |
+
+Runbook: `docs/runbooks/aws-demos.md`.
+
 ## Coming (not yet available)
 
 - M2: the same stack on AWS (one Graviton EC2 + RDS + S3), URL in `.env` as `MLFLOW_TRACKING_URI_AWS`.

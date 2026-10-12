@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AWS pause plan — nmp-central-ai</title>
+<link rel="stylesheet" href="house.css">
+<link rel="stylesheet" href="project.css">
+<style>
+  /* page-local layout only. Tokens come from house.css. */
+  .hero{ border-bottom:1px solid var(--line-2); padding-bottom:var(--s5); margin-bottom:var(--s6); }
+  .verdict{ margin:var(--s5) 0 0; }
+  .stat .l b{ color:var(--ink); }
+
+  /* the cost x restore matrix */
+  .matrix{ display:grid; grid-template-columns:auto minmax(0,1fr) minmax(0,1fr); gap:var(--s3); align-items:stretch; }
+  .matrix > *{ min-width:0; }
+  .axis{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); text-transform:uppercase;
+         letter-spacing:var(--track-label); display:flex; align-items:center; }
+  .axis.col{ justify-content:flex-start; padding-left:var(--s1); }
+  .axis.row{ writing-mode:vertical-rl; transform:rotate(180deg); justify-content:center; }
+  .cell{ background:var(--panel); border:1px solid var(--line-2); border-radius:var(--r); padding:var(--s4); }
+  .cell.go{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft) inset; }
+  .cell.keep{ border-left:3px solid var(--amber); }
+  .cell.none{ background:var(--band); }
+  .cell h3{ display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; margin-bottom:var(--s1); }
+  .cell p{ font-size:var(--t-1); margin-bottom:var(--s2); }
+  .cell ul{ margin:0; padding-left:var(--s4); font-size:var(--t-1); }
+  @media (max-width:720px){
+    .matrix{ grid-template-columns:minmax(0,1fr); }
+    .axis{ display:none; }
+    .cell::before{ content:attr(data-q); display:block; font-family:var(--mono); font-size:var(--t-2);
+                   color:var(--muted); margin-bottom:var(--s1); }
+  }
+
+  /* inventory table */
+  td.id{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); white-space:nowrap; }
+  td .what{ color:var(--ink); font-weight:600; display:block; }
+  td .why{ color:var(--muted); font-size:var(--t-2); display:block; margin-top:2px; }
+  td .badge{ white-space:nowrap; }
+  tr.grp td{ background:var(--band); font-family:var(--mono); font-size:var(--t-2); color:var(--muted);
+             text-transform:uppercase; letter-spacing:var(--track-label); }
+  tfoot td{ border-top:1px solid var(--line-2); font-weight:600; color:var(--ink); }
+
+  /* commands */
+  .cmd h3{ margin-top:var(--s2); }
+  .cmd pre{ font-size:var(--t-2); }
+  .sw-wake{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:var(--s3); }
+  .sw-wake > *{ min-width:0; }
+
+  /* decisions */
+  form.q .badge{ margin-left:auto; }
+  form.q fieldset{ border:0; padding:0; margin:0; }
+  form.q label.opt-rec{ font-weight:600; }
+  form.q .hint{ font-size:var(--t-2); color:var(--muted); margin:0 0 var(--s2); }
+  .src li{ font-size:var(--t-1); }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">nmp-central-ai &middot; AWS cost review &middot; 2026-10-12 &middot; executed the same day (receipt below)</p>
+  <h1>Pause the four App Runner demos. <em>Keep everything else.</em></h1>
+  <p class="lede">The portfolio AWS account runs at about <b>$29 a month</b>, and <b>$25</b> of that is four
+  App Runner demo services sitting at their minimum of one instance around the clock. Pausing them stops that
+  charge, keeps every URL, and is one command to undo. Everything else in the account costs cents. For those,
+  the job is not saving money. It is making sure nothing that is hard to recreate gets deleted.</p>
+  <div class="verdict">
+    <div class="stat red"><div class="n">$28.00</div><div class="l">October forecast, against a <b>$20</b> monthly budget</div></div>
+    <div class="stat"><div class="n">95%</div><div class="l">of spend is App Runner: <b>$25.24</b> of $26.48 a month before GST</div></div>
+    <div class="stat accent"><div class="n">$0.81</div><div class="l">a month after this plan; <b>$4.11</b> if paused services still pay the $1 auto-deploy fee</div></div>
+    <div class="stat amber"><div class="n">6</div><div class="l">cheap items that are <b>hard or impossible</b> to recreate: keep them</div></div>
+  </div>
+</header>
+
+<div class="callout" id="receipt" style="margin-bottom:var(--s6)">
+  <p><b>Done on 2026-10-12, with the recommended answers.</b></p>
+  <dl class="kv">
+    <dt>W1</dt><dd><code>deploy-aws.yml</code> is disabled in ConvFinQA-agent, DABStep-loop, transcript-rag-agent and data-qa-agent. tau2-loop's was already off.</dd>
+    <dt>A1–A4</dt><dd>All four services report <code>PAUSED</code>. Their URLs answer 404 or 503 until woken.</dd>
+    <dt>B1</dt><dd>The <code>dtreee.com</code> hosted zone is deleted. The account now has no hosted zones.</dd>
+    <dt>Q2</dt><dd>No demo is left awake.</dd>
+    <dt>Q3</dt><dd>The secrets are left to expire. <code>ANTHROPIC_API_KEY</code> and <code>LOGFIRE_TOKEN</code> are in <code>data-qa-agent/.env</code>. The Slack tokens can be re-issued from the Slack app settings.</dd>
+    <dt>Q4</dt><dd><code>make demos-status</code> / <code>demos-sleep</code> / <code>demos-wake</code> now read the registry's <code>aws_demo:</code> blocks (D37, <code>docs/runbooks/aws-demos.md</code>). Tested live on <code>data-qa-demo</code>: it woke in 51 s and slept again in 80 s.</dd>
+    <dt>B8, B9</dt><dd>Not run (optional).</dd>
+  </dl>
+</div>
+
+<section id="matrix">
+  <h2>Two questions for every resource</h2>
+  <p class="sub">What does it cost each month, and how hard is it to get back once it is gone? The answers put
+  every item into one of four boxes. The expensive-and-hard box is empty. Aurora would have been in it, but it was
+  destroyed on 2026-09-22 and its only copy now lives in a snapshot.</p>
+  <div class="matrix" role="group" aria-label="Cost versus restore difficulty">
+    <div></div>
+    <div class="axis col">Easy to bring back</div>
+    <div class="axis col">Hard to bring back</div>
+
+    <div class="axis row">High cost</div>
+    <div class="cell go" data-q="High cost · easy to bring back">
+      <h3>Pause <span class="badge rec">A1–A4 &middot; $25.24/mo</span></h3>
+      <p>The four App Runner services. Pausing scales compute to zero and keeps the service, its domain and its image.</p>
+      <ul><li><code>convfinqa-demo</code>, <code>dabstep-demo</code> (Singapore)</li>
+          <li><code>yt-agent-demo</code>, <code>data-qa-demo</code> (Sydney)</li></ul>
+    </div>
+    <div class="cell none" data-q="High cost · hard to bring back">
+      <h3>Nothing here now <span class="badge info">cleared 2026-09-22</span></h3>
+      <p>Aurora <code>data-qa-aurora</code>, the API service <code>data-qa-backend-api</code> and the VPC were destroyed when
+      data-qa switched to its no-database demo. The Terraform state for that stack (<code>foundations</code>) is now empty.</p>
+    </div>
+
+    <div class="axis row">Low cost</div>
+    <div class="cell" data-q="Low cost · easy to bring back">
+      <h3>Delete or tidy <span class="badge ok">B1 &middot; $0.50/mo</span></h3>
+      <p>Route 53 zone <code>dtreee.com</code>. The domain is not registered (whois: no match), and the zone holds only
+      its default NS and SOA records. Nothing points at it.</p>
+      <ul><li>Optional: B8 log retention, B9 the stray CloudFront distribution</li></ul>
+    </div>
+    <div class="cell keep" data-q="Low cost · hard to bring back">
+      <h3>Keep <span class="badge warn">B2–B7 &middot; ~$0.74/mo</span></h3>
+      <p>ECR images, the only copy of the data-qa database, the RAG index bucket, Terraform state, the live CloudFront
+      URL, and the OIDC provider with the deploy roles. Together these cost less than a coffee each year.</p>
+      <ul><li>C1: 12 secrets are already deleted. They become permanent on <b>≈ 2026-10-22</b>.</li></ul>
+    </div>
+  </div>
+</section>
+
+<section id="inventory">
+  <h2>Everything that is live, by cost</h2>
+  <p class="sub">Read from all 17 enabled regions. Only Sydney (<code>ap-southeast-2</code>) and Singapore
+  (<code>ap-southeast-1</code>) have resources, plus global ones. Monthly figures are derived from October
+  usage (App Runner: 382.5 GB-hours at $0.00851 in Sydney and 510 GB-hours at $0.00885 in Singapore over 11 days), exclude GST, and are over 730 hours.
+  AWS adds 10% GST on top.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>ID</th><th>Resource</th><th>Where &middot; project</th><th>$/mo</th><th>Bring back</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="6">Compute that bills every hour</td></tr>
+      <tr><td class="id">A1</td><td><span class="what">App Runner <code>convfinqa-demo</code></span><span class="why">0.5 vCPU / 1 GB, min 1 instance, auto-deploy on ($1)</span></td>
+          <td>Singapore &middot; ConvFinQA-agent</td><td class="n">7.46</td><td><span class="badge ok">easy</span></td><td><span class="badge rec">pause</span></td></tr>
+      <tr><td class="id">A2</td><td><span class="what">App Runner <code>dabstep-demo</code></span><span class="why">0.5 vCPU / 1 GB, min 1, auto-deploy on ($1). URL in README:75</span></td>
+          <td>Singapore &middot; DABStep-loop</td><td class="n">7.46</td><td><span class="badge ok">easy</span></td><td><span class="badge rec">pause</span></td></tr>
+      <tr><td class="id">A3</td><td><span class="what">App Runner <code>yt-agent-demo</code></span><span class="why">0.5 vCPU / 1 GB, min 1, auto-deploy on ($1)</span></td>
+          <td>Sydney &middot; transcript-rag-agent</td><td class="n">7.21</td><td><span class="badge ok">easy</span></td><td><span class="badge rec">pause</span></td></tr>
+      <tr><td class="id">A4</td><td><span class="what">App Runner <code>data-qa-demo</code></span><span class="why">0.25 vCPU / 0.5 GB, min 1, auto-deploy off. API behind the data-pilot CloudFront frontend</span></td>
+          <td>Sydney &middot; data-qa-agent</td><td class="n">3.11</td><td><span class="badge ok">easy</span></td><td><span class="badge rec">pause</span></td></tr>
+
+      <tr class="grp"><td colspan="6">Cheap, and nothing depends on it</td></tr>
+      <tr><td class="id">B1</td><td><span class="what">Route 53 hosted zone <code>dtreee.com</code></span><span class="why">Unregistered domain, NS + SOA only, in no repo</span></td>
+          <td>global &middot; none</td><td class="n">0.50</td><td><span class="badge ok">nothing to restore</span></td><td><span class="badge ok">delete</span></td></tr>
+      <tr><td class="id">B8</td><td><span class="what">CloudWatch log groups (15, 0.7 GB, never expire)</span><span class="why">Includes retired <code>data-qa-backend-api</code>, <code>data-qa-data-agent</code>, <code>convfinqa-quota-probe</code></span></td>
+          <td>both &middot; several</td><td class="n">0.00</td><td><span class="badge ok">n/a</span></td><td><span class="badge info">optional: 30-day retention</span></td></tr>
+      <tr><td class="id">B9</td><td><span class="what">CloudFront <code>E1G4HP2K4CRHKI</code> (<code>d3trakue69dnqh</code>)</span><span class="why">Stray copy of the data-qa frontend, not in any Terraform state</span></td>
+          <td>global &middot; data-qa-agent</td><td class="n">0.00</td><td><span class="badge ok">easy</span></td><td><span class="badge info">optional: disable, then delete</span></td></tr>
+
+      <tr class="grp"><td colspan="6">Cheap, but hard or impossible to recreate: keep</td></tr>
+      <tr><td class="id">B2</td><td><span class="what">ECR: 5 repos, 27 images, 8.5 GB</span><span class="why">Each lifecycle policy keeps the 5 newest images. Redeploys need them. <code>tau2loop-demo</code> has images but never got a service</span></td>
+          <td>both &middot; all demos</td><td class="n">0.66</td><td><span class="badge warn">hard: rebuild via CI</span></td><td><span class="badge warn">keep</span></td></tr>
+      <tr><td class="id">B3</td><td><span class="what">Aurora snapshot <code>data-qa-aurora-pre-dbless-20260922</code></span><span class="why">The only copy of the retired data-qa database (the cluster had skip_final_snapshot)</span></td>
+          <td>Sydney &middot; data-qa-agent</td><td class="n">0.06</td><td><span class="badge bad">impossible</span></td><td><span class="badge warn">keep</span></td></tr>
+      <tr><td class="id">B4</td><td><span class="what">S3: <code>yt-agent-demo-data</code> (161 MB), <code>data-qa-source-data</code> (693 MB), <code>data-qa-frontend</code> (25 MB)</span><span class="why">The yt-agent bucket holds the Chroma index and knowledge-graph snapshot, which are not in git</span></td>
+          <td>Sydney &middot; transcript-rag, data-qa</td><td class="n">0.02</td><td><span class="badge bad">hard to impossible</span></td><td><span class="badge warn">keep</span></td></tr>
+      <tr><td class="id">B5</td><td><span class="what">Terraform state bucket <code>data-qa-tfstate-‹acct›</code> + table <code>data-qa-tf-lock</code></span><span class="why">Holds state for 6 stacks across 5 repos. Without it, Terraform loses track of every live resource</span></td>
+          <td>Sydney &middot; shared</td><td class="n">0.00</td><td><span class="badge bad">very hard</span></td><td><span class="badge warn">keep</span></td></tr>
+      <tr><td class="id">B6</td><td><span class="what">CloudFront <code>ERWBDUR0GS061</code> (<code>deqfc8b0u8s64</code>)</span><span class="why">The live data-pilot URL, linked from nmp-dsci.github.io. Deleting it means a new URL</span></td>
+          <td>global &middot; data-qa-agent</td><td class="n">0.00</td><td><span class="badge warn">URL changes</span></td><td><span class="badge warn">keep</span></td></tr>
+      <tr><td class="id">B7</td><td><span class="what">GitHub OIDC provider + 5 <code>*-github-deploy</code> roles</span><span class="why">The provider is shared by every repo's CI. IAM is free</span></td>
+          <td>global &middot; all demos</td><td class="n">0.00</td><td><span class="badge warn">medium</span></td><td><span class="badge warn">keep</span></td></tr>
+
+      <tr class="grp"><td colspan="6">Already off: the deletion clock is running</td></tr>
+      <tr><td class="id">C1</td><td><span class="what">12 secrets <code>data-qa/*</code>, scheduled for deletion on 2026-09-22</span><span class="why">The default 30-day recovery window applies (none set in Terraform), so they become permanent around <b>2026-10-22</b>. They hold DB URLs for the destroyed Aurora, plus <code>llm-api-key</code>, <code>logfire-token</code>, <code>slack-*</code> and <code>jwt-secret</code></span></td>
+          <td>Sydney &middot; data-qa-agent</td><td class="n">0.00</td><td><span class="badge bad">impossible after Oct 22</span></td><td><span class="badge info">decide (Q3)</span></td></tr>
+    </tbody>
+    <tfoot>
+      <tr><td></td><td>Today (ex GST) &rarr; after A1–A4 + B1</td><td></td><td class="n">26.48 &rarr; 0.74</td><td colspan="2">with GST: $29.13 &rarr; $0.81 a month</td></tr>
+    </tfoot>
+  </table>
+  </div>
+  <p class="sub" style="margin-top:var(--s3)">Also present and free: 5 CloudWatch alarms (within the free 10), the
+  <code>data-qa-billing-over-30usd</code> alarm, the $20 budget, a DynamoDB lock table and 4 ECS task definitions.
+  There are no EC2 instances, NAT gateways, load balancers, RDS instances, VPC endpoints, customer-managed KMS keys, SageMaker, OpenSearch,
+  EKS or Lambda in any region.</p>
+</section>
+
+<section id="pause-vs-delete">
+  <h2>Why pause the App Runner services instead of deleting them</h2>
+  <p class="sub">Deleting would save, at most, the $3 a month in auto-deploy fees that pausing might not stop. In exchange,
+  it gives up the things that are hard to get back.</p>
+  <div class="split">
+    <div class="card rec">
+      <h3>Pause <span class="badge rec">recommended</span></h3>
+      <ul>
+        <li>Compute scales to zero. AWS: “you are only billed while your application is running.”</li>
+        <li>The <code>*.awsapprunner.com</code> domain is kept, so the 4 links on nmp-dsci.github.io keep working after a resume.</li>
+        <li>The stored image is kept. Resume deploys the last running version, with no build.</li>
+        <li>The service still exists, so the account keeps its App Runner footprint.</li>
+      </ul>
+      <p class="cost">Cost while paused: $0 compute &middot; unknown whether the $1/mo auto-deploy fee continues (A1–A3)</p>
+    </div>
+    <div class="card">
+      <h3>Delete</h3>
+      <ul>
+        <li>Every service gets a new random domain. That breaks 4 portfolio pages and <code>DABStep-loop/README.md:75</code>.</li>
+        <li><b>App Runner closed to new customers on 2026-04-30.</b> AWS says existing customers can keep creating services,
+          but it does not define what makes an account “existing”. Deleting every service could test that, and we would rather not find out.</li>
+        <li>Coming back means re-running each repo's Terraform and CI deploy.</li>
+      </ul>
+      <p class="cost">Saves at most $3/mo more than pausing</p>
+    </div>
+  </div>
+</section>
+
+<section id="breaks">
+  <h2>What breaks while the services are paused</h2>
+  <div class="cards">
+    <div class="card"><h3>Deploy workflows fail slowly <span class="badge bad">fix in step 1</span></h3>
+      <p>Four repos run <code>deploy-aws.yml</code> after every green push to main. Each one polls for
+      <code>RUNNING</code> 60 times at 20-second intervals, which takes 20 minutes, then fails. data-qa's
+      <code>start-deployment</code> is rejected outright. <code>tau2-loop</code>'s workflow is already disabled.</p></div>
+    <div class="card"><h3>Demo links show an error <span class="badge warn">your call, Q4</span></h3>
+      <p>The ConvFinQA, DABStep, transcript-rag and data-pilot pages on nmp-dsci.github.io link to the demos.
+      The CloudFront frontend stays up, but its API (<code>data-qa-demo</code>) won't answer.</p></div>
+    <div class="card"><h3>Terraform changes are blocked <span class="badge info">known</span></h3>
+      <p>App Runner rejects <code>UpdateService</code> on a paused service, so any apply that changes a service fails.
+      Terraform does not track the pause itself, so an apply with no changes still passes.</p></div>
+    <div class="card"><h3>Resume brings back the old image <span class="badge info">known</span></h3>
+      <p>Resume deploys the version that was running before the pause, even with auto-deploy on. If main moved on,
+      run one manual deployment after resuming. In-memory state, such as chat sessions, starts fresh.</p></div>
+  </div>
+</section>
+
+<section id="run">
+  <h2>Run order</h2>
+  <p class="sub">Once you approve the items in the decisions section, I'll run these from the SSO profile. Every step can be undone except B1 (an empty zone) and the end of C1's
+  recovery window.</p>
+  <div class="steps">
+    <div class="step"><b>Turn off the four deploy workflows</b>
+      This stops a push to main from spending 20 minutes on a failing run.
+      <span class="tag">gh workflow disable deploy-aws.yml -R nmp-dsci/{ConvFinQA-agent,DABStep-loop,transcript-rag-agent,data-qa-agent}</span></div>
+    <div class="step"><b>Pause A1–A4</b>
+      The status goes through <code>OPERATION_IN_PROGRESS</code>, then shows <code>PAUSED</code>. Then confirm all four with <code>list-services</code>.
+      <span class="tag">aws apprunner pause-service --service-arn … (script below)</span></div>
+    <div class="step"><b>Delete the empty <code>dtreee.com</code> zone (B1)</b>
+      A zone that only holds NS and SOA records can be deleted directly.
+      <span class="tag">aws route53 delete-hosted-zone --id ‹zone-id›</span></div>
+    <div class="step"><b>Optional tidy-up (B8, B9)</b>
+      Set 30-day retention on the dead log groups. Disable the stray CloudFront distribution, then delete it once it has deployed.
+      <span class="tag">aws logs put-retention-policy … &middot; aws cloudfront update-distribution / delete-distribution</span></div>
+    <div class="step"><b>Check the bill on 2026-11-03</b>
+      If <code>APS1/APS2-AppRunner-AutomaticDeployment</code> still bills in November while the services are paused, set
+      <code>auto_deployments_enabled = false</code> in the three demo stacks at the next resume. That saves $3 a month.
+      <span class="tag">aws ce get-cost-and-usage … --group-by USAGE_TYPE</span></div>
+  </div>
+
+  <div class="sw-wake cmd" style="margin-top:var(--s5)">
+    <div>
+      <h3>Sleep</h3>
+<pre><code>P=AdministratorAccess-‹acct›
+for s in ap-southeast-1:convfinqa-demo ap-southeast-1:dabstep-demo \
+         ap-southeast-2:yt-agent-demo  ap-southeast-2:data-qa-demo; do
+  r=${s%%:*}; n=${s#*:}
+  arn=$(aws apprunner list-services --profile $P --region $r \
+    --query "ServiceSummaryList[?ServiceName=='$n'].ServiceArn" --output text)
+  aws apprunner pause-service --profile $P --region $r \
+    --service-arn "$arn" --query Service.Status --output text
+done</code></pre>
+    </div>
+    <div>
+      <h3>Wake</h3>
+<pre><code># same loop, resume-service instead of pause-service, then:
+#   poll describe-service until Status == RUNNING
+#   scripts/demo_smoke.sh "$URL" in each repo
+#   start-deployment if main moved while paused
+for r in ConvFinQA-agent DABStep-loop transcript-rag-agent data-qa-agent; do
+  gh workflow enable deploy-aws.yml -R nmp-dsci/$r
+done</code></pre>
+    </div>
+  </div>
+</section>
+
+<section id="decide">
+  <h2>Decisions</h2>
+  <p class="sub">Nothing changes in AWS until you send these. The recommended answers are pre-selected.</p>
+
+  <form class="q" data-lavish-question="actions" onsubmit="event.preventDefault();
+    const sel=[...this.querySelectorAll('input[name=items]:checked')].map(i=>({id:i.value,label:i.dataset.label,disposition:i.dataset.disposition}));
+    if(sel.length){ window.lavish?.queuePrompt('Run the approved AWS pause-plan items from .lavish/s05_aws-pause-plan.html and return an item-by-item receipt. Account for every submitted ID before reporting completion.',{tag:'tracked-batch',text:'Run '+sel.length+' AWS actions: '+sel.map(s=>s.id).join(', '),element:this,data:{question:'actions',items:sel}}); this.querySelector('.queued').textContent='queued: '+sel.map(s=>s.id).join(', '); }">
+    <h3>Q1 &middot; Which actions should I run? <span class="badge rec">tracked batch</span></h3>
+    <p class="hint">Each ID maps to a row in the inventory table above.</p>
+    <fieldset>
+      <label class="opt-rec"><input type="checkbox" name="items" value="W1" data-label="Disable deploy-aws.yml in 4 repos" data-disposition="do" checked> W1 &middot; Disable the 4 deploy workflows <span class="d">Prevents 20-minute failing runs while paused</span></label>
+      <label class="opt-rec"><input type="checkbox" name="items" value="A1" data-label="Pause convfinqa-demo (ap-southeast-1)" data-disposition="pause" checked> A1 &middot; Pause <code>convfinqa-demo</code> <span class="d">$7.46/mo</span></label>
+      <label class="opt-rec"><input type="checkbox" name="items" value="A2" data-label="Pause dabstep-demo (ap-southeast-1)" data-disposition="pause" checked> A2 &middot; Pause <code>dabstep-demo</code> <span class="d">$7.46/mo</span></label>
+      <label class="opt-rec"><input type="checkbox" name="items" value="A3" data-label="Pause yt-agent-demo (ap-southeast-2)" data-disposition="pause" checked> A3 &middot; Pause <code>yt-agent-demo</code> <span class="d">$7.21/mo</span></label>
+      <label class="opt-rec"><input type="checkbox" name="items" value="A4" data-label="Pause data-qa-demo (ap-southeast-2)" data-disposition="pause" checked> A4 &middot; Pause <code>data-qa-demo</code> <span class="d">$3.11/mo; data-pilot frontend loses its API</span></label>
+      <label class="opt-rec"><input type="checkbox" name="items" value="B1" data-label="Delete Route 53 zone dtreee.com" data-disposition="delete" checked> B1 &middot; Delete the empty zone <code>dtreee.com</code> <span class="d">$0.50/mo; domain unregistered</span></label>
+      <label><input type="checkbox" name="items" value="B8" data-label="30-day retention on log groups" data-disposition="tidy"> B8 &middot; Set 30-day log retention <span class="d">Cosmetic; within the free tier today</span></label>
+      <label><input type="checkbox" name="items" value="B9" data-label="Disable then delete stray CloudFront E1G4HP2K4CRHKI" data-disposition="delete"> B9 &middot; Remove the stray CloudFront distribution <span class="d">Not in Terraform state; free</span></label>
+    </fieldset>
+    <div class="row"><button type="submit">Queue selected actions</button><span class="queued" aria-live="polite"></span></div>
+  </form>
+
+  <div class="qgrid" style="margin-top:var(--s3)">
+    <form class="q" data-lavish-question="keep-running" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('keep'); const o=this.querySelector('[name=keep_other]').value.trim();
+      if(c){ const a=c==='other'?('keep running: '+o):c; window.lavish?.queuePrompt('AWS pause plan, keep-running decision: '+a,{tag:'choice',text:'Keep running: '+a,element:this,data:{question:'keep-running',answer:a}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q2 &middot; Keep any demo awake?</h3>
+      <label class="opt-rec"><input type="radio" name="keep" value="none — pause all four" checked> None, pause all four <span class="d">$0.81/mo total</span></label>
+      <label><input type="radio" name="keep" value="keep data-qa-demo running (+$3.42/mo incl GST)"> Keep <code>data-qa-demo</code> <span class="d">The cheapest one (+$3.42/mo), keeps data-pilot fully live</span></label>
+      <label><input type="radio" name="keep" value="other"> Other <input type="text" name="keep_other" placeholder="which one, and why"></label>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="secrets" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('sec'); if(c){ window.lavish?.queuePrompt('AWS pause plan, data-qa secrets (C1) before ~2026-10-22: '+c,{tag:'choice',text:'Secrets: '+c,element:this,data:{question:'secrets',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q3 &middot; The 12 deleted secrets (C1)</h3>
+      <p class="hint">They are free while pending. Restoring one costs $0.40/mo. The DB URLs point at a destroyed database.</p>
+      <label class="opt-rec"><input type="radio" name="sec" value="let them expire; I have the API keys elsewhere" checked> Let them expire <span class="d">Confirm you hold <code>llm-api-key</code>, Logfire and Slack values somewhere else</span></label>
+      <label><input type="radio" name="sec" value="read llm-api-key, logfire-token, slack-* values out to a local gitignored file, then let all expire"> Copy 4 values to a local file first <span class="d">Restore, read, delete again. No ongoing cost</span></label>
+      <label><input type="radio" name="sec" value="restore all 12"> Restore all 12 <span class="d">$4.80/mo; only worth it if data-qa foundations is coming back</span></label>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="repeatable" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('rep'); const note=this.querySelector('[name=site_note]').checked;
+      if(c){ const a=c+(note?' + add a demo-paused note to the 4 portfolio project pages':''); window.lavish?.queuePrompt('AWS pause plan, follow-up: '+a,{tag:'choice',text:'Follow-up: '+a,element:this,data:{question:'repeatable',answer:c,site_note:note}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q4 &middot; Make sleep and wake repeatable?</h3>
+      <p class="hint"><code>Makefile:194-198</code> already has <code>aws-sleep</code>/<code>aws-wake</code> stubs reserved for the M2 central stack.</p>
+      <label class="opt-rec"><input type="radio" name="rep" value="add make demos-sleep / demos-wake to nmp-central-ai, driven by an aws block per project in registry/projects.yaml" checked> <code>make demos-sleep</code> / <code>demos-wake</code> here <span class="d">Driven by the registry, so it covers every project in one place. A PR on a branch</span></label>
+      <label><input type="radio" name="rep" value="one-off CLI now, no code change"> One-off CLI now <span class="d">Use the script above when needed</span></label>
+      <label><input type="checkbox" name="site_note"> Also add a “demo paused, wakes on request” note to the 4 portfolio pages</label>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+  </div>
+
+  <div style="margin-top:var(--s4)">
+    <button type="button" class="ghost" onclick="(async (btn) => {
+      const copyRun = btn._lavishCopyRun = (btn._lavishCopyRun || 0) + 1;
+      const qs = [...document.querySelectorAll('[data-lavish-question]')];
+      const status = btn.parentElement.querySelector('[data-lavish-copy-all-status]');
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const out = [];
+      for (const q of qs) {
+        const key = q.getAttribute('data-lavish-question')?.trim() || 'Question';
+        const lines = [];
+        for (const el of q.querySelectorAll('input, select, textarea')) {
+          if (el.matches(':disabled')) continue;
+          if (el.closest('[data-lavish-question]') !== q) continue;
+          const isChoice = el.matches('input[type=checkbox], input[type=radio]');
+          if (isChoice && !el.checked) continue;
+          if (el.matches('input[type=button], input[type=submit], input[type=reset], input[type=image], input[type=hidden], input[type=file], input[type=range], input[type=color]')) continue;
+          let vals;
+          if (el instanceof HTMLSelectElement) {
+            vals = [...el.selectedOptions].filter((o) => !o.disabled && !o.closest('optgroup[disabled]')).map((o) => o.value.trim()).filter(Boolean);
+          } else {
+            const v = isChoice && (!el.hasAttribute('value') || !el.value.trim())
+              ? el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.name || ''
+              : el.value.trim();
+            vals = v ? [v] : [];
+          }
+          const label = el.name || el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.getAttribute('placeholder')?.trim() || el.tagName.toLowerCase();
+          for (const v of vals) lines.push('  ' + label + ': ' + v.split('\n').join('\n    '));
+        }
+        if (lines.length) out.push(key + ':\n' + lines.join('\n'));
+      }
+      const text = out.join('\n\n');
+      if (!text) {
+        status.textContent = qs.length ? 'No answers to copy yet.' : 'No questions or answers to copy.';
+        return;
+      }
+      status.textContent = '';
+      try {
+        if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('Clipboard API unavailable');
+        await navigator.clipboard.writeText(text);
+        if (copyRun !== btn._lavishCopyRun) return;
+        status.textContent = 'Answers copied.';
+        return;
+      } catch {}
+      if (copyRun !== btn._lavishCopyRun) return;
+      const tmp = document.createElement('textarea');
+      tmp.value = text;
+      tmp.readOnly = true;
+      tmp.setAttribute('aria-hidden', 'true');
+      tmp.style.position = 'fixed';
+      tmp.style.left = '-10000px';
+      document.body.append(tmp);
+      tmp.focus();
+      tmp.select();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {}
+      tmp.remove();
+      if (ok) {
+        status.textContent = 'Answers copied.';
+        return;
+      }
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const man = document.createElement('textarea');
+      man.value = text;
+      man.readOnly = true;
+      man.rows = Math.min(12, Math.max(3, text.split('\n').length));
+      man.setAttribute('aria-label', 'Answers to copy manually');
+      man.dataset.lavishCopyAllManual = '';
+      btn.insertAdjacentElement('afterend', man);
+      man.focus();
+      man.select();
+      status.textContent = 'Clipboard unavailable. Copy the answers below manually.';
+    })(this)">Copy all answers</button>
+    <span data-lavish-copy-all-status role="status" aria-live="polite" class="tag"></span>
+  </div>
+</section>
+
+<section id="method">
+  <h2>How this was measured</h2>
+  <dl class="kv">
+    <dt>access</dt><dd>One SSO session (AdministratorAccess), using only <code>list</code>, <code>describe</code> and <code>get</code> calls. Nothing was modified.</dd>
+    <dt>cost</dt><dd>Cost Explorer for 2026-06-01 to 2026-10-12: by service, by region, and by usage type, plus the October forecast. The ~7 Cost Explorer requests cost about $0.07.</dd>
+    <dt>resources</dt><dd>EC2, NAT, EIP, VPC endpoints, ELB, RDS/Aurora, App Runner, ECS, EKS, SageMaker, OpenSearch, ElastiCache, Redshift,
+      Kinesis, MSK, EFS, DynamoDB, Lambda, ECR, Secrets Manager (including planned deletion), KMS, CloudWatch, Bedrock, Lightsail, CloudFormation and the tagging API,
+      in all 17 regions. S3, CloudFront, Route 53, IAM OIDC and Budgets globally.</dd>
+    <dt>code</dt><dd>Terraform under <code>data-qa-agent</code>, <code>ConvFinQA-agent</code>, <code>DABStep-loop</code>, <code>tau2-loop</code>,
+      <code>transcript-rag-agent</code> and <code>productivity-tracker</code>, their <code>deploy-aws.yml</code> workflows, and the state keys in the shared bucket.
+      <code>pt-demo</code> and <code>tau2loop-demo</code> have no live service. M2 (the central AWS stack) has not been built.</dd>
+  </dl>
+  <h3 style="margin-top:var(--s4)">Sources</h3>
+  <ul class="src">
+    <li><a href="https://docs.aws.amazon.com/apprunner/latest/dg/manage-pause.html">AWS: Pausing and resuming an App Runner service</a>, covering what is kept, which actions are blocked while paused, and that resume uses the last version</li>
+    <li><a href="https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html">AWS: App Runner availability change</a>, covering the closure to new customers and the ECS Express Mode migration</li>
+    <li><a href="https://aws.amazon.com/apprunner/pricing/">AWS: App Runner pricing</a>, which says “only billed while your application is running” and describes the automatic deployment monthly fee</li>
+  </ul>
+</section>
+
+</main>
+</body>
+</html>

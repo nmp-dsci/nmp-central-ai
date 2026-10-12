@@ -52,6 +52,7 @@ template (M5).
 | D34 | Langfuse is a compose **profile**, not part of `make up`. It adds four containers to a Docker VM that is currently too small, so `make langfuse-up` gates on `langfuse_doctor.py` and `make up` is unchanged. |
 | D35 | Langfuse consumes the platform like any other tenant: database `langfuse` and role `langfuse` are declared in the registry and created by `make db-init` (D13/D15); its blobs go in the existing MinIO. Only ClickHouse and Redis are new, and neither publishes a port — ClickHouse's native 9000 is MinIO's on this host. |
 | D36 | `registry/projects.yaml` says where each project's traces go (`observability.backend`: mlflow \| langfuse \| both). `both` is the reversible migration state. A declared-but-empty block is an error, not an absent one. |
+| D37 | The siblings' always-on AWS demos (four App Runner services) sleep by **pause, never delete**: a paused service bills no compute and keeps its URL and image, a deleted one returns on a new URL, and App Runner closed to new customers on 2026-04-30 without defining "existing". `aws_demo:` in the registry names each service and its deploy workflow; `make demos-sleep` disables the workflow first (a deploy against a paused service polls 20 min for RUNNING, then fails), `make demos-wake` re-enables it only once RUNNING. Decided in `.lavish/s05_aws-pause-plan.html` (2026-10-12), which also keeps the cheap-but-unrecoverable items: ECR images, the data-qa Aurora snapshot, the yt-agent data bucket, the shared tfstate bucket, the data-pilot CloudFront URL and the GitHub OIDC provider. |
 | D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout
@@ -71,6 +72,8 @@ loader and refuses cluster-global name collisions.
   `make db-backup DB=dab`, `make db-restore DB=dab FILE=backups/….dump`, `make db-psql DB=dab`.
   Moving a sibling's database in: `docs/runbooks/central-postgres.md`.
 - OTLP ingest check without any sibling: `make otlp-smoke EXPERIMENT_ID=<id>`.
+- AWS demos (D37): `make demos-status`, `make demos-sleep`, `make demos-wake` with `AWS_PROFILE`
+  set after `aws sso login`. Details and what to keep: `docs/runbooks/aws-demos.md`.
 
 ## Rules
 

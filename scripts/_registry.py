@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,8 @@ SUPERUSER = "superuser"  # the `env:` value that means "the cluster superuser" (
 HUE_SEPARATION = 30  # degrees; two projects' accents must be told apart at a glance (D28/D32)
 TRACE_BACKENDS = {"mlflow", "langfuse", "both"}  # where a project's traces go (D33)
 ROLE_OPTIONS = {"BYPASSRLS", "NOBYPASSRLS", "CREATEDB", "NOCREATEDB", "INHERIT", "NOINHERIT"}
+AWS_REGION_RE = re.compile(r"^[a-z]{2}(-[a-z]+)+-\d$")  # ap-southeast-2, us-east-1 …
+GITHUB_REPO_RE = re.compile(r"^[\w.-]+/[\w.-]+$")  # owner/name
 
 
 @dataclass(frozen=True)
@@ -59,6 +62,20 @@ class Observability:
         return self.backend in {"mlflow", "both"}
 
 
+@dataclass(frozen=True)
+class AwsDemo:
+    """An always-on demo in the AWS account (D37): one App Runner service and its deploy job.
+
+    `make demos-sleep` pauses the service (compute to zero, URL and image kept) and disables
+    the workflow, because a deploy against a paused service waits for RUNNING and then fails.
+    """
+
+    service: str  # App Runner service name
+    region: str
+    repo: str = ""  # GitHub owner/name whose `workflow` deploys the service
+    workflow: str = ""  # e.g. deploy-aws.yml; empty = nothing to disable while asleep
+
+
 @dataclass
 class Database:
     """A project's database on the central cluster (registry `database:` block, M3)."""
@@ -93,6 +110,7 @@ class Project:
     database: Database | None = None
     ui: Ui | None = None
     observability: Observability | None = None
+    aws_demo: AwsDemo | None = None
 
     @property
     def on_platform(self) -> bool:
@@ -131,6 +149,11 @@ class Registry:
     def traced(self) -> list[Project]:
         """Projects that declare where their traces go (D33)."""
         return [p for p in self.projects if p.observability is not None]
+
+    @property
+    def aws_demos(self) -> list[Project]:
+        """Projects with an always-on AWS demo that `make demos-sleep` pauses (D37)."""
+        return [p for p in self.projects if p.aws_demo is not None]
 
     @property
     def on_langfuse(self) -> list[Project]:
@@ -218,6 +241,38 @@ def _parse_observability(raw: dict[str, Any], pid: str) -> Observability:
             f"{pid}: observability declares langfuse_project {project!r} but backend is 'mlflow'"
         )
     return obs
+
+
+def _parse_aws_demo(raw: dict[str, Any], pid: str) -> AwsDemo:
+    """`aws_demo: {apprunner, region, repo, workflow}` — what demos-sleep/wake act on (D37)."""
+    service = str(raw.get("apprunner") or "").strip()
+    region = str(raw.get("region") or "").strip()
+    if not service:
+        raise RegistryError(f"{pid}: aws_demo must name its App Runner service (`apprunner`)")
+    if not AWS_REGION_RE.match(region):
+        raise RegistryError(f"{pid}: aws_demo.region must be an AWS region, got {region!r}")
+    repo = str(raw.get("repo") or "").strip()
+    workflow = str(raw.get("workflow") or "").strip()
+    if bool(repo) != bool(workflow):
+        raise RegistryError(f"{pid}: aws_demo needs both `repo` and `workflow`, or neither")
+    if repo and not GITHUB_REPO_RE.match(repo):
+        raise RegistryError(f"{pid}: aws_demo.repo must be owner/name, got {repo!r}")
+    return AwsDemo(service=service, region=region, repo=repo, workflow=workflow)
+
+
+def validate_aws_demos(reg: Registry) -> None:
+    """A service name is unique per region; two projects claiming one would pause each other."""
+    seen: dict[tuple[str, str], str] = {}
+    for p in reg.aws_demos:
+        demo = p.aws_demo
+        assert demo is not None
+        key = (demo.region, demo.service)
+        if key in seen:
+            raise RegistryError(
+                f"App Runner service {demo.service!r} in {demo.region} declared by both "
+                f"{seen[key]} and {p.id}"
+            )
+        seen[key] = p.id
 
 
 def validate_observability(reg: Registry) -> None:
@@ -318,6 +373,11 @@ def load_registry(path: Path = REGISTRY_PATH) -> Registry:
                     if "observability" in item
                     else None
                 ),
+                aws_demo=(
+                    _parse_aws_demo(item["aws_demo"] or {}, item["id"])
+                    if "aws_demo" in item
+                    else None
+                ),
             )
         )
     reg = Registry(
@@ -335,6 +395,7 @@ def load_registry(path: Path = REGISTRY_PATH) -> Registry:
     validate_databases(reg)
     validate_ui(reg)
     validate_observability(reg)
+    validate_aws_demos(reg)
     return reg
 
 
