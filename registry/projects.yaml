@@ -340,6 +340,25 @@ projects:
       Agentic RAG on ViDoRe V3 (visually rich enterprise PDFs), English datasets one at a time.
       No database yet; datasets come from the HF Hub at pinned revisions into data/cache/.
 
+  - id: P9
+    name: finance-rag-sft
+    path: ../finance-rag-sft
+    status: migrated
+    ui:
+      hue: 15   # crimson: the only hue left 30 degrees from all nine others (345 and 45 either side)
+    observability:
+      backend: mlflow   # D33: no traces yet; runs and the registered model stay in MLflow
+    mlflow:
+      client: python
+      experiments: [finance-rag-sft/evals]
+      verify: runs
+      smoke: uv run finrag smoke   # scores a fixed toy ranking offline, logs one kind=smoke run
+    notes: >-
+      Finance RAG retriever: fine-tunes BAAI/bge-base-en-v1.5 (MNRL inside Matryoshka) on
+      philschmid/finanical-rag-embedding-dataset, scored as Recall@10 on a passage-grouped test
+      split against the untouched base (plan: finance-rag-sft/.lavish/s00). No database; run
+      folders under runs/ are the record, the tuned model is registered in MLflow.
+
   # ---- not on the platform, listed so the map is complete ----------------
   # Langfuse is a platform service, not a sibling repo, but its database lives on the
   # shared cluster like everyone else's — so it is declared here and `make db-init`
