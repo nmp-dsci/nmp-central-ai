@@ -169,3 +169,34 @@ def test_wake_no_wait_defers_the_workflow_and_is_not_a_failure(
     assert rc == 0
     assert calls == ["resume"]
     assert "make demos-wake" in capsys.readouterr().out
+
+
+def test_read_service_pages_until_it_finds_the_service(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json
+
+    pages = {
+        "": {"ServiceSummaryList": [{"ServiceName": "other"}], "NextToken": "t1"},
+        "t1": {
+            "ServiceSummaryList": [
+                {"ServiceName": "convfinqa-demo", "ServiceArn": "arn:x", "Status": "PAUSED"}
+            ]
+        },
+    }
+    seen: list[str] = []
+
+    def fake_run(cmd: list[str]) -> str:
+        token = cmd[cmd.index("--next-token") + 1] if "--next-token" in cmd else ""
+        seen.append(token)
+        return json.dumps(pages[token])
+
+    monkeypatch.setattr(aws_demos, "_run", fake_run)
+    d = demo("")
+    aws_demos.read_service(d)
+    assert (d.status, d.arn, seen) == ("PAUSED", "arn:x", ["", "t1"])
+
+
+def test_read_service_reports_absent_after_the_last_page(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(aws_demos, "_run", lambda cmd: '{"ServiceSummaryList": []}')
+    d = demo("")
+    aws_demos.read_service(d)
+    assert d.status == aws_demos.ABSENT

@@ -29,6 +29,11 @@ make demos-sleep ARGS="--dry-run"     # print the plan only
 Both commands are idempotent, so running one against a demo already in that state does nothing.
 Waking takes a few minutes per service. They resume in parallel.
 
+- Sleep skips a demo whose deploy workflow state it cannot read (`gh` missing, logged out or
+  erroring), so nothing is paused with its workflow still on. Fix `gh` and re-run.
+- `make demos-wake ARGS="--no-wait"` returns once the resume is issued. Deploys stay off until
+  the service is `RUNNING`; re-run `make demos-wake` then, and it only enables the workflow.
+
 ## Why it works this way
 
 - **Pause, never delete.** A paused service bills no compute and keeps its `*.awsapprunner.com`
