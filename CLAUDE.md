@@ -1,6 +1,6 @@
 # CLAUDE.md — nmp-central-ai
 
-> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D36, runbooks). The
+> Read [`AGENTS.md`](./AGENTS.md) first (what this is, decisions D1–D37, runbooks). The
 > outward contract is [`PLATFORM.md`](./PLATFORM.md); the plan of record is
 > `ai_specs/s00_project_plan.md`. This file is a pointer plus the rules that bite.
 
@@ -8,6 +8,7 @@
 
 - `make up` · `make status` · `make mlflow-init` · `make db-init` · `make db-ui` · `make house-ui` · `make check` · `make install-agent-context`
 - `make langfuse-doctor` before `make langfuse-up` (observability profile, D33–D36)
+- `make demos-status` / `demos-sleep` / `demos-wake` for the siblings' App Runner demos (pause, never delete — D37)
 - `make setup && make lint && make test` for the scripts (uv, ruff, mypy strict, pytest)
 - `make plugin-validate` after touching `plugins/` or `.claude-plugin/`
 

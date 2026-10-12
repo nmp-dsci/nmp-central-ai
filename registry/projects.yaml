@@ -28,6 +28,13 @@
 #                     model registry stay in MLflow regardless — that is the split, not a stage.
 #   langfuse_project: the Langfuse project receiving them. Instance-global, so unique here (D15),
 #                     and required when (and only when) backend is langfuse or both.
+#
+# aws_demo (D37, an always-on App Runner demo in the portfolio AWS account):
+#   apprunner/region: the service `make demos-sleep` pauses and `make demos-wake` resumes.
+#                     Pause, never delete: a deleted service gets a new URL, and App Runner
+#                     closed to new customers on 2026-04-30.
+#   repo/workflow:    the GitHub workflow that deploys it. Disabled while asleep, because it
+#                     waits for RUNNING and fails; re-enabled once the service is back.
 
 platform:
   mlflow_uri: http://localhost:5000
@@ -67,6 +74,11 @@ projects:
       hue: 255   # blue — the accent these artifacts already use
     observability:
       backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
+    aws_demo:                   # D37: `make demos-sleep` pauses it, `demos-wake` resumes it
+      apprunner: convfinqa-demo
+      region: ap-southeast-1
+      repo: nmp-dsci/ConvFinQA-agent
+      workflow: deploy-aws.yml
     mlflow:
       client: python
       experiments: [convfinqa, convfinqa-optimization]
@@ -97,6 +109,11 @@ projects:
     status: migrated
     observability:
       backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
+    aws_demo:                   # D37: `make demos-sleep` pauses it, `demos-wake` resumes it
+      apprunner: dabstep-demo
+      region: ap-southeast-1
+      repo: nmp-dsci/DABStep-loop
+      workflow: deploy-aws.yml
     mlflow:
       client: python
       experiments: [dabstep-loop]
@@ -163,6 +180,11 @@ projects:
     status: deferred           # moves right after M1 (M1b)
     observability:
       backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
+    aws_demo:                   # D37: `make demos-sleep` pauses it, `demos-wake` resumes it
+      apprunner: yt-agent-demo
+      region: ap-southeast-2
+      repo: nmp-dsci/transcript-rag-agent
+      workflow: deploy-aws.yml
     mlflow:
       client: python
       experiments: [yt-agent-v1]
@@ -178,6 +200,11 @@ projects:
       hue: 80   # amber — the accent these artifacts already use
     observability:
       backend: mlflow   # D33: traces still go to MLflow; see ai_specs/s06
+    aws_demo:                   # D37: `make demos-sleep` pauses it, `demos-wake` resumes it
+      apprunner: data-qa-demo
+      region: ap-southeast-2
+      repo: nmp-dsci/data-qa-agent
+      workflow: deploy-aws.yml
     mlflow:
       client: otlp
       experiments: [data-qa/evals]
