@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Portfolio app plan — nmp-central-ai</title>
+<link rel="stylesheet" href="house.css">
+<link rel="stylesheet" href="project.css">
+<style>
+  /* page-local layout only. Tokens come from house.css. */
+  .hero{ border-bottom:1px solid var(--line-2); padding-bottom:var(--s5); margin-bottom:var(--s6); }
+  .stat .l b{ color:var(--ink); }
+
+  /* mock browser frames */
+  .browser{ border:1px solid var(--line-2); border-radius:var(--r); overflow:hidden; background:var(--bg);
+            box-shadow:var(--shadow); min-width:0; }
+  .browser .url{ display:flex; gap:var(--s2); align-items:center; font-family:var(--mono); font-size:var(--t-2);
+                 color:var(--muted); background:var(--band); padding:var(--s2) var(--s3); border-bottom:1px solid var(--line); }
+  .browser .url span{ overflow-wrap:anywhere; min-width:0; }
+  .browser .url i{ width:9px; height:9px; border-radius:50%; background:var(--line-2); flex:none; }
+  .home-mock{ padding:var(--s5) var(--s4); }
+  .home-mock h3.h{ font-family:var(--serif); font-weight:400; font-size:var(--t2); margin-bottom:var(--s1); }
+  .home-mock > p{ font-size:var(--t-1); color:var(--muted); }
+  .mocks{ display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:var(--s4); align-items:start; }
+  @media (max-width:900px){ .mocks{ grid-template-columns:minmax(0,1fr); } }
+
+  /* proposed `.tile` component for house.css: one card per project, tinted by that project's
+     registry hue at the SAME lightness/chroma stops as --accent, so the existing audit
+     (@contrast --accent --panel, every declared hue, both themes) already covers it. */
+  .tiles{ display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr)); gap:var(--s3); }
+  .tile{ --tc:oklch(0.48 0.13 var(--tile-h)); background:var(--panel); border:1px solid var(--line-2);
+         border-top:3px solid var(--tc); border-radius:var(--r); padding:var(--s3) var(--s4); min-width:0; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .tile{ --tc:oklch(0.78 0.13 var(--tile-h)); } }
+  :root[data-theme="dark"] .tile{ --tc:oklch(0.78 0.13 var(--tile-h)); }
+  .tile .m{ font-family:var(--serif); font-size:var(--t3); line-height:1; color:var(--tc); margin:var(--s2) 0 var(--s1); }
+  .tile h4{ margin:0; color:var(--ink); text-transform:none; letter-spacing:0; font-size:var(--t0); }
+  .tile p{ font-size:var(--t-2); color:var(--muted); margin:0 0 var(--s2); }
+  .tile p.todo{ font-style:italic; }
+  .tile .chips{ margin-top:var(--s1); }
+
+  /* the portfolio bar over an app */
+  .pbar{ display:flex; gap:var(--s2) var(--s3); align-items:center; flex-wrap:wrap; padding:var(--s2) var(--s3);
+         background:var(--ink); color:var(--bg); font-family:var(--mono); font-size:var(--t-2); }
+  .pbar b{ font-family:var(--sans); }
+  .pbar .sp{ margin-left:auto; display:flex; gap:var(--s3); }
+  .pbar u{ text-decoration:none; border-bottom:1px solid currentColor; }
+  .app-mock{ padding:var(--s5) var(--s4) var(--s6); background:var(--band); }
+  .app-mock .nav{ display:flex; flex-wrap:wrap; gap:var(--s1); margin-bottom:var(--s4); }
+  .app-mock .blk{ height:14px; border-radius:4px; background:var(--line); margin:var(--s2) 0; }
+  .app-mock .blk.s{ width:60%; } .app-mock .blk.m{ width:85%; }
+  .app-mock p{ font-size:var(--t-2); color:var(--muted); margin:var(--s3) 0 0; }
+
+  /* inline SVG figures */
+  .figscroll{ overflow-x:auto; }
+  .figscroll svg{ display:block; width:100%; min-width:660px; }
+  svg .bx{ fill:var(--panel); stroke:var(--line-3); stroke-width:1.2; }
+  svg .bx.acc{ stroke:var(--accent); stroke-width:2; }
+  svg .bx.soft{ fill:var(--band); stroke:var(--line-2); }
+  svg .bx.row{ fill:var(--bg); stroke:var(--line-2); }
+  svg .t{ fill:var(--ink); font-family:var(--sans); font-size:15px; font-weight:600; }
+  svg .s{ fill:var(--muted); font-family:var(--mono); font-size:12px; }
+  svg .s.a{ fill:var(--accent); }
+  svg .ar{ stroke:var(--line-3); stroke-width:1.5; fill:none; }
+  svg .ar.acc{ stroke:var(--accent); }
+  svg .ah{ fill:var(--line-3); }
+  svg .lbl{ fill:var(--muted); font-family:var(--sans); font-size:12px; font-style:italic; }
+
+  /* project table */
+  th.nw{ white-space:nowrap; }
+  table.wide{ min-width:880px; }   /* scroll inside .tablewrap on a phone, never crush to one letter per line */
+  table.mid{ min-width:640px; }
+  td.id{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); white-space:nowrap; }
+  td .what{ color:var(--ink); font-weight:600; display:block; }
+  td .why{ color:var(--muted); font-size:var(--t-2); display:block; margin-top:2px; }
+  tr.grp td{ background:var(--band); font-family:var(--mono); font-size:var(--t-2); color:var(--muted);
+             text-transform:uppercase; letter-spacing:var(--track-label); }
+  .cards.five{ grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); }
+  .opts{ grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); }
+  .opt h3{ display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; }
+  .opt .kv{ margin:var(--s2) 0; }
+  .opt.no{ background:var(--band); }
+  pre{ font-size:var(--t-2); }
+  .src li{ font-size:var(--t-1); }
+  form.q fieldset{ border:0; padding:0; margin:0; }
+  form.q .hint{ font-size:var(--t-2); color:var(--muted); margin:0 0 var(--s2); }
+  form.q h3 .badge{ margin-left:auto; }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">nmp-central-ai &middot; portfolio app &middot; plan &middot; 2026-10-12 &middot; branch portfolio-ui</p>
+  <h1>One URL for every project. <em>Freeze the demos, don't host them.</em></h1>
+  <p class="lede">Every project UI you named is the same shape: a React + Vite single-page app on a FastAPI backend.
+  In each one's demo mode, every <b>GET</b> route only reads files that are already on disk. The model calls all sit
+  behind a handful of <b>POST</b> routes. So the portfolio app does not need servers at all. Build each UI once under
+  its own path, save every GET response as a file, play the recorded chats back in the browser, and serve the whole
+  thing from one S3 bucket behind one CloudFront URL.</p>
+  <div class="verdict">
+    <div class="stat accent"><div class="n">7</div><div class="l">project UIs, all <b>React + Vite + FastAPI</b>; the 8th project, PropertyIQ, has reports instead of an app</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">model calls, databases or containers <b>at view time</b>: everything is a file</div></div>
+    <div class="stat accent"><div class="n">≈ $0.10</div><div class="l">a month: about 2 GB in S3, traffic inside CloudFront's always-free tier</div></div>
+    <div class="stat amber"><div class="n">0 of 7</div><div class="l">apps run under a sub-path today. Each needs a <b>base path</b> and a router basename first</div></div>
+  </div>
+</header>
+
+<div class="callout">
+  <p><b>Recommendation:</b> option A below. One private S3 bucket and one CloudFront distribution, Terraformed in
+  nmp-central-ai. A home page generated from the registry. Each project publishes a <b>showcase build</b> to its own
+  prefix, <code>/p/&lt;slug&gt;/</code>. That build is its normal UI plus a folder of frozen API responses and its
+  recorded chats. A small shared script, the fetch shim, makes the app read those files instead of calling its server.
+  The apps keep their own look; a thin portfolio bar on top links them back home.</p>
+</div>
+
+<section id="see">
+  <p class="eyebrow">What a visitor sees</p>
+  <h2>Pick a project on the home page, land in its real UI</h2>
+  <p class="sub">Mock-ups in the house UI. The tile copy comes from the case-study cards already on nmp-dsci.github.io
+  (<code>_projects/*.md</code>: <code>title</code>, <code>headline</code>, <code>metric</code>), so it is written once.
+  tau2-loop and vidore-v3-loop have no card yet. Each tile's colour is that project's registry hue.</p>
+  <div class="mocks">
+    <div class="browser" id="mock-home">
+      <div class="url"><i></i><span>https://&lt;id&gt;.cloudfront.net/</span></div>
+      <div class="home-mock">
+        <p class="eyebrow">nmp-dsci &middot; working systems</p>
+        <h3 class="h">Open any project. Everything here is a recording.</h3>
+        <p>Each app is the real UI, built from a pinned commit, with its answers recorded in advance. Nothing on this site calls a model.</p>
+        <div class="tiles">
+          <div class="tile" style="--tile-h:255"><h4>ConvFinQA Agent</h4><div class="m">90.5%</div>
+            <p>Optimised from 73.0% to 90.5%, promoted only on significance</p>
+            <div class="chips"><span class="chip">55 recorded turns</span></div></div>
+          <div class="tile" style="--tile-h:315"><h4>DataAgentBench Loop</h4><div class="m">90.4%</div>
+            <p>Optimised from 44.0% to 90.4% Pass@1, scoring the SQL</p>
+            <div class="chips"><span class="chip">14 runs</span></div></div>
+          <div class="tile" style="--tile-h:345"><h4>tau2-loop</h4><div class="m">&mdash;</div>
+            <p class="todo">needs a site card: title, headline, metric</p>
+            <div class="chips"><span class="chip">89 runs</span></div></div>
+          <div class="tile" style="--tile-h:130"><h4>vidore-v3-loop</h4><div class="m">&mdash;</div>
+            <p class="todo">needs a site card: title, headline, metric</p>
+            <div class="chips"><span class="chip">4 runs</span></div></div>
+          <div class="tile" style="--tile-h:285"><h4>Transcript RAG</h4><div class="m">6.1×</div>
+            <p>Retrieval you can prove, at 6.1× fewer tokens</p>
+            <div class="chips"><span class="chip">66 conversations</span></div></div>
+          <div class="tile" style="--tile-h:80"><h4>Data Pilot</h4><div class="m">9 / 9</div>
+            <p>Governed NL→SQL in production</p>
+            <div class="chips"><span class="chip">7 answers</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="browser" id="mock-app">
+      <div class="url"><i></i><span>https://&lt;id&gt;.cloudfront.net/p/convfinqa/runs/traces</span></div>
+      <div class="pbar" role="img" aria-label="Portfolio bar">
+        <b>&larr; Portfolio</b><span>ConvFinQA Agent</span><span>recorded 2026-10-02 &middot; <code style="background:none;border:0;color:inherit;padding:0">a1b2c3d</code></span>
+        <span class="sp"><u>Case study</u><u>Source</u></span>
+      </div>
+      <div class="app-mock">
+        <div class="nav"><span class="chip">Overview</span><span class="chip">Filings</span><span class="chip">Scoring</span><span class="chip">Leaderboard</span><span class="chip rec">Runs</span><span class="chip">Optimise</span><span class="chip">Agent</span></div>
+        <div class="blk m"></div><div class="blk s"></div><div class="blk m"></div><div class="blk s"></div>
+        <p>ConvFinQA's own UI, unchanged and in its own design system. The bar sits in a Shadow DOM, so the two
+        cannot restyle each other. Deep links, the back button and phones all work because the app is not in an iframe.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="today">
+  <p class="eyebrow">What exists today</p>
+  <h2>Seven apps, one shape, very different payloads</h2>
+  <p class="sub">Each one was read in its repo on 2026-10-12. "Can't ship" means the feature needs a model, a GPU, a
+  database or a sandbox. A static site has none of those, so it is shown from recordings or switched off with the
+  message the app already uses in demo mode. Effort is a rough estimate: S is about half a day, M one to two days, L three or more.</p>
+  <div class="tablewrap">
+  <table class="wide">
+    <thead><tr><th class="nw">ID</th><th>Project &middot; app today</th><th>Model calls &middot; off switch</th><th>Recorded content to ship</th><th>Can't ship &rarr; shown as</th><th class="nw">Size</th><th class="nw">Work</th></tr></thead>
+    <tbody>
+      <tr class="grp"><td colspan="7">Phase 1: the two easiest; one of them has no model calls at all</td></tr>
+      <tr><td class="id">P1</td><td><span class="what">ConvFinQA Agent</span><span class="why">React 18 + FastAPI, App Runner (paused)</span></td>
+        <td>Chat (Claude Agent SDK, DeepSeek). <code>DEMO_MODE=1</code> routes every model constructor through <code>guard_llm_call()</code></td>
+        <td>55 chat turns over 8 reports, eval predictions, traces and MLflow snapshots</td>
+        <td>Free-text chat &rarr; recorded turns; admin writes &rarr; off</td><td class="n">~115 MB</td><td><span class="badge ok">S</span></td></tr>
+      <tr><td class="id">P6</td><td><span class="what">DataAgentBench Loop</span><span class="why">React 18 + CodeMirror + FastAPI, never deployed</span></td>
+        <td><b>None.</b> No route calls a model, so no flag is needed</td>
+        <td>14 runs, leaderboard, answers. <b>Traces and optimiser history are gitignored</b> and exist only on this laptop (43 MB)</td>
+        <td>Golden SQL editor and tool playground (need the 6.6 GB <code>dab</code> database and a Docker sandbox) &rarr; recorded results; local MLflow iframe &rarr; removed</td><td class="n">~60 MB</td><td><span class="badge warn">M</span></td></tr>
+      <tr class="grp"><td colspan="7">Phase 2: already in demo mode, more to freeze</td></tr>
+      <tr><td class="id">P3</td><td><span class="what">tau2-loop</span><span class="why">React 18 + FastAPI; its App Runner deploy is parked (account quota)</span></td>
+        <td>Live conversation and RAG sessions (Claude Agent SDK). <code>DEMO_MODE=1</code> returns 503 on them</td>
+        <td>89 runs (2,368 files), 185 RAG sessions, live and judge runs</td>
+        <td>Live demos &rarr; replay recorded sessions; tool playground &rarr; off; database diff &rarr; frozen at build, where <code>vendor/tau2-bench</code> exists</td><td class="n">~730 MB</td><td><span class="badge warn">M</span></td></tr>
+      <tr><td class="id">P4</td><td><span class="what">Transcript RAG</span><span class="why">React 19 + FastAPI, App Runner (paused)</span></td>
+        <td>Ask and judge (DeepSeek), guides (Claude), speech-to-text (Deepgram). <code>YT_AGENT_DEMO_MODE=1</code> answers every non-GET with 403</td>
+        <td>66 recorded conversations, graph snapshot, scoreboard, evals, guides</td>
+        <td>Corpus views read Chroma &rarr; frozen at build, so Chroma never ships; speech and guide generation &rarr; off</td><td class="n">~40 MB</td><td><span class="badge warn">M</span></td></tr>
+      <tr><td class="id">P5</td><td><span class="what">Data Pilot</span><span class="why">React 19 + Tailwind on S3/CloudFront, API on App Runner (paused)</span></td>
+        <td>Ask (DeepSeek over Postgres). <code>DEMO_MODE=1</code> + <code>DB_DISABLED=1</code> return 501</td>
+        <td>7 recorded answers, static exhibits (2.6 MB)</td>
+        <td>Demo login door &rarr; the shim answers it; free ask &rarr; recorded answers</td><td class="n">~5 MB</td><td><span class="badge ok">S</span></td></tr>
+      <tr class="grp"><td colspan="7">Phase 3: no off switch yet, and its search needs a GPU</td></tr>
+      <tr><td class="id">P8</td><td><span class="what">vidore-v3-loop</span><span class="why">React 18 + FastAPI, never deployed</span></td>
+        <td>Answer and judge (Claude). Search encodes with EVIE-4.5B and reranks with zerank-2 (about 8 GB, GPU). <b>No demo flag</b></td>
+        <td>4 runs &times; ~155 questions, with top-10 pages per stage, answers and verdicts</td>
+        <td>Live search &rarr; pick a benchmark question and see its stored stages; live answer &rarr; stored answer</td><td class="n">~150 MB<span class="why">1,758 pages, resized</span></td><td><span class="badge bad">L</span></td></tr>
+      <tr class="grp"><td colspan="7">Not selected by default</td></tr>
+      <tr><td class="id">P2</td><td><span class="what">DABstep Loop</span><span class="why">removed from the site on 2026-09-26 at your request</span></td>
+        <td><code>DEMO_MODE=1</code></td><td>10 recorded questions, runs</td><td>Free ask &rarr; recorded</td><td class="n">~17 MB</td><td><span class="badge ok">S</span></td></tr>
+      <tr><td class="id">P7</td><td><span class="what">PropertyIQ ETL</span><span class="why">a command-line ETL, no app</span></td>
+        <td>None</td><td>12 Lavish reports, dbt docs</td><td>Could ship as a docs tile</td><td class="n">&lt; 5 MB</td><td><span class="badge ok">XS</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout">
+    <p><b>Why freezing works.</b> Each backend already keeps its GET routes to committed files and puts its model calls
+    behind one choke point. ConvFinQA has <code>guard_llm_call()</code> in <code>llm.py:124-136</code>. tau2-loop's
+    <code>serving/app.py:1-22</code> says "every GET route serves committed files". DataAgentBench's
+    <code>serving/app.py:1-13</code> says nothing reads upstream data or calls a model. Transcript RAG has a middleware
+    in <code>main.py:989-1028</code>, and Data Pilot has <code>agent_client.py:25-27</code>. The freezer just asks those
+    GET routes everything once, at build time.</p>
+  </div>
+</section>
+
+<section id="arch">
+  <p class="eyebrow">Architecture</p>
+  <h2>One front door, one bucket, one prefix per project</h2>
+  <p class="sub">The visitor's request goes left to right along the top. Publishing goes bottom to top. Nothing in the
+  top row runs code except a ten-line CloudFront Function that sends each app's deep links to that app's own <code>index.html</code>.</p>
+  <figure class="fig">
+    <div class="figscroll">
+    <svg viewBox="0 0 1000 420" role="img" aria-labelledby="f1t" id="fig-overview">
+      <title id="f1t">Request path: visitor to CloudFront to a private S3 bucket. Publish path: each project and nmp-central-ai sync into their own prefix.</title>
+      <defs><marker id="ah1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+      <g id="n-visitor"><title>Any browser</title>
+        <rect class="bx" x="20" y="80" width="130" height="60" rx="8"/>
+        <text class="t" x="85" y="107" text-anchor="middle">Visitor</text>
+        <text class="s" x="85" y="126" text-anchor="middle">any browser</text></g>
+      <path class="ar" d="M150,110 L206,110" marker-end="url(#ah1)" id="e-visit"><title>HTTPS</title></path>
+      <g id="n-cf"><title>CloudFront distribution: the one URL</title>
+        <rect class="bx acc" x="210" y="45" width="260" height="130" rx="8"/>
+        <text class="t" x="226" y="72">CloudFront &middot; one URL</text>
+        <text class="s" x="226" y="94">https://&lt;id&gt;.cloudfront.net</text>
+        <text class="s a" x="226" y="118">function: /p/&lt;slug&gt;/* &#8594;</text>
+        <text class="s a" x="226" y="134">  that app's index.html</text>
+        <text class="s" x="226" y="158">free tier: 1 TB, 10M req / mo</text></g>
+      <path class="ar" d="M470,110 L516,110" marker-end="url(#ah1)" id="e-oac"><title>Origin Access Control: the bucket stays private</title></path>
+      <text class="lbl" x="474" y="100">OAC</text>
+      <g id="n-s3"><title>Private S3 bucket</title>
+        <rect class="bx" x="520" y="20" width="460" height="190" rx="8"/>
+        <text class="t" x="536" y="44">S3 bucket (private)</text>
+        <rect class="bx row" x="536" y="55" width="428" height="24" rx="4"/><text class="s" x="546" y="72">/index.html · home page, generated</text>
+        <rect class="bx row" x="536" y="83" width="428" height="24" rx="4"/><text class="s" x="546" y="100">/_shell/ · bar.js · house.css · fonts</text>
+        <rect class="bx row" x="536" y="111" width="428" height="24" rx="4"/><text class="s a" x="546" y="128">/p/convfinqa/ · app + _frozen/ + showcase.json</text>
+        <rect class="bx row" x="536" y="139" width="428" height="24" rx="4"/><text class="s" x="546" y="156">/p/dataagentbench/ · /p/tau2/ · /p/vidore/</text>
+        <rect class="bx row" x="536" y="167" width="428" height="24" rx="4"/><text class="s" x="546" y="184">/p/transcript-rag/ · /p/data-pilot/ · …</text></g>
+      <g id="n-central"><title>nmp-central-ai publishes the home page and the shared shell</title>
+        <rect class="bx soft" x="20" y="270" width="300" height="130" rx="8"/>
+        <text class="t" x="36" y="296">nmp-central-ai</text>
+        <text class="s" x="36" y="320">registry showcase: blocks</text>
+        <text class="s" x="36" y="340">site cards → titles, metrics</text>
+        <text class="s" x="36" y="360">make portfolio-publish</text>
+        <text class="s" x="36" y="380">  → / and /_shell/</text></g>
+      <g id="n-project"><title>Each project builds and publishes its own showcase</title>
+        <rect class="bx soft" x="350" y="270" width="390" height="130" rx="8"/>
+        <text class="t" x="366" y="296">each project repo</text>
+        <text class="s" x="366" y="320">make showcase</text>
+        <text class="s" x="366" y="340">  vite build, base /p/&lt;slug&gt;/</text>
+        <text class="s" x="366" y="360">  freeze every GET (DEMO_MODE=1)</text>
+        <text class="s" x="366" y="380">  copy replay packs, showcase.json</text></g>
+      <g id="n-never"><title>What never happens at view time</title>
+        <rect class="bx" x="770" y="270" width="210" height="130" rx="8"/>
+        <text class="t" x="786" y="296">never at view time</text>
+        <text class="s" x="786" y="322">no model calls</text>
+        <text class="s" x="786" y="344">no database</text>
+        <text class="s" x="786" y="366">no container</text>
+        <text class="s" x="786" y="388">no key</text></g>
+      <path class="ar acc" d="M545,270 L545,214" marker-end="url(#ah1)" id="e-pub-project"><title>s3 sync into its own prefix only</title></path>
+      <path class="ar acc" d="M170,270 L170,236 L530,236 L530,214" marker-end="url(#ah1)" id="e-pub-central"><title>s3 sync to / and /_shell/</title></path>
+      <text class="lbl" x="556" y="250">sync to its own prefix only</text>
+    </svg>
+    </div>
+    <figcaption>The whole runtime is CloudFront plus S3. Each project's deploy role may write only under its own
+    <code>p/&lt;slug&gt;/</code>, so one project cannot overwrite another.</figcaption>
+  </figure>
+
+  <h3 style="margin-top:var(--s6)">Inside one app: the fetch shim</h3>
+  <p class="sub">The apps call their API with hard-coded paths: about 20 in DABstep, about 38 in DataAgentBench. Rather
+  than edit every call site, a showcase build installs one shared shim at start-up. It intercepts calls to the app's own
+  API and answers them from files. Normal builds never load it.</p>
+  <figure class="fig">
+    <div class="figscroll">
+    <svg viewBox="0 0 1000 250" role="img" aria-labelledby="f2t" id="fig-shim">
+      <title id="f2t">The app calls fetch; the shim answers GETs from frozen files, recorded questions from the replay pack, and refuses other writes.</title>
+      <defs><marker id="ah2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path class="ah" d="M0,0 L8,4 L0,8 z"/></marker></defs>
+      <g id="n-app"><title>The app's code, unchanged</title>
+        <rect class="bx" x="20" y="90" width="220" height="70" rx="8"/>
+        <text class="t" x="36" y="117">the app, unchanged</text>
+        <text class="s" x="36" y="140">fetch('/api/runs')</text></g>
+      <path class="ar" d="M240,125 L286,125" marker-end="url(#ah2)"/>
+      <g id="n-shim"><title>The shared fetch shim, in showcase builds only</title>
+        <rect class="bx acc" x="290" y="70" width="210" height="110" rx="8"/>
+        <text class="t" x="306" y="98">fetch shim</text>
+        <text class="s" x="306" y="122">showcase builds only</text>
+        <text class="s" x="306" y="142">shared, vendored like</text>
+        <text class="s" x="306" y="160">house.css</text></g>
+      <path class="ar acc" d="M500,110 L556,48" marker-end="url(#ah2)"/>
+      <path class="ar" d="M500,125 L556,125" marker-end="url(#ah2)"/>
+      <path class="ar" d="M500,140 L556,202" marker-end="url(#ah2)"/>
+      <g id="n-get"><title>GET requests read frozen files</title>
+        <rect class="bx" x="560" y="20" width="420" height="56" rx="8"/>
+        <text class="t" x="576" y="44">GET → _frozen/api/runs.json</text>
+        <text class="s" x="576" y="64">written at build time by the freezer</text></g>
+      <g id="n-replay"><title>Recorded questions replay from the pack</title>
+        <rect class="bx" x="560" y="97" width="420" height="56" rx="8"/>
+        <text class="t" x="576" y="121">POST a recorded question → replay</text>
+        <text class="s" x="576" y="141">streamed back at the original pace</text></g>
+      <g id="n-ro"><title>Any other write is refused</title>
+        <rect class="bx" x="560" y="174" width="420" height="56" rx="8"/>
+        <text class="t" x="576" y="198">any other POST → read-only reply</text>
+        <text class="s" x="576" y="218">the app's existing demo-mode message</text></g>
+    </svg>
+    </div>
+    <figcaption>Chat replay uses the packs the projects already ship. A typed question that matches a recording plays
+    it. One that doesn't gets "not recorded, try one of these", with the recorded questions as buttons.</figcaption>
+  </figure>
+
+  <h3 style="margin-top:var(--s6)">The five pieces</h3>
+  <div class="cards five">
+    <div class="card" id="m-door"><h3>1 &middot; Front door</h3>
+      <p class="small">nmp-central-ai <code>infra/terraform/portfolio/</code></p>
+      <ul><li>Private bucket, Origin Access Control, one distribution. This is the Data Pilot pattern in <code>data-qa-agent/infra/terraform/demo/main.tf</code>, reused.</li>
+      <li>One change from that pattern. Data Pilot sends 403/404 to <code>/index.html</code>, which works for one app only. With several apps, a viewer-request function routes each prefix to its own <code>index.html</code>.</li>
+      <li>State goes in the shared tfstate bucket. Publish rights are scoped by prefix on each existing <code>*-github-deploy</code> role.</li></ul></div>
+    <div class="card" id="m-shell"><h3>2 &middot; Home and bar</h3>
+      <p class="small"><code>scripts/portfolio_render.py</code></p>
+      <ul><li>Renders <code>/index.html</code> from the registry's <code>showcase:</code> blocks plus each project's site card.</li>
+      <li><code>/_shell/bar.js</code> injects the portfolio bar inside a Shadow DOM.</li>
+      <li>The house UI is used here only. The apps are not restyled.</li></ul></div>
+    <div class="card" id="m-build"><h3>3 &middot; Showcase build</h3>
+      <p class="small">in each project: <code>make showcase</code></p>
+      <ul><li><code>vite build</code> with <code>base=/p/&lt;slug&gt;/</code>, and the router's <code>basename</code> set to <code>import.meta.env.BASE_URL</code>. That fixes the "not sub-path ready" gap for all seven apps.</li>
+      <li>Runs the freezer, copies the replay packs and writes <code>showcase.json</code>.</li></ul></div>
+    <div class="card" id="m-kit"><h3>4 &middot; The kit</h3>
+      <p class="small">nmp-central-ai <code>showcase/</code>, vendored by <code>make install-showcase</code></p>
+      <ul><li><code>freeze.py</code> starts the app in demo mode under FastAPI's <code>TestClient</code>. It crawls the OpenAPI GET routes plus the id lists declared in <code>showcase.yaml</code>, and writes the results to <code>_frozen/</code> with a coverage report.</li>
+      <li><code>shim.ts</code> is the browser half.</li>
+      <li>One file-naming function is shared by both, and a parity test keeps them in step.</li></ul></div>
+    <div class="card" id="m-reg"><h3>5 &middot; Registry and decision</h3>
+      <p class="small"><code>registry/projects.yaml</code>, new decision D38</p>
+      <ul><li>A <code>showcase:</code> block gives the slug, the site card and the phase.</li>
+      <li><code>make portfolio-status</code> shows what is published, from which commit, and on what date.</li>
+      <li>A smoke test opens every app's nav routes and fails on a missing file, or on any request that leaves the URL.</li></ul></div>
+  </div>
+</section>
+
+<section id="contract">
+  <p class="eyebrow">The contract</p>
+  <h2>What one project adds to join</h2>
+  <p class="sub">Shown for ConvFinQA. The others differ only in their API prefixes and replay routes. The YAML paths
+  are illustrative and get confirmed when each project is wired up.</p>
+  <div class="split">
+    <div>
+      <h3>Two lines in the app</h3>
+<pre><code>// vite.config.ts
+// showcase builds set SHOWCASE_BASE=/p/convfinqa/
+base: process.env.SHOWCASE_BASE ?? '/',
+
+// main.tsx
+import { install } from './showcase/shim' // vendored
+if (import.meta.env.VITE_SHOWCASE) install()
+createBrowserRouter(routes, {
+  basename: import.meta.env.BASE_URL,
+})</code></pre>
+      <h3>One file: <code>showcase.yaml</code></h3>
+<pre><code>slug: convfinqa
+api: [/api, /healthz, /eval, /traces, /reports, /demo]
+# list routes whose ids open detail routes
+expand:
+  - list: /traces
+    ids: "$[*].id"
+    get: /traces/{id}
+# recorded chat, answered in the browser
+replay:
+  - post: /sessions/{id}/ask/stream
+    pack: src/convfinqa/serving/
+          demo_pack/pack.json
+# answered with the read-only message
+off: [/admin/*]</code></pre>
+    </div>
+    <div>
+      <h3>One registry block</h3>
+<pre><code>  - id: P1
+    name: convfinqa-agent
+    showcase:                  # D38
+      slug: convfinqa
+      card: convfinqa-agent    # site _projects/&lt;card&gt;.md
+      phase: 1</code></pre>
+      <h3>The only code in the front door</h3>
+<pre><code>// CloudFront Function, viewer-request
+function handler(event) {
+  var r = event.request, u = r.uri;
+  var m = u.match(/^\/p\/([a-z0-9-]+)(\/.*)?$/);
+  if (m &amp;&amp; !m[2]) return { statusCode: 301,
+    headers: { location: { value: u + '/' } } };
+  var file = u.split('/').pop().indexOf('.') &gt;= 0;
+  if (m &amp;&amp; !file) r.uri = '/p/' + m[1] + '/index.html';
+  else if (!file) r.uri = '/index.html';
+  return r;
+}</code></pre>
+      <h3>Publishing</h3>
+<pre><code>make showcase-publish P=P1    # from nmp-central-ai
+#  build + freeze in the sibling, refuse a dirty tree
+#  upload assets and _frozen/, then index.html last
+#  invalidate /p/convfinqa/*, prune old assets next time</code></pre>
+    </div>
+  </div>
+</section>
+
+<section id="options">
+  <p class="eyebrow">Options</p>
+  <h2>Four ways to get one URL, and what each one costs</h2>
+  <p class="sub">They all need the same sub-path fix in each app. The difference is what runs behind the URL.</p>
+  <div class="split opts">
+    <div class="card rec opt" id="opt-a"><h3>A &middot; Freeze everything <span class="badge rec">recommended</span></h3>
+      <dl class="kv"><dt>runs</dt><dd>nothing: S3 + CloudFront</dd><dt>cost</dt><dd>≈ $0.10 / month</dd><dt>first load</dt><dd>instant, never asleep</dd><dt>work</dt><dd>sub-path fix, a <code>showcase.yaml</code>, and the shared kit built once</dd></dl>
+      <ul><li>Retires App Runner for the demos. That covers the demo half of M5 without ECS.</li>
+      <li>Fails safe. A route the freezer missed shows as an empty panel, never as a model call.</li>
+      <li><b>Cost:</b> chat becomes recorded-only. vidore's live search becomes "pick a question".</li></ul></div>
+    <div class="card opt" id="opt-b"><h3>B &middot; Keep the backends, on Lambda</h3>
+      <dl class="kv"><dt>runs</dt><dd>6 FastAPI images in demo mode, using the Lambda Web Adapter</dd><dt>cost</dt><dd>≈ $0–2 / month</dd><dt>first load</dt><dd>3–15 s cold start (Transcript RAG ships torch)</dd><dt>work</dt><dd>6 container images to maintain</dd></dl>
+      <ul><li>Breaks in-memory state across instances: ConvFinQA's chat sessions, and Data Pilot's JWT secret, which is generated per process.</li>
+      <li>vidore still needs freezing, because Lambda has no GPU.</li></ul></div>
+    <div class="card opt no" id="opt-c"><h3>C &middot; Front door over App Runner</h3>
+      <dl class="kv"><dt>runs</dt><dd>7 always-on services</dd><dt>cost</dt><dd>≈ $50 / month (about $7.50 each, measured)</dd><dt>first load</dt><dd>404 while paused; a visit cannot wake a service</dd><dt>work</dt><dd>least new code</dd></dl>
+      <ul><li>App Runner closed to new customers on 2026-04-30. tau2-loop's deploy already hit the account quota.</li>
+      <li>Undoes the cost cut you made today.</li></ul></div>
+    <div class="card opt no" id="opt-d"><h3>D &middot; One EC2 box behind Caddy</h3>
+      <dl class="kv"><dt>runs</dt><dd>all demo containers on the D4 box</dd><dt>cost</dt><dd>≈ $30+ / month (t4g.medium: 7 apps and torch don't fit in 2 GB)</dd><dt>first load</dt><dd>fast</dd><dt>work</dt><dd>a server to patch</dd></dl>
+      <ul><li>Shares fate with M2's MLflow box.</li>
+      <li>Still runs code that is only ever going to serve files.</li></ul></div>
+  </div>
+</section>
+
+<section id="plan">
+  <p class="eyebrow">Rollout</p>
+  <h2>Four phases, each one publishable on its own</h2>
+  <div class="steps">
+    <div class="step" id="ph0"><b>Phase 0 &middot; the platform, in nmp-central-ai on this branch</b>
+      Registry <code>showcase:</code> schema and D38. Terraform for the front door. The kit (<code>freeze.py</code>,
+      <code>shim.ts</code>, <code>bar.js</code>) with a parity test on a fixture app. The home page renderer, and
+      <code>make portfolio-build</code> / <code>portfolio-publish</code> / <code>portfolio-status</code>.
+      <span class="tag">done when the URL serves the home page with placeholder tiles, and the fixture app works under /p/fixture/</span></div>
+    <div class="step" id="ph1"><b>Phase 1 &middot; ConvFinQA and DataAgentBench</b>
+      Sub-path fix, <code>showcase.yaml</code>, publish. DataAgentBench publishes from this laptop, because its traces
+      are local-only. Look through them before the first upload: they have never been public.
+      <span class="tag">done when both open from the home page, every nav route renders, chat replays, and the smoke test sees zero requests leave the URL</span></div>
+    <div class="step" id="ph2"><b>Phase 2 &middot; tau2-loop, Data Pilot, Transcript RAG</b>
+      tau2-loop's live demos replay recorded sessions, and its database diff is frozen where the vendored benchmark
+      exists. Data Pilot drops its App Runner API. Transcript RAG's corpus views are frozen so Chroma stays home.
+      <span class="tag">done when the same smoke test passes for all three</span></div>
+    <div class="step" id="ph3"><b>Phase 3 &middot; vidore-v3-loop, plus PropertyIQ's docs if wanted</b>
+      Add a demo flag, turn "live search" into "pick a benchmark question", and resize the 1,758 page images.
+      <span class="tag">done when a visitor can step through any stored question's text, visual, fused and reranked pages</span></div>
+    <div class="step" id="ph4"><b>Afterwards</b>
+      Point nmp-dsci.github.io's "Open the live demo" links at <code>/p/&lt;slug&gt;/</code>. Whether the paused App
+      Runner services are ever deleted is a separate call. D37 still says never delete them, and nothing in this plan does.</div>
+  </div>
+</section>
+
+<section id="risks">
+  <p class="eyebrow">Risks and failure modes</p>
+  <h2>What can go wrong, and what catches it</h2>
+  <div class="tablewrap">
+  <table class="mid">
+    <thead><tr><th>Risk</th><th>What the visitor would see</th><th>What catches or prevents it</th></tr></thead>
+    <tbody>
+      <tr><td><span class="what">A route the freezer missed</span></td><td>An empty panel or an error box in that view</td><td>A coverage report per build: OpenAPI GET routes against frozen ones. The publish smoke test opens every nav link and fails on any 404 under <code>_frozen/</code>.</td></tr>
+      <tr><td><span class="what">A half-finished deploy</span></td><td>A blank page: the new <code>index.html</code> points at assets that are not there yet</td><td>Upload hashed assets and data first and <code>index.html</code> last. Delete old assets one publish later.</td></tr>
+      <tr><td><span class="what">Something private gets frozen</span></td><td>It is public</td><td>Run the repo's secrets scan over <code>_frozen/</code> before upload. Review DataAgentBench's local-only traces by hand the first time. The other six already ship the same data in public images.</td></tr>
+      <tr><td><span class="what">Built from the wrong commit</span></td><td>A demo that doesn't match the case study</td><td>The build refuses a dirty tree. <code>showcase.json</code> records the commit and the date, and the bar shows them. Note: tau2-loop is on <code>opt-cycle</code> with uncommitted changes, and DataAgentBench's newest work is on a remote branch.</td></tr>
+      <tr><td><span class="what">Third-party requests</span></td><td>Breaks the "nothing leaves the URL" promise</td><td>DABstep loads Google Fonts, Transcript RAG sends PostHog analytics, and DataAgentBench iframes a local MLflow. Showcase builds self-host the fonts, drop PostHog unless you want analytics, and remove the iframe.</td></tr>
+      <tr><td><span class="what">Recordings go stale</span></td><td>The demo lags behind the repo</td><td>The bar says "recorded on &lt;date&gt;". Re-publishing is one command, and <code>s3 sync</code> uploads only what changed.</td></tr>
+      <tr><td><span class="what">App and bar styles collide</span></td><td>Broken layout in one app</td><td>The bar lives in a Shadow DOM and takes a fixed 36 px at the top, so app CSS cannot reach it and it cannot reach the app.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="small">Out of scope on purpose: new model calls, databases in AWS (D19), App Runner, deleting anything,
+  and restyling any app. MLflow on AWS (M2) is unaffected.</p>
+</section>
+
+<section id="decide">
+  <p class="eyebrow">Your decisions</p>
+  <h2>Five choices before Phase 0 starts</h2>
+  <p class="sub">The recommended answer is pre-selected in each form. Queue the forms you want to send, or use "Copy all answers" at the bottom.</p>
+  <div class="qgrid">
+    <form class="q" data-lavish-question="Q1 architecture" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('arch'); const n=this.querySelector('textarea').value.trim();
+      if(c){ window.lavish?.queuePrompt('Portfolio app plan (s06), Q1 architecture: '+c+(n?(' — note: '+n):''),{tag:'choice',text:'Q1: '+c,element:this,data:{question:'Q1',answer:c,note:n}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q1 &middot; Architecture <span class="badge">options above</span></h3>
+      <fieldset>
+        <label><input type="radio" name="arch" value="A freeze everything to S3 + CloudFront" checked><span><b>A &middot; Freeze everything</b><span class="d">≈ $0.10/mo, no servers, recorded chat only</span></span></label>
+        <label><input type="radio" name="arch" value="B backends on Lambda"><span>B &middot; Backends on Lambda<span class="d">cold starts; in-memory state breaks</span></span></label>
+        <label><input type="radio" name="arch" value="C front door over App Runner"><span>C &middot; App Runner front door<span class="d">≈ $50/mo; App Runner is closed to new customers</span></span></label>
+        <label><input type="radio" name="arch" value="D one EC2 box with Caddy"><span>D &middot; One EC2 box<span class="d">≈ $30+/mo and a server to patch</span></span></label>
+      </fieldset>
+      <textarea rows="2" name="arch-note" placeholder="anything to change about the choice (optional)"></textarea>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q2 url" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('url'); if(c){ window.lavish?.queuePrompt('Portfolio app plan (s06), Q2 URL: '+c,{tag:'choice',text:'Q2: '+c,element:this,data:{question:'Q2',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q2 &middot; The URL</h3>
+      <p class="hint">Paths keep everything on one URL. A custom domain can be added later without changing any path.</p>
+      <fieldset>
+        <label><input type="radio" name="url" value="paths on the free CloudFront domain now, custom domain later" checked><span><b>Paths on the free <code>*.cloudfront.net</code> URL now</b><span class="d">domain later; no cost, nothing to buy</span></span></label>
+        <label><input type="radio" name="url" value="paths plus a custom domain now"><span>Paths plus a custom domain now<span class="d">about $15/yr for the domain + $0.50/mo for Route 53; free ACM certificate</span></span></label>
+        <label><input type="radio" name="url" value="one subdomain per project"><span>One subdomain per project<span class="d">needs a domain; skips the sub-path fix, but it is no longer one URL</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q3 github.io" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('site'); if(c){ window.lavish?.queuePrompt('Portfolio app plan (s06), Q3 nmp-dsci.github.io: '+c,{tag:'choice',text:'Q3: '+c,element:this,data:{question:'Q3',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q3 &middot; The existing site, nmp-dsci.github.io</h3>
+      <p class="hint">It is Jekyll on GitHub Pages and carries the case studies. GitHub Pages caps a site at about 1 GB, and the frozen apps come to about 2 GB.</p>
+      <fieldset>
+        <label><input type="radio" name="site" value="keep github.io for case studies; repoint its demo links into the app" checked><span><b>Keep it for the case studies; point its demo links into the app</b><span class="d">the app is the launcher, the site tells the story</span></span></label>
+        <label><input type="radio" name="site" value="the app becomes the home; github.io redirects to it"><span>The app becomes the home; github.io redirects<span class="d">means porting the case studies later</span></span></label>
+        <label><input type="radio" name="site" value="leave github.io untouched for now"><span>Leave github.io untouched for now</span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q4 projects" onsubmit="event.preventDefault();
+      const sel=[...this.querySelectorAll('input[name=proj]:checked')].map(i=>({id:i.value,label:i.dataset.label,phase:i.dataset.phase}));
+      const cards=this.querySelector('input[name=cards]').checked;
+      if(sel.length){ window.lavish?.queuePrompt('Portfolio app plan (s06), Q4: put these projects in the portfolio app, in these phases. Account for every submitted ID.'+(cards?' Also draft site cards (title, headline, metric) for tau2-loop and vidore-v3-loop.':''),{tag:'tracked-batch',text:'Q4: '+sel.map(s=>s.id).join(', ')+(cards?' + site cards':''),element:this,data:{question:'Q4',items:sel,site_cards:cards}}); this.querySelector('.queued').textContent='queued: '+sel.map(s=>s.id).join(', '); }">
+      <h3>Q4 &middot; Which projects, in what order</h3>
+      <fieldset>
+        <label><input type="checkbox" name="proj" value="P1" data-label="ConvFinQA Agent" data-phase="1" checked><span>P1 ConvFinQA Agent <span class="d">phase 1 &middot; S</span></span></label>
+        <label><input type="checkbox" name="proj" value="P6" data-label="DataAgentBench Loop" data-phase="1" checked><span>P6 DataAgentBench Loop <span class="d">phase 1 &middot; M &middot; local traces</span></span></label>
+        <label><input type="checkbox" name="proj" value="P3" data-label="tau2-loop" data-phase="2" checked><span>P3 tau2-loop <span class="d">phase 2 &middot; M &middot; ~730 MB</span></span></label>
+        <label><input type="checkbox" name="proj" value="P5" data-label="Data Pilot" data-phase="2" checked><span>P5 Data Pilot <span class="d">phase 2 &middot; S</span></span></label>
+        <label><input type="checkbox" name="proj" value="P4" data-label="Transcript RAG" data-phase="2" checked><span>P4 Transcript RAG <span class="d">phase 2 &middot; M</span></span></label>
+        <label><input type="checkbox" name="proj" value="P8" data-label="vidore-v3-loop" data-phase="3" checked><span>P8 vidore-v3-loop <span class="d">phase 3 &middot; L &middot; GPU search becomes stored</span></span></label>
+        <label><input type="checkbox" name="proj" value="P2" data-label="DABstep Loop" data-phase="2"><span>P2 DABstep Loop <span class="d">removed from the site at your request</span></span></label>
+        <label><input type="checkbox" name="proj" value="P7" data-label="PropertyIQ docs tile" data-phase="3"><span>P7 PropertyIQ, as a docs tile <span class="d">no app; reports and dbt docs</span></span></label>
+        <label style="margin-top:var(--s2)"><input type="checkbox" name="cards" checked><span>Draft site cards for tau2-loop and vidore-v3-loop <span class="d">the home tiles need a title, headline and metric</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue selection</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q5 builds" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('build'); if(c){ window.lavish?.queuePrompt('Portfolio app plan (s06), Q5 where builds run: '+c,{tag:'choice',text:'Q5: '+c,element:this,data:{question:'Q5',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q5 &middot; Where showcase builds run</h3>
+      <p class="hint">DataAgentBench's traces and vidore's page images exist only on this laptop, not in git.</p>
+      <fieldset>
+        <label><input type="radio" name="build" value="laptop now via make showcase-publish, each project's CI later" checked><span><b>From this laptop now, CI later</b><span class="d"><code>make showcase-publish</code> with your SSO profile, like <code>demos-*</code></span></span></label>
+        <label><input type="radio" name="build" value="each project's CI on every push to main"><span>Each project's CI on every push to main<span class="d">needs the local-only data moved somewhere CI can reach</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+  </div>
+  <div style="margin-top:var(--s4)">
+    <button type="button" class="ghost" onclick="(async (btn) => {
+      const copyRun = btn._lavishCopyRun = (btn._lavishCopyRun || 0) + 1;
+      const qs = [...document.querySelectorAll('[data-lavish-question]')];
+      const status = btn.parentElement.querySelector('[data-lavish-copy-all-status]');
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const out = [];
+      for (const q of qs) {
+        const key = q.getAttribute('data-lavish-question')?.trim() || 'Question';
+        const lines = [];
+        for (const el of q.querySelectorAll('input, select, textarea')) {
+          if (el.matches(':disabled')) continue;
+          if (el.closest('[data-lavish-question]') !== q) continue;
+          const isChoice = el.matches('input[type=checkbox], input[type=radio]');
+          if (isChoice && !el.checked) continue;
+          if (el.matches('input[type=button], input[type=submit], input[type=reset], input[type=image], input[type=hidden], input[type=file], input[type=range], input[type=color]')) continue;
+          let vals;
+          if (el instanceof HTMLSelectElement) {
+            vals = [...el.selectedOptions].filter((o) => !o.disabled && !o.closest('optgroup[disabled]')).map((o) => o.value.trim()).filter(Boolean);
+          } else {
+            const v = isChoice && (!el.hasAttribute('value') || !el.value.trim())
+              ? el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.name || ''
+              : el.value.trim();
+            vals = v ? [v] : [];
+          }
+          const label = el.name || el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.getAttribute('placeholder')?.trim() || el.tagName.toLowerCase();
+          for (const v of vals) lines.push('  ' + label + ': ' + v.split('\n').join('\n    '));
+        }
+        if (lines.length) out.push(key + ':\n' + lines.join('\n'));
+      }
+      const text = out.join('\n\n');
+      if (!text) {
+        status.textContent = qs.length ? 'No answers to copy yet.' : 'No questions or answers to copy.';
+        return;
+      }
+      status.textContent = '';
+      try {
+        if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('Clipboard API unavailable');
+        await navigator.clipboard.writeText(text);
+        if (copyRun !== btn._lavishCopyRun) return;
+        status.textContent = 'Answers copied.';
+        return;
+      } catch {}
+      if (copyRun !== btn._lavishCopyRun) return;
+      const tmp = document.createElement('textarea');
+      tmp.value = text;
+      tmp.readOnly = true;
+      tmp.setAttribute('aria-hidden', 'true');
+      tmp.style.position = 'fixed';
+      tmp.style.left = '-10000px';
+      document.body.append(tmp);
+      tmp.focus();
+      tmp.select();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {}
+      tmp.remove();
+      if (ok) {
+        status.textContent = 'Answers copied.';
+        return;
+      }
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const man = document.createElement('textarea');
+      man.value = text;
+      man.readOnly = true;
+      man.rows = Math.min(12, Math.max(3, text.split('\n').length));
+      man.setAttribute('aria-label', 'Answers to copy manually');
+      man.dataset.lavishCopyAllManual = '';
+      btn.insertAdjacentElement('afterend', man);
+      man.focus();
+      man.select();
+      status.textContent = 'Clipboard unavailable. Copy the answers below manually.';
+    })(this)">Copy all answers</button>
+    <span data-lavish-copy-all-status role="status" aria-live="polite" class="tag"></span>
+  </div>
+</section>
+
+<section id="sources">
+  <p class="eyebrow">Method</p>
+  <h2>Where these facts come from</h2>
+  <ul class="src">
+    <li>Each sibling repo was read on 2026-10-12, at its current checkout: <code>frontend/</code> (Vite config, router, API client), <code>serving/app.py</code> or <code>src/api/main.py</code>, the <code>Dockerfile</code>, <code>infra/terraform/demo/</code> and <code>.github/workflows/</code>. Sizes are from <code>du</code> on this machine.</li>
+    <li>Demo switches: ConvFinQA <code>llm.py:124-136</code>, <code>routes/chat.py:193</code>; DABstep <code>agent/llm.py:44-58</code>; tau2-loop <code>config.py:106</code>; Transcript RAG <code>src/api/main.py:989-1028</code>; Data Pilot <code>agent_client.py:25-27</code>; vidore has none (<code>serving/app.py:209,465</code>).</li>
+    <li>Site cards: <code>nmp-dsci.github.io/_projects/*.md</code> front matter. DABstep is <code>published: false</code> (2026-09-26); there are no tau2-loop or vidore cards.</li>
+    <li>The S3 + CloudFront pattern is <code>data-qa-agent/infra/terraform/demo/main.tf</code> and <code>scripts/deploy_frontend.sh</code>. The App Runner cost per service is from the 2026-10-12 cost review (<code>s05_aws-pause-plan.html</code>).</li>
+    <li>Platform context: <code>ai_specs/s00_project_plan.md</code> (D4, M2, M5) and <code>AGENTS.md</code> (D19, D37).</li>
+    <li>CloudFront's always-free tier is 1 TB out and 10 million requests a month, plus 2 million function invocations. S3 Standard is about $0.025 per GB-month.</li>
+  </ul>
+</section>
+
+</main>
+</body>
+</html>
