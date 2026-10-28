@@ -359,6 +359,38 @@ projects:
       split against the untouched base (plan: finance-rag-sft/.lavish/s00). No database; run
       folders under runs/ are the record, the tuned model is registered in MLflow.
 
+  - id: P11
+    name: rotation-tracker
+    path: ../rotation-tracker
+    status: migrated
+    # No ui block: no hue is left 30 degrees from the other ten. The viewer wears a provisional,
+    # hand-written --hue:15 (shared with P9 finance-rag-sft by the owner's choice, 28 Oct 2026)
+    # until the separation rule (D8) settles.
+    observability:
+      backend: mlflow
+    mlflow:
+      client: python
+      experiments: [rotation-tracker/ingest]
+      verify: runs
+      smoke: uv run rt smoke   # logs one kind=smoke run; no network, no Supadata credits
+    database:
+      name: rotation
+      roles: [rotation_owner, rotation_ro]
+      extensions: []
+      env:
+        ROTATION_ADMIN_DATABASE_URL: superuser   # `rt db migrate` only (D16)
+        ROTATION_DATABASE_URL: rotation_owner    # the pipeline
+        ROTATION_RO_DATABASE_URL: rotation_ro    # notebooks, analysis, the viewer
+      migrate: uv run rt db migrate
+      smoke: uv run rt db smoke
+      status: migrated
+      aws: false
+    notes: >-
+      Weekly FX Evolution market-wrap transcripts (2023 onwards) for sector-rotation research
+      (plan: rotation-tracker/ai_specs/s00). Transcripts are fetched through transcript-rag-agent
+      (P4) `index-rag --metadata-json` and copied read-only from its Chroma store into schema
+      `rt`. `rt serve` is a read-only local viewer on 127.0.0.1:8089 (s01).
+
   # ---- not on the platform, listed so the map is complete ----------------
   # Langfuse is a platform service, not a sibling repo, but its database lives on the
   # shared cluster like everyone else's — so it is declared here and `make db-init`
