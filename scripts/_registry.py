@@ -301,8 +301,8 @@ def validate_ui(reg: Registry) -> None:
     """Hues are portfolio-global like roles: two projects may not look alike (D28).
 
     Only project hues are checked against each other. They are deliberately *not* held
-    away from the status hues (amber, red, blue): those are fixed, appear only on
-    badges and callouts, and keeping 30 degrees clear of all three would remove about
+    away from the status hues (amber, red, blue, green): those are fixed, appear only on
+    badges, callouts and up/down marks, and keeping 30 degrees clear of them would remove about
     half the wheel. What F7 found was a project using a status colour's exact value,
     which `house_ui_audit.py` checks on the rendered hex instead.
     """

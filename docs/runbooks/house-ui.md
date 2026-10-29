@@ -78,12 +78,12 @@ accent in the portfolio failed AA — the old house teal `#5cc8a6` scores 1.89:1
 - **`--hue` only works on `:root`.** A custom property is substituted where it is
   *declared*, so an element that changes `--hue` lower down inherits the already-resolved
   `--accent`. `project.css` sets it on `:root`, which is why it works.
-- **Status colours are not hue-derived.** `--amber`, `--red` and `--blue` are fixed: a
+- **Status colours are not hue-derived.** `--amber`, `--red`, `--blue` and `--green` (D38) are fixed: a
   warning must not change colour because a project picked a different brand. The audit
   refuses an accent that resolves to one of them (finding F7 — tau2-loop's accent used to
   *be* `--red`).
-- **Hue separation does not apply to status hues.** Holding 30° clear of amber, red and
-  blue as well would remove about half the wheel. Only project-to-project separation is
+- **Hue separation does not apply to status hues.** Holding 30° clear of amber, red,
+  blue and green as well would remove about half the wheel. Only project-to-project separation is
   enforced.
 - **Fonts use relative paths.** The site's own `fonts.css` uses `/assets/fonts/…`, which
   only resolves from the site root. The vendored copy is rewritten to relative so an

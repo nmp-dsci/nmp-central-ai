@@ -146,6 +146,17 @@ def test_the_gate_refuses_an_accent_that_is_a_status_colour() -> None:
     assert audit(css, [("P1", 168)], quiet=True) == []
 
 
+def test_green_is_held_like_the_other_status_colours() -> None:
+    """D38: --green must clear AA on the page and on its soft fill in both themes, and an
+    accent may not resolve to it."""
+    css = HOUSE_CSS.read_text()
+    faint = css.replace("--green:#1E6B3A", "--green:#9CD3AE")
+    assert any("--green on --bg" in f for f in audit(faint, [("P1", 168)], quiet=True))
+    clash = css.replace("--green:#1E6B3A", f"--green:{accent_for(168, 'light')}")
+    failures = audit(clash, [("P1", 168)], quiet=True)
+    assert any("accent resolves to --green" in f for f in failures)
+
+
 def test_a_palette_with_no_contract_is_itself_a_failure() -> None:
     assert audit("/* no contract here */ :root{--bg:#fff;}", HUES, quiet=True)
 
