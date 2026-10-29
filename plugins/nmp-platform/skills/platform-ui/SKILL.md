@@ -49,8 +49,8 @@ been onboarded — run `make -C ~/git/nmp-ai-portfolio/nmp-central-ai install-ho
 5. **Do not override `--hue` anywhere but `:root`.** Custom properties resolve where they
    are declared, so a nested override inherits the already-resolved accent and nothing
    changes colour.
-6. **Status colours are fixed.** `--amber` warning, `--red` error, `--blue` information do
-   not follow the brand. Do not use the accent for a status, or a status colour as a brand.
+6. **Status colours are fixed.** `--amber` warning, `--red` error or down, `--blue`
+   information, `--green` good or up (D38) do not follow the brand. Do not use the accent for a status, or a status colour as a brand.
 7. **Do not restyle an existing artifact** unless asked. They are dated receipts (D30).
 
 ## Checks

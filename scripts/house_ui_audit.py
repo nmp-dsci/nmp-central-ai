@@ -41,7 +41,7 @@ PAIR = re.compile(r"(--[\w-]+)\s+(--[\w-]+)\s+([0-9.]+)")
 HEX = re.compile(r"^#(?:[0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$")
 # tokens the accent is generated into, so they vary per project and per theme
 GENERATED = {"--accent", "--accent-soft"}
-STATUS = ("--amber", "--red", "--blue")
+STATUS = ("--amber", "--red", "--blue", "--green")
 
 
 COMMENT = re.compile(r"/\*.*?\*/", re.S)
