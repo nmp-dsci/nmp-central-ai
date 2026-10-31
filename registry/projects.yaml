@@ -376,7 +376,7 @@ projects:
     database:
       name: rotation
       roles: [rotation_owner, rotation_ro]
-      extensions: []
+      extensions: [postgres_fdw]                 # reads market_staging from P12 (s03 prices)
       env:
         ROTATION_ADMIN_DATABASE_URL: superuser   # `rt db migrate` only (D16)
         ROTATION_DATABASE_URL: rotation_owner    # the pipeline
@@ -390,6 +390,32 @@ projects:
       (plan: rotation-tracker/ai_specs/s00). Transcripts are fetched through transcript-rag-agent
       (P4) `index-rag --metadata-json` and copied read-only from its Chroma store into schema
       `rt`. `rt serve` is a read-only local viewer on 127.0.0.1:8089 (s01).
+
+  - id: P12
+    name: market-getdata
+    path: ../market-getdata
+    status: migrated
+    # No ui block, like P11: no hue is left 30 degrees from the others, and a project's
+    # colour is never picked by hand (D8). Its .lavish/ wears the house default.
+    mlflow: { client: external }          # ETL only; no MLflow use
+    database:
+      name: market
+      roles: [market_owner, market_ro]
+      extensions: []                       # consumers install postgres_fdw in THEIR database
+      env:
+        MARKET_ADMIN_DATABASE_URL: superuser       # `db init` only (D16)
+        MARKET_DATABASE_URL: market_owner          # loader + dbt
+        MARKET_RO_DATABASE_URL: market_ro          # consumers' fdw user mappings, `db smoke`
+      migrate: uv run --extra db --env-file .env market-getdata db init
+      smoke: uv run --extra db --env-file .env market-getdata db smoke
+      status: migrated                     # 2026-10-31: db init + full load (776 series, 2.6 M daily prices) + 56 dbt tests green
+      aws: false
+    notes: >-
+      US market prices for the portfolio: Yahoo daily OHLC + adjusted close and actions, FRED
+      economic series as vintages, equal-weight baskets, S&P 500 / Nasdaq-100 constituent
+      snapshots; raw->staging via dbt, the propertyiq_getdata setup one for one (plan:
+      rotation-tracker/.lavish/s03). Weekly, Saturday 09:00 Sydney, by launchd on the owner's
+      Mac. Consumers import `staging` over postgres_fdw as `market_ro` (rotation-tracker first).
 
   # ---- not on the platform, listed so the map is complete ----------------
   # Langfuse is a platform service, not a sibling repo, but its database lives on the
