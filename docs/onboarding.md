@@ -26,7 +26,7 @@ Ten minutes, no code in the platform repo beyond one registry entry.
    eval, printing that target's name on failure.
 6. **Verify.** `make check ARGS="--only <ID>"` in this repo must show PASS. Then set the
    registry entry's `status: migrated`.
-7. **Docs.** Update the project's README / AGENTS.md / CLAUDE.md so the old port and store
+7. **Docs.** Update the project's README / AGENTS.md so the old port and store
    are gone, and note the archive location of any old store you left on disk.
 
 Old stores are never deleted by the platform; they are archived read-only (decision D2).

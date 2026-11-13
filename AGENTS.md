@@ -1,6 +1,6 @@
 # AGENTS.md — nmp-central-ai
 
-Read this first. `CLAUDE.md` is a pointer plus the rules that bite; the plan of record is
+Read this first. The quick reference and rules that bite are at the end; the plan of record is
 `ai_specs/s00_project_plan.md`; the outward contract is `PLATFORM.md`.
 
 ## What this is
@@ -8,7 +8,7 @@ Read this first. `CLAUDE.md` is a pointer plus the rules that bite; the plan of 
 The shared-services platform for `~/git/nmp-ai-portfolio`. Today: MLflow 3.16 on Postgres +
 MinIO (S3 API) via Docker Compose, a project registry, an init script that owns experiment
 ids, a verifier that proves each sibling can log, and agent context (portfolio-level
-CLAUDE.md/AGENTS.md + a Claude Code plugin). M3 (2026-09-22): the same Postgres hosts one
+AGENTS.md + a skills plugin). M3 (2026-09-22): the same Postgres hosts one
 database per sibling project, provisioned from the registry by `make db-init` and proved by
 `make check`. Next: AWS demo (M2), LiteLLM gateway + metrics + MCP (M4), deploy modules +
 template (M5).
@@ -23,7 +23,7 @@ template (M5).
 | D4 | AWS demo = one Graviton EC2 (t4g.small) running this compose file + Caddy, with RDS + S3. ECS Express Mode is the upgrade path. App Runner is closed to new customers (2026-04-30). |
 | D5 | RDS Postgres db.t4g.micro. |
 | D6 | Repo `nmp-central-ai`, MIT, public. |
-| D7 | Agent onboarding: portfolio-level CLAUDE.md/AGENTS.md importing PLATFORM.md (M0), plugin skills (M1), MCP server (M4). |
+| D7 | Agent onboarding: portfolio-level AGENTS.md pointing at PLATFORM.md (M0), plugin skills (M1), MCP server (M4). |
 | D8 | MinIO image from Chainguard (`cgr.dev/chainguard/minio`, pinned by digest; its free tier publishes only `latest`), run as root to keep the existing volume. MinIO withdrew Docker Hub, then quay.io (anonymous pulls 401 from 2026-09). The same image runs `minio-init`. Fallback RustFS (a data migration). |
 | D9 | Experiment naming `<project>/<purpose>` for new experiments; existing flat names kept in M1. |
 | D10 | Server sets `MLFLOW_SERVER_ALLOWED_HOSTS` for `mlflow:5000`, `localhost`, `host.docker.internal`; otherwise in-network exporters get 403. |
@@ -84,3 +84,43 @@ loader and refuses cluster-global name collisions.
   errors). `make check` is the only way to know the platform works; run it after any change.
 - `.lavish/` is tracked. Never add it to `.gitignore`.
 - Public repo: account ids, SSO URLs and hostnames stay out of code and docs.
+
+## Quick reference
+
+- `make up` · `make status` · `make mlflow-init` · `make db-init` · `make db-ui` · `make house-ui` · `make check` · `make install-agent-context`
+- `make langfuse-doctor` before `make langfuse-up` (observability profile, D33–D36)
+- `make demos-status` / `demos-sleep` / `demos-wake` for the siblings' App Runner demos (pause, never delete — D37)
+- `make setup && make lint && make test` for the scripts (uv, ruff, mypy strict, pytest)
+- `make plugin-validate` after touching `plugins/` or `.claude-plugin/` (the Claude Code packaging of the skills)
+
+## Project rules
+
+- **The registry is the source of truth.** Experiments, env-id variables, smoke commands and
+  every project database (name, roles, extensions, URL vars) live in `registry/projects.yaml`.
+  Never hardcode an experiment id or a database URL anywhere; `make db-init` writes `.db-urls.env`.
+- **One Postgres, one database per project (D13).** Roles are cluster-global and registry-owned
+  (D15). Never `DROP DATABASE`, never `down -v` a stack that owned data; back up with
+  `make db-backup DB=<db>` before any migration step (D14/D16).
+- **`make mode` before `make down`.** A validation checkout (CI, no-mistakes worktree, `VALIDATION=1`) drives
+  project `nmp-central-validate` on :15000, never the live `nmp-central` (D12). Do not set
+  `COMPOSE_PROJECT_NAME` / `PLATFORM_NETWORK` by hand.
+- **Do not change ports or the network name** (`nmp-central`, 5000/5432/5050/9000/9001) without
+  updating PLATFORM.md and every sibling; that is what this repo exists to prevent.
+- **Bump the MLflow server deliberately:** pin in `services/mlflow/Dockerfile`, then
+  `make mlflow-db-upgrade`, then `make check`.
+- **Siblings fail silently on tracking errors.** After any platform change, `make check` is
+  the only proof. Treat a red row as a platform bug until shown otherwise.
+- **Public repo.** No secrets, account ids, SSO URLs or real hostnames in code or docs.
+  `.env.example` carries names and local-only defaults.
+- **The house UI is one file (D25–D32).** `agent/house/house.css` is the canon; a project owns
+  exactly one thing, `ui.hue` in the registry. Never hand-edit a vendored `.lavish/house.css` —
+  `make install-house-ui` refuses an edited copy, and `make house-ui-check` reports drift. Never put
+  a raw hex in a component rule; add a token and a `@contrast` line instead.
+- **Observability is split from the ledger (D33).** Traces, cost and sessions belong in
+  Langfuse; runs, params, artifacts, prompts and the model registry stay in MLflow. Never move
+  an artifact or a registered model to Langfuse — it has nowhere to put them. The registry's
+  `observability.backend` is the only place that says where a project's traces go.
+- **Langfuse is a profile, never part of `make up` (D34).** It needs four more containers than
+  the Docker VM currently holds; `make langfuse-up` refuses until `make langfuse-doctor` passes.
+  Its secrets live in `.langfuse.env` (gitignored, `make langfuse-init`) — never in compose.
+- Never add `.lavish/` to `.gitignore`.

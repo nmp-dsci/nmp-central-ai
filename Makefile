@@ -151,12 +151,15 @@ otlp-smoke: ## send one OTLP span to the central server (EXPERIMENT_ID=<id>)
 	uv run scripts/otlp_smoke.py --uri $(MLFLOW_URI) --experiment-id $(EXPERIMENT_ID)
 
 # ---- agent context -------------------------------------------------------
-install-agent-context: ## install portfolio-level CLAUDE.md + AGENTS.md so every sibling sees PLATFORM.md
+install-agent-context: ## install portfolio-level AGENTS.md (+ its one-line CLAUDE.md import) so every sibling sees PLATFORM.md
 	@for f in CLAUDE AGENTS; do \
 	  src=agent/portfolio.$$f.md; dst=$(PORTFOLIO_DIR)/$$f.md; \
 	  if [ -e $$dst ] && ! cmp -s $$src $$dst && [ "$(FORCE)" != "1" ]; then \
 	    echo "$$dst exists and differs; re-run with FORCE=1 to overwrite"; exit 1; fi; \
 	  cp $$src $$dst && echo "installed $$dst"; done
+
+agent-check: ## audit every repo: AGENTS.md canonical, .agents/skills, CLAUDE.md only a shim
+	uv run scripts/agent_check.py
 
 # ---- house UI (D25-D32) ---------------------------------------------------
 house-ui: ## render the per-project stylesheets and fail if any accent misses WCAG AA
@@ -171,7 +174,7 @@ install-house-ui: ## copy house.css, fonts and the project's hue into every proj
 house-ui-check: ## report which projects hold a stale copy of the house UI
 	@uv run scripts/house_ui.py check
 
-plugin-validate: ## validate the Claude Code plugin + marketplace manifests
+plugin-validate: ## validate the Claude Code packaging (plugin + marketplace manifests) of the skills
 	claude plugin validate . && claude plugin validate plugins/nmp-platform
 
 # ---- dev hygiene ----------------------------------------------------------

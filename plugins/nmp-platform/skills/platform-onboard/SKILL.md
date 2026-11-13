@@ -13,6 +13,6 @@ Follow `~/git/nmp-ai-portfolio/nmp-central-ai/docs/onboarding.md`. Summary:
 4. Compose projects: add `networks: { default: {}, nmp-central: { external: true } }` and `networks: [default, nmp-central]` on each service that exports to MLflow. Always include `default`.
 5. Add a `platform-up` Make target and a `/health` preflight that names it on failure. No silent fallbacks.
 6. `make -C ~/git/nmp-ai-portfolio/nmp-central-ai check ARGS="--only <ID>"` must PASS; set `status: migrated`.
-7. Update the project's README / AGENTS.md / CLAUDE.md; old stores are archived, never deleted.
+7. Update the project's README / AGENTS.md; old stores are archived, never deleted.
 
 Work on a branch in the sibling repo; do not push. Report the diff and the PASS row.

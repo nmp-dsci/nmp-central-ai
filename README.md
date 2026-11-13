@@ -10,7 +10,7 @@ It exists because every sibling project had grown its own MLflow on its own port
 (5000 / 5500 / 5600 / 5601), its own database and its own copy of the deploy Terraform.
 This repo is the platform-team answer: publish once, consume everywhere, version centrally.
 Coding agents working in the sibling repos are first-class consumers: see
-[PLATFORM.md](PLATFORM.md) and the `nmp-platform` Claude Code plugin in `plugins/`.
+[PLATFORM.md](PLATFORM.md) and the `nmp-platform` skills in `.agents/skills/` (also packaged as a Claude Code plugin in `plugins/`).
 
 ## Quickstart
 
@@ -23,7 +23,7 @@ make status        # health
 make check         # prove each registered sibling logs to the server and its database lives here (no paid LLM calls)
 make house-ui      # render each project's accent from registry ui.hue and gate it on WCAG AA
 make install-house-ui        # copy the house UI into every project's .lavish/ (writes into siblings)
-make install-agent-context   # portfolio-level CLAUDE.md / AGENTS.md so agents see PLATFORM.md
+make install-agent-context   # portfolio-level AGENTS.md so agents see PLATFORM.md
 ```
 
 Sibling projects need one thing for tracking, `MLFLOW_TRACKING_URI=http://localhost:5000`
@@ -41,8 +41,8 @@ on the same Postgres, host `localhost:5432` / `postgres:5432`.
 | `registry/projects.yaml` | the project map: experiments, databases (name, roles, extensions, URL vars), smoke commands |
 | `scripts/` | `mlflow_init.py` (experiments + ids), `db_init.py` (roles, databases, extensions, URLs), `check_projects.py` + `check_databases.py` (verifiers), `otlp_smoke.py` |
 | `PLATFORM.md` | the contract every agent and person reads |
-| `agent/` | portfolio-level `CLAUDE.md` / `AGENTS.md` installed one directory up |
-| `plugins/nmp-platform/` | Claude Code plugin: `platform-mlflow`, `platform-db`, `platform-onboard` skills |
+| `agent/` | portfolio-level `AGENTS.md` (+ `CLAUDE.md` import) installed one directory up |
+| `plugins/nmp-platform/` | skills plugin packaging: `platform-mlflow`, `platform-db`, `platform-onboard` skills |
 | `docs/` | onboarding and runbooks |
 | `infra/terraform/` | AWS demo stack (M2) |
 | `ai_specs/` | plans of record (`s00_project_plan.md`, `s02_m3_central_db.md`, `s04_db_ui.md`) and build receipts |

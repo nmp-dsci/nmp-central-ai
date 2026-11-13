@@ -1,8 +1,8 @@
 # nmp-central-ai — platform contract
 
 Shared services for every project in `~/git/nmp-ai-portfolio`. This file is the
-contract an agent or a person needs to use them. It is imported into every
-sibling's context by the portfolio-level `CLAUDE.md` / `AGENTS.md`.
+contract an agent or a person needs to use them. It is pointed to from every
+sibling's context by the portfolio-level `AGENTS.md`.
 
 **Rule zero: never start your own MLflow, Postgres, MinIO, database UI or gateway inside a
 project, and never invent your own design tokens for an artifact. Use these.**
