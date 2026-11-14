@@ -434,6 +434,19 @@ projects:
       status: pending
       aws: false
 
+  - id: DSH
+    name: deepseek-harness
+    path: .                      # the logger lives here; the sessions come from ~/.dsh (D39)
+    status: migrated
+    observability:
+      backend: mlflow            # D33; `both` once Langfuse runs (D34)
+    mlflow:
+      client: python
+      experiments: [dsh/sessions]
+      env_ids: { DSH_EXPERIMENT_ID: dsh/sessions }
+      verify: both               # one run per session, one trace per finished turn
+      smoke: uv run scripts/dsh_log.py --fixture tests/fixtures/dsh   # replays a sample session; no model calls
+    notes: DeepSeek Harness coding sessions, copied in by `make dsh-log` (D39). Not a sibling repo, so no ui hue and no database.
   - id: X1
     name: v2v-prod-agent
     path: ../v2v-prod-agent

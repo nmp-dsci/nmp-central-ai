@@ -54,6 +54,7 @@ template (M5).
 | D36 | `registry/projects.yaml` says where each project's traces go (`observability.backend`: mlflow \| langfuse \| both). `both` is the reversible migration state. A declared-but-empty block is an error, not an absent one. |
 | D37 | The siblings' always-on AWS demos (four App Runner services) sleep by **pause, never delete**: a paused service bills no compute and keeps its URL and image, a deleted one returns on a new URL, and App Runner closed to new customers on 2026-04-30 without defining "existing". `aws_demo:` in the registry names each service and its deploy workflow; `make demos-sleep` disables the workflow first (a deploy against a paused service polls 20 min for RUNNING, then fails), `make demos-wake` re-enables it only once RUNNING. Decided in `.lavish/s05_aws-pause-plan.html` (2026-10-12), which also keeps the cheap-but-unrecoverable items: ECR images, the data-qa Aurora snapshot, the yt-agent data bucket, the shared tfstate bucket, the data-pilot CloudFront URL and the GitHub OIDC provider. |
 | D38 | The house gains a fourth fixed status colour, `--green` (good or up) with `--green-soft`, beside amber, red and blue. First use: rotation-tracker's chart draws calls bullish on a theme in green and bearish in red. Like the other three it is not hue-derived, its pairs are declared in `@contrast` and audited in both themes, and the audit refuses an accent that resolves to it. |
+| D39 | DeepSeek Harness (`dsh`) is a second coding agent, run from this repo and pinned like the MLflow server (`DSH_VERSION`, `TUI_VERSION` in the Makefile). Its everyday front end is the community dsh-TUI in profile `dsh-tui`. By default dsh uploads the whole session log to DeepSeek on every API request, uploads it again to an OTel collector on feedback, and lists installed plugins; `agent/dsh/home.cordis.patch.yml`, installed as `~/.dsh/cordis.patch.yml`, turns all three off, and `make dsh-tui|dsh-web|dsh-run` refuse to launch unless the composed config of that profile still has them off. Launches start from an empty environment (the agent's shell inherits every non-`DSH_*` variable), only inside the portfolio, and with dsh-TUI's `/update` disabled. `make dsh-log` copies sessions into MLflow `dsh/sessions` (run per session, trace per finished turn; portfolio repos only; reasoning never; credential-file reads withheld; secrets redacted; 4 KB per field). Decided in `.lavish/s07_deepseek-harness-plan.html` (2026-11-14). |
 | D12 | Validation never touches the live stack. Compose project names are machine-global, so a `make down` in CI or a no-mistakes worktree used to stop the live `nmp-central`. The Makefile switches to project/network `nmp-central-validate` on ports 15000/15432/19000/19001 whenever `CI`, `NO_MISTAKES_GATE` or `VALIDATION` is set or the checkout lives under `.no-mistakes/`; `make mode` shows which. Validation `down` also drops its volumes. |
 
 ## Layout
@@ -75,6 +76,8 @@ loader and refuses cluster-global name collisions.
 - OTLP ingest check without any sibling: `make otlp-smoke EXPERIMENT_ID=<id>`.
 - AWS demos (D37): `make demos-status`, `make demos-sleep`, `make demos-wake` with `AWS_PROFILE`
   set after `aws sso login`. Details and what to keep: `docs/runbooks/aws-demos.md`.
+- DeepSeek Harness (D39): `make dsh-install`, `make dsh-doctor`, `make dsh-tui DIR=../repo`,
+  `make dsh-log`. Never use dsh-TUI's `/update`; bump the pins instead. `docs/runbooks/dsh.md`.
 
 ## Rules
 
@@ -90,6 +93,7 @@ loader and refuses cluster-global name collisions.
 - `make up` · `make status` · `make mlflow-init` · `make db-init` · `make db-ui` · `make house-ui` · `make check` · `make install-agent-context`
 - `make langfuse-doctor` before `make langfuse-up` (observability profile, D33–D36)
 - `make demos-status` / `demos-sleep` / `demos-wake` for the siblings' App Runner demos (pause, never delete — D37)
+- `make dsh-tui DIR=…` / `dsh-log` for DeepSeek Harness, launched only through make so the upload guard runs (D39)
 - `make setup && make lint && make test` for the scripts (uv, ruff, mypy strict, pytest)
 - `make plugin-validate` after touching `plugins/` or `.claude-plugin/` (the Claude Code packaging of the skills)
 

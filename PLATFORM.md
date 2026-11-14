@@ -117,6 +117,19 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
 
 Runbook: `docs/runbooks/aws-demos.md`.
 
+## DeepSeek Harness — a second coding agent (D39)
+
+| | value |
+|---|---|
+| What | DeepSeek's open-source agent (`dsh`) with the community terminal UI dsh-TUI, pinned in nmp-central-ai's Makefile |
+| Start it | `make -C ~/git/nmp-ai-portfolio/nmp-central-ai dsh-tui DIR=$PWD` (also `dsh-web`, `dsh-run TASK=…`) |
+| What it reads | your repo's `AGENTS.md` / `CLAUDE.md` and `.agents/skills/`, plus `~/.dsh/AGENTS.md`, which points it here |
+| Uploads | all three DeepSeek uploads are off via `~/.dsh/cordis.patch.yml`; the launcher refuses to start otherwise. Model requests still carry whatever the agent reads |
+| Logging | `make dsh-log` → experiment `dsh/sessions`: one run per session, one trace per finished turn |
+| Never | start `dsh` directly outside make, run dsh-TUI's `/update`, or use it outside the portfolio |
+
+Runbook: `docs/runbooks/dsh.md`.
+
 ## Coming (not yet available)
 
 - M2: the same stack on AWS (one Graviton EC2 + RDS + S3), URL in `.env` as `MLFLOW_TRACKING_URI_AWS`.

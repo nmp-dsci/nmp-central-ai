@@ -161,6 +161,35 @@ install-agent-context: ## install portfolio-level AGENTS.md (+ its one-line CLAU
 agent-check: ## audit every repo: AGENTS.md canonical, .agents/skills, CLAUDE.md only a shim
 	uv run scripts/agent_check.py
 
+# ---- DeepSeek Harness (D39) -------------------------------------------------
+# dsh is pinned like the MLflow server: bump these deliberately, then `make dsh-install`.
+# Every launch starts from an empty environment and refuses to run if any profile would
+# upload to DeepSeek; DIR (default: this repo) must sit inside the portfolio.
+DSH_VERSION ?= 0.2.2-rc.2
+TUI_VERSION ?= 0.20.0
+DIR ?= .
+DSH_PIN = --dsh $(DSH_VERSION) --tui $(TUI_VERSION)
+
+dsh-install: ## install pinned dsh + dsh-TUI and the home patch into ~/.dsh (FORCE=1 replaces an edited copy)
+	uv run scripts/dsh_doctor.py install $(if $(FORCE),--force)
+	npm install -g @deepseek-ai/dsh@$(DSH_VERSION)
+	dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@$(TUI_VERSION)
+
+dsh-doctor: ## versions, pnpm, key stored, every DeepSeek upload off, MLflow up
+	@uv run scripts/dsh_doctor.py check $(DSH_PIN)
+
+dsh-tui: ## dsh --profile dsh-tui (the terminal UI) working in DIR — the everyday one
+	@uv run scripts/dsh_doctor.py launch $(DSH_PIN) --dir $(DIR) dsh-tui
+
+dsh-web: ## the browser UI on 127.0.0.1:3080 working in DIR
+	@uv run scripts/dsh_doctor.py launch $(DSH_PIN) --dir $(DIR) web
+
+dsh-run: ## one headless task: make dsh-run DIR=../tau2-loop TASK="…"
+	@uv run scripts/dsh_doctor.py launch $(DSH_PIN) --dir $(DIR) headless -- "$(TASK)"
+
+dsh-log: ## copy new dsh sessions into MLflow dsh/sessions (ARGS="--dry-run")
+	uv run scripts/dsh_log.py $(ARGS)
+
 # ---- house UI (D25-D32) ---------------------------------------------------
 house-ui: ## render the per-project stylesheets and fail if any accent misses WCAG AA
 	uv run scripts/house_ui_audit.py
@@ -212,4 +241,4 @@ demos-sleep: ## pause every AWS demo (URL + image kept) and turn its deploys off
 demos-wake: ## resume them, wait for RUNNING, turn deploys back on
 	uv run scripts/aws_demos.py wake $(ARGS)
 
-.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade langfuse-doctor langfuse-init langfuse-up langfuse-down langfuse-logs check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context house-ui install-house-ui house-ui-check plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake demos-status demos-sleep demos-wake
+.PHONY: help up down nuke logs logs-tail ps mode status mlflow-init mlflow-db-upgrade langfuse-doctor langfuse-init langfuse-up langfuse-down langfuse-logs check db-init db-urls db-ui db-check db-psql db-backup db-restore otlp-smoke install-agent-context house-ui install-house-ui house-ui-check plugin-validate setup fmt lint test aws-plan aws-sleep aws-wake demos-status demos-sleep demos-wake dsh-install dsh-doctor dsh-tui dsh-web dsh-run dsh-log
