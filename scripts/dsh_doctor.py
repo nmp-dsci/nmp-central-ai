@@ -179,9 +179,7 @@ def profile_findings(profile: str, cwd: Path = ROOT) -> list[str]:
     return upload_findings(parse_dump(text))
 
 
-def guard(
-    dsh_pin: str, tui_pin: str, profiles: tuple[str, ...], cwd: Path = ROOT
-) -> list[str]:
+def guard(dsh_pin: str, tui_pin: str, profiles: tuple[str, ...], cwd: Path = ROOT) -> list[str]:
     problems = []
     if (v := dsh_version()) != dsh_pin:
         problems.append(f"dsh is {v}, pinned {dsh_pin}: run `make dsh-install`")

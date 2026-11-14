@@ -63,7 +63,7 @@ Typing `dsh --profile dsh-tui` yourself starts the same TUI, but skips everythin
 
 - refuses any `DIR` outside the portfolio;
 - checks dsh and dsh-TUI are at the pinned versions;
-- composes the profile (`dsh --profile P --dump-config`) and refuses to start unless all three
+- composes the profile (`dsh --profile P --dump-config`, run from `DIR` so project-level config is seen) and refuses to start unless all three
   DeepSeek uploads are off. It matches rows by package name, so a renamed row is still caught;
 - replaces itself with dsh under an empty environment: `HOME`, `PATH`, `LANG`, terminal
   variables, and `DSH_TELEMETRY_MODE=DISABLED`, `DSH_TELEMETRY_DISABLED=1`,
