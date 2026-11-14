@@ -1,0 +1,11 @@
+# gitleaks config for CI (secrets job). Keep the default rules; allow only the fake keys
+# planted on purpose to prove scripts/dsh_log.py redacts them (D39).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Planted fake secrets in the dsh logger's fixture and its test"
+paths = [
+  '''tests/fixtures/dsh/''',
+  '''tests/test_dsh_log\.py$''',
+]

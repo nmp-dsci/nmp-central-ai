@@ -1,8 +1,8 @@
 # nmp-central-ai — platform contract
 
 Shared services for every project in `~/git/nmp-ai-portfolio`. This file is the
-contract an agent or a person needs to use them. It is imported into every
-sibling's context by the portfolio-level `CLAUDE.md` / `AGENTS.md`.
+contract an agent or a person needs to use them. It is pointed to from every
+sibling's context by the portfolio-level `AGENTS.md`.
 
 **Rule zero: never start your own MLflow, Postgres, MinIO, database UI or gateway inside a
 project, and never invent your own design tokens for an artifact. Use these.**
@@ -116,6 +116,19 @@ make -C ~/git/nmp-ai-portfolio/nmp-central-ai status   # health; `up` starts it
 | Never | `delete-service` on a demo (new URL; App Runner takes no new customers), delete its ECR repo, the shared `data-qa-tfstate-*` bucket or the GitHub OIDC provider |
 
 Runbook: `docs/runbooks/aws-demos.md`.
+
+## DeepSeek Harness — a second coding agent (D39)
+
+| | value |
+|---|---|
+| What | DeepSeek's open-source agent (`dsh`) with the community terminal UI dsh-TUI, pinned in nmp-central-ai's Makefile |
+| Start it | `make -C ~/git/nmp-ai-portfolio/nmp-central-ai dsh-tui DIR=$PWD` (also `dsh-web`, `dsh-run TASK=…`) |
+| What it reads | your repo's `AGENTS.md` / `CLAUDE.md` and `.agents/skills/`, plus `~/.dsh/AGENTS.md`, which points it here |
+| Uploads | all three DeepSeek uploads are off via `~/.dsh/cordis.patch.yml`; the launcher refuses to start otherwise. Model requests still carry whatever the agent reads |
+| Logging | `make dsh-log` → experiment `dsh/sessions`: one run per session, one trace per finished turn |
+| Never | start `dsh` directly outside make, run dsh-TUI's `/update`, or use it outside the portfolio |
+
+Runbook: `docs/runbooks/dsh.md`.
 
 ## Coming (not yet available)
 

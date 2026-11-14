@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en" data-lavish-annotate="on">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DeepSeek Harness setup</title>
+<link rel="stylesheet" href="house.css">
+<link rel="stylesheet" href="project.css">
+<style>
+  /* page-local layout only. Tokens come from house.css. */
+  .hero{ border-bottom:1px solid var(--line-2); padding-bottom:var(--s5); margin-bottom:var(--s6); }
+  .stat .l b{ color:var(--ink); }
+  .stat .n.sm{ font-size:var(--t3); }
+
+  /* inline SVG figures */
+  .figscroll{ overflow-x:auto; }
+  .figscroll svg{ display:block; width:100%; min-width:700px; }
+  svg .bx{ fill:var(--panel); stroke:var(--line-3); stroke-width:1.2; }
+  svg .bx.acc{ stroke:var(--accent); stroke-width:2; }
+  svg .bx.soft{ fill:var(--band); stroke:var(--line-2); }
+  svg .bx.bad{ fill:var(--red-soft); stroke:var(--red); stroke-dasharray:5 4; }
+  svg .bx.later{ fill:none; stroke:var(--line-3); stroke-dasharray:4 4; }
+  svg .t{ fill:var(--ink); font-family:var(--sans); font-size:15px; font-weight:600; }
+  svg .s{ fill:var(--muted); font-family:var(--mono); font-size:12px; }
+  svg .s.a{ fill:var(--accent); }
+  svg .s.r{ fill:var(--red); }
+  svg .ar{ stroke:var(--line-3); stroke-width:1.5; fill:none; }
+  svg .ar.acc{ stroke:var(--accent); stroke-width:2; }
+  svg .ar.bad{ stroke:var(--red); stroke-dasharray:6 4; }
+  svg .ar.later{ stroke-dasharray:4 4; }
+  svg .ah{ fill:var(--line-3); }
+  svg .ah.acc{ fill:var(--accent); }
+  svg .x{ stroke:var(--red); stroke-width:3; }
+  svg .lbl{ fill:var(--muted); font-family:var(--sans); font-size:12px; font-style:italic; }
+  svg .lbl.r{ fill:var(--red); font-style:normal; font-weight:600; }
+
+  th.nw, td.nw{ white-space:nowrap; }
+  table.wide{ min-width:860px; }   /* scroll inside .tablewrap on a phone, never crush to one letter per line */
+  table.mid{ min-width:640px; }
+  td .what{ color:var(--ink); font-weight:600; display:block; }
+  td .why{ color:var(--muted); font-size:var(--t-2); display:block; margin-top:2px; }
+  .cards.three{ grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); }
+  .cards.two{ grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr)); }
+  td .why code{ white-space:nowrap; }
+  .opts{ grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr)); }
+  .opt h3{ display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; }
+  .opt.no{ background:var(--band); }
+  .opt .pro, .opt .con{ font-size:var(--t-1); margin:var(--s2) 0 0; padding-left:var(--s4); }
+  .opt .con li::marker{ color:var(--red); }
+  .opt .pro li::marker{ color:var(--accent); }
+
+  /* code surfaces: @pierre/diffs renders into .code; a plain fallback shows if it cannot load */
+  .code{ border:1px solid var(--line-2); border-radius:var(--r); overflow:hidden; background:var(--panel);
+         margin:var(--s2) 0 var(--s4); min-width:0; }
+  .code pre.fallback{ margin:0; padding:var(--s3); font-size:var(--t-2); overflow-x:auto; }
+  .codehead{ font-family:var(--mono); font-size:var(--t-2); color:var(--muted); margin-top:var(--s4); }
+  .codehead b{ color:var(--ink); font-weight:600; }
+
+  .src li{ font-size:var(--t-1); overflow-wrap:anywhere; }
+  form.q fieldset{ border:0; padding:0; margin:0; }
+  form.q .hint{ font-size:var(--t-2); color:var(--muted); margin:0 0 var(--s2); }
+  form.q h3 .badge{ margin-left:auto; }
+</style>
+</head>
+<body>
+<main class="wrap">
+
+<header class="hero">
+  <p class="eyebrow">nmp-central-ai &middot; coding agents &middot; plan &middot; 2026-11-14 &middot; branch dsh</p>
+  <h1>Run DeepSeek Harness from this repo, and log every session. <em>Switch off what it sends DeepSeek by default.</em></h1>
+  <p class="lede">DeepSeek Harness (<code>dsh</code>) is DeepSeek's own open-source coding agent: MIT-licensed, released
+  in August, still a developer preview. It ships a local web UI, a one-shot headless command and a server mode for
+  other tools. It has no official terminal UI, but the community <b>dsh-TUI</b> provides one, and this plan uses it day
+  to day. This repo is already shaped the way dsh reads a project, so the work is three things: install it safely,
+  make it send DeepSeek nothing beyond the model calls, and copy each session into the central MLflow.</p>
+  <div class="verdict">
+    <div class="stat red"><div class="n">3</div><div class="l">uploads to DeepSeek on by default; <b>two carry your whole session log</b>. Phase 0 turns all three off before the first launch</div></div>
+    <div class="stat accent"><div class="n">4</div><div class="l">platform skills dsh picks up <b>unchanged</b> from <code>.agents/skills/</code>, plus <code>AGENTS.md</code> at the repo root</div></div>
+    <div class="stat"><div class="n sm">0.2.2-rc.2</div><div class="l">the dsh version to pin: dsh-TUI's main target. DeepSeek warns of <b>breaking changes</b>, so upgrades are deliberate, like the MLflow server</div></div>
+    <div class="stat"><div class="n sm">$0.66 &middot; $1.98</div><div class="l">V4-Pro per million input / output tokens, off-peak; peak is double. Flash is <b>$0.15 &middot; $0.60</b></div></div>
+  </div>
+</header>
+
+<div class="callout">
+  <p><b>Built 2026-11-14 on branch <code>dsh</code>, with the pre-selected answers.</b> Phases 0 and 1 are done:
+  dsh 0.2.2-rc.2 and dsh-TUI 0.20.0 are installed, <code>make dsh-doctor</code> shows all three uploads off in every profile,
+  and <code>make check</code> passes for <code>DSH</code>. The one step left is yours: <code>make dsh-tui DIR=.</code>,
+  then <code>/provider</code> to save your key. See <code>docs/runbooks/dsh.md</code>.</p>
+</div>
+
+<div class="callout">
+  <p><b>Recommendation:</b> manage dsh from this repo the same way as the house UI and the agent context. A committed
+  home patch is installed into <code>~/.dsh</code>. A pinned launcher, <code>make dsh-tui</code> (or
+  <code>dsh-web</code>), starts dsh with an empty environment and refuses to start if anything would upload to DeepSeek. Then, after each session, <code>make dsh-log</code> copies
+  dsh's own session logs into a new MLflow experiment, <code>dsh/sessions</code>. Each session becomes one run holding
+  tokens, cost, turns and tool calls, and each turn becomes one trace. Traces are trimmed and redacted, and only
+  sessions in repos under <code>~/git/nmp-ai-portfolio</code> are logged.</p>
+</div>
+
+<div class="callout warn">
+  <p><b>About this branch.</b> <code>dsh</code> starts from your local <code>main</code>, which is one commit ahead of
+  GitHub: <code>7827006 chore(agents): make the repo coding-agent agnostic</code>, made yesterday. This plan depends on
+  it, so it stays. Unless you push <code>main</code> first, it will ship inside this branch's PR.</p>
+</div>
+
+<section id="tui">
+  <p class="eyebrow">Your main way in: the terminal</p>
+  <h2>dsh-TUI is the front end. DeepSeek ships only a web UI, so this is a community plugin.</h2>
+  <p class="sub">dsh's own docs show a <code>tui</code> profile built from a <code>turtle-ui</code> plugin, but that repository
+  isn't public. The terminal UI people actually use is a third-party plugin that runs inside dsh.</p>
+  <div class="split">
+    <div class="card rec" id="tui-what"><h3>dsh-TUI <span class="badge rec">your daily driver</span></h3>
+      <dl class="kv">
+        <dt>package</dt><dd><code>@deepseek-harness-tui/dsh-tui</code> 0.20.0, published 2026-11-12</dd>
+        <dt>source</dt><dd><code>github.com/ccch1mneyyy/dsh-TUI</code>, MIT, about 7,700 stars, pushed today, labelled public beta</dd>
+        <dt>targets</dt><dd>dsh <b>0.2.2-rc.2</b>; Node 22.19+ or 24+; needs <b>pnpm</b>, which isn't installed yet</dd>
+        <dt>profile</dt><dd>its own, <code>~/.dsh/profiles/dsh-tui</code>; <code>dsh --profile dsh-tui</code> starts it</dd>
+        <dt>start</dt><dd><code>make dsh-tui DIR=&lt;repo&gt;</code> &mdash; steps below</dd>
+      </dl>
+      <p>It feels like Claude Code: streaming Markdown, tool cards, <code>/</code> commands and <code>@</code> file completion,
+      approval prompts, <code>/resume</code> session manager, fork and rewind, a context bar with tokens and a session cost estimate.</p></div>
+    <div class="card" id="tui-fit"><h3>How it fits this plan</h3>
+      <ul>
+        <li><b>The lockdown still applies.</b> Its own patch says the base rows for telemetry, sandbox and approvals are
+        inherited unchanged, and the home layer outranks it. Its docs also list a third upload: your installed plugin
+        names on every request. The home patch turns that off too.</li>
+        <li><b>It reads your repo the same way.</b> It switches off dsh's top-level instruction and skill loaders and
+        hands them to its agent preset, as dsh's own web UI does. So <code>AGENTS.md</code> and <code>.agents/skills</code>
+        still load. Phase 0 confirms it in the startup context panel (<code>Ctrl+P</code>).</li>
+        <li><b>Logging is unchanged.</b> Its patch keeps dsh's shared session files under <code>~/.dsh/sessions</code>.
+        An older page of its docs mentions SQLite, but the current patch doesn't use it. <code>make dsh-log</code> picks them up.</li>
+        <li><b>It runs at maximum reasoning effort by default</b> on DeepSeek's route, which means more output tokens per
+        turn. Drop it to <i>high</i> in <code>/model</code> for everyday work.</li>
+        <li><b>It is third-party code inside the agent,</b> with the same access as dsh. Pin the exact version, and
+        read its changelog before each bump. Its <code>/update</code> would move both versions, so the launcher switches that off.</li>
+        <li><b>Don't add plugins that promise free models.</b> The most-starred one on GitHub today does exactly that; it would send your code through someone else's servers.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section id="tui-setup">
+  <p class="eyebrow">Getting dsh-TUI working</p>
+  <h2>From nothing to a working terminal session in nine steps</h2>
+  <p class="sub">Steps 1&ndash;3 and 8 are <code>make</code> targets this branch adds; the rest happen inside the TUI. Everything
+  runs from <code>nmp-central-ai</code>, and <code>DIR</code> picks the repo the agent works in.</p>
+  <div class="steps">
+    <div class="step" id="tui-1"><b>Install pnpm</b>
+      <code>npm install -g pnpm</code>. Homebrew's Node 25 doesn't ship corepack. dsh installs plugins with pnpm, and this
+      laptop doesn't have it yet. Node 25.8.1 is already fine.</div>
+    <div class="step" id="tui-2"><b><code>make dsh-install</code></b>
+      Installs <code>@deepseek-ai/dsh@0.2.2-rc.2</code> globally, then
+      <code>dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@0.20.0</code>, which creates
+      <code>~/.dsh/profiles/dsh-tui</code>. Finally it copies the home patch to <code>~/.dsh/cordis.patch.yml</code>.
+      <span class="tag">if pnpm stops with ERR_PNPM_IGNORED_BUILDS, approve the builds it lists once, as dsh-TUI's docs describe, and re-run</span></div>
+    <div class="step" id="tui-3"><b><code>make dsh-doctor</code></b>
+      Composes the <code>dsh-tui</code>, <code>web</code> and <code>headless</code> profiles with <code>--dump-config</code>.
+      It fails if any of the three upload rows would be on, or if a version differs from the pin.</div>
+    <div class="step" id="tui-4"><b><code>make dsh-tui DIR=.</code> &mdash; first launch</b>
+      Opens the first-run wizard. In <strong>accounts &amp; models</strong>, choose <i>add an API key</i> through
+      <code>/provider</code> and paste your DeepSeek key. It goes to dsh's credential store, never into the environment (Q4).
+      Pick <code>deepseek-v4-pro</code> and your theme. <code>/setup</code> re-runs the wizard later.</div>
+    <div class="step" id="tui-5"><b>Check what it loaded</b>
+      Press <code>Ctrl+P</code> to show the context panel from startup. It should list <code>AGENTS.md</code> and the four
+      <code>platform-*</code> skills. If they're missing, stop: the preset isn't loading them, and that gets fixed in Phase 0.</div>
+    <div class="step" id="tui-6"><b>Turn the effort down to high</b>
+      In <code>/model</code>, use <code>&larr;/&rarr;</code> to go from <i>max</i> to <i>high</i>, then <code>Enter</code>. The choice is saved as your default.</div>
+    <div class="step" id="tui-7"><b>First task, read-only</b>
+      "Summarise this repository and list its make targets." Approve nothing that writes. Then <code>Ctrl+D</code> twice to exit.</div>
+    <div class="step" id="tui-8"><b><code>make dsh-log</code></b>
+      That session should appear in MLflow under <code>dsh/sessions</code> as one run, with one trace per turn.
+      <span class="tag">from Phase 1 on; until then the session simply waits on disk</span></div>
+    <div class="step" id="tui-9"><b>Upgrades go through <code>make</code>, never <code>/update</code></b>
+      Read dsh-TUI's changelog, then bump <code>TUI_VERSION</code> and, if needed, <code>DSH_VERSION</code> in the Makefile. Run <code>make dsh-install</code>
+      and <code>make dsh-doctor</code>. The launcher sets <code>DSH_TUI_UPDATE_ENGINE=0</code> and <code>DSH_TUI_UPDATE_LAUNCHER=0</code> so <code>/update</code> can't move either version on its own.</div>
+  </div>
+
+  <h3 style="margin-top:var(--s5)">Daily use, from its docs</h3>
+  <div class="tablewrap">
+    <table class="mid">
+      <thead><tr><th class="nw">Keys</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>@path</code>, <code>Tab</code></td><td>reference a file; <code>Tab</code> completes it, or queues your input as a follow-up while the agent works</td></tr>
+        <tr><td class="nw"><code>Shift+Tab</code></td><td>cycle session modes: default &rarr; plan &rarr; <b>full-access</b>. Stay out of full-access; it drops the approval prompts</td></tr>
+        <tr><td class="nw"><code>Esc Esc</code></td><td>rewind: pick an earlier message, and the TUI forks the session there with your message back in the editor</td></tr>
+        <tr><td class="nw"><code>Ctrl+C</code> &middot; <code>Ctrl+D</code> twice</td><td>interrupt the running turn &middot; exit</td></tr>
+        <tr><td class="nw"><code>Ctrl+B</code> &middot; <code>Ctrl+O</code> &middot; <code>Ctrl+T</code></td><td>side panel &middot; full tool arguments and output &middot; the turn-by-turn trajectory</td></tr>
+        <tr><td class="nw"><code>Ctrl+R</code> &middot; <code>Ctrl+G</code></td><td>search past inputs &middot; write the prompt in <code>$EDITOR</code></td></tr>
+        <tr><td class="nw"><code>/resume</code> &middot; <code>/new</code> &middot; <code>/compact</code></td><td>pick up an old session &middot; start fresh &middot; summarise to free context</td></tr>
+        <tr><td class="nw"><code>/model</code> &middot; <code>/export</code> &middot; <code>/btw</code></td><td>model and effort &middot; export the session &middot; ask a side question without derailing the task</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="now">
+  <p class="eyebrow">What it is, checked against its repo today</p>
+  <h2>DeepSeek Harness in five facts</h2>
+  <p class="sub">From <code>deepseek-ai/deepseek-harness</code> at master (pushed 2026-11-13) and the npm package. Every claim
+  here is cited under Sources.</p>
+  <div class="cards three">
+    <div class="card" id="fact-run"><h3>How you run it</h3>
+      <p><code>npx @deepseek-ai/dsh web</code> serves a browser UI on <code>127.0.0.1:3080</code>.
+      <code>dsh --profile headless "task"</code> does one task and exits; add <code>--json</code> for an event stream.
+      <code>--profile acp</code> serves other tools over Agent Client Protocol. For a terminal UI, see above. It needs Node 24.9 or newer; this laptop has 25.8.1.</p></div>
+    <div class="card" id="fact-config"><h3>How it is configured</h3>
+      <p>Configuration is stacked in layers: the shipped bundles, then <code>~/.dsh/profiles/&lt;p&gt;/cordis.patch.yml</code>,
+      then <b><code>~/.dsh/cordis.patch.yml</code></b>, then <code>--patch</code> files. The home layer outranks the
+      settings page. A patch replaces a row's whole config. Keys saved in the UI go to <code>~/.dsh/.credentials.yaml</code>.</p></div>
+    <div class="card" id="fact-reads"><h3>What it reads from a repo</h3>
+      <p><code>AGENTS.md</code> and <code>CLAUDE.md</code> from the git root down to the working directory, up to 64 KiB.
+      Before them come <code>~/.dsh/AGENTS.md</code> and <code>~/.agents/AGENTS.md</code>. Skills come from
+      <code>&lt;root&gt;/.agents/skills</code> and <code>&lt;root&gt;/.dsh/skills</code>, plus the same folders under your home directory.</p></div>
+    <div class="card" id="fact-may"><h3>What it may do</h3>
+      <p>Edit the workspace, run shell commands, use subagents and search the web. The default is the
+      <code>workspace-write</code> sandbox, asking before risky steps. Its <code>SAFETY.md</code> says it is not
+      security-audited and the sandbox is not isolation. Run it with the least access that works.</p></div>
+    <div class="card" id="fact-writes"><h3>Where it writes</h3>
+      <p>One append-only log per session at <code>~/.dsh/sessions/--&lt;cwd&gt;--/&lt;id&gt;/session.v4.jsonl.zstd</code>.
+      Every message, tool call, tool result and the token usage of each model call is in it. That file is what
+      the logger reads. The format has gone from v0 to v4 since August; v4 is current.</p></div>
+  </div>
+  <div class="callout">
+    <p><b>This repo needs no changes for dsh to read it.</b> Commit 7827006 made <code>AGENTS.md</code> the real file and
+    moved the four <code>platform-*</code> skills into <code>.agents/skills/</code>. That is exactly where dsh looks, and
+    <code>make agent-check</code> already enforces the frontmatter it needs (<code>name</code> and <code>description</code>).
+    <code>CLAUDE.md</code> is the one-line <code>@AGENTS.md</code> shim. dsh doesn't follow that import, so it adds
+    one harmless line. <b>The gap:</b> the portfolio-level <code>~/git/nmp-ai-portfolio/AGENTS.md</code>, which points
+    every sibling at <code>PLATFORM.md</code>, sits above each repo's git root, so dsh never loads it. That is Q6.</p>
+  </div>
+</section>
+
+<section id="privacy">
+  <p class="eyebrow">What leaves this laptop</p>
+  <h2>Three uploads are on by default. All three get switched off before the first launch.</h2>
+  <p class="sub">Model requests have to go to DeepSeek, and everything the agent reads goes with them, including any
+  <code>.env</code> file it opens. The other flows are optional, and the plan closes every one it can.</p>
+  <div class="tablewrap">
+    <table class="wide">
+      <thead><tr><th>Flow</th><th class="nw">Default</th><th>Goes to</th><th>What it carries</th><th>In this plan</th></tr></thead>
+      <tbody>
+        <tr id="flow-sessionlog"><td><span class="what">Session-log upload</span><span class="why">row <code>session-log-deepseek</code></span></td>
+          <td class="nw"><span class="badge bad">on</span></td><td>the DeepSeek API, inside every model request</td>
+          <td>Your complete session log, up to 8 MiB per request: messages, tool arguments and results, workspace paths. If it is turned back on later, the backlog uploads too.</td>
+          <td><b>Off</b> in the home patch (<code>enabled: false</code>). The home layer overrides the settings toggle.</td></tr>
+        <tr id="flow-otel"><td><span class="what">OTel feedback upload</span><span class="why">row <code>session-telemetry-otel</code></span></td>
+          <td class="nw"><span class="badge warn">on feedback</span></td><td>DeepSeek's telemetry collector</td>
+          <td>The whole session so far, every time you rate a message, edit, or send <code>/feedback</code>.</td>
+          <td><b>Off</b> in two places: <code>mode: DISABLED</code> in the home patch, and <code>DSH_TELEMETRY_MODE=DISABLED</code> in the launcher.</td></tr>
+        <tr id="flow-inventory"><td><span class="what">Plugin inventory</span><span class="why">row <code>plugin-package-inventory-deepseek</code></span></td>
+          <td class="nw"><span class="badge warn">on</span></td><td>the DeepSeek API, inside every model request</td>
+          <td>The names and versions of your installed dsh plugins, which tells DeepSeek you use dsh-TUI.</td>
+          <td><b>Off</b> in the home patch (<code>enabled: false</code>).</td></tr>
+        <tr id="flow-env"><td><span class="what">Your shell environment</span><span class="why">inherited by the agent's shell</span></td>
+          <td class="nw"><span class="badge bad">all of it</span></td><td>any command the agent runs</td>
+          <td>dsh rebuilds only its own <code>DSH_*</code> variables. Every exported key is visible to <code>env</code>, and from there to the model.</td>
+          <td>The launcher starts dsh under <code>env -i</code> with only <code>HOME</code>, <code>PATH</code>, <code>TERM</code> and <code>LANG</code>.</td></tr>
+        <tr id="flow-model"><td><span class="what">Model requests</span><span class="why">the point of the tool</span></td>
+          <td class="nw"><span class="badge info">always</span></td><td>DeepSeek's API</td>
+          <td>Whatever the agent reads or writes in the session.</td>
+          <td>Can't be avoided. Limit it by where you use dsh (Q3).</td></tr>
+        <tr id="flow-search"><td><span class="what">Web search</span><span class="why">row <code>web-search-deepseek</code></span></td>
+          <td class="nw"><span class="badge info">on</span></td><td>DeepSeek's search API</td>
+          <td>The search queries the agent writes.</td><td>Kept. It uses the same key and is useful for a coding agent.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="arch">
+  <p class="eyebrow">The setup</p>
+  <h2>One committed config, one guarded launcher, one logger</h2>
+  <p class="sub">Read left to right. Solid accent lines are what runs on every launch. Red dashed lines are the flows the
+  home patch shuts. The logger runs afterwards and never touches DeepSeek.</p>
+  <div class="fig figscroll">
+  <svg viewBox="0 0 1000 470" role="img" aria-labelledby="arch-t arch-d" id="fig-arch">
+    <title id="arch-t">DeepSeek Harness set up from nmp-central-ai</title>
+    <desc id="arch-d">The repo installs a home patch into ~/.dsh. make dsh-tui or dsh-web starts dsh with a clean environment. dsh sends model calls to DeepSeek; the session-log, OTel and plugin-inventory uploads are blocked. dsh writes session logs, which make dsh-log copies into MLflow.</desc>
+    <defs>
+      <marker id="m" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+      <marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah acc" d="M0,0 L10,5 L0,10 z"/></marker>
+    </defs>
+
+    <g id="n-repo"><title>Committed in nmp-central-ai (branch dsh)</title>
+      <rect class="bx soft" x="20" y="30" width="230" height="150" rx="10"/>
+      <text class="t" x="36" y="58">nmp-central-ai</text>
+      <text class="s" x="36" y="82">agent/dsh/</text>
+      <text class="s" x="48" y="100">home.cordis.patch.yml</text>
+      <text class="s" x="48" y="118">AGENTS.md (pointer)</text>
+      <text class="s" x="36" y="140">Makefile  dsh-*</text>
+      <text class="s" x="36" y="158">scripts/dsh_log.py</text>
+    </g>
+
+    <g id="n-home"><title>~/.dsh on this laptop</title>
+      <rect class="bx" x="20" y="250" width="230" height="130" rx="10"/>
+      <text class="t" x="36" y="278">~/.dsh</text>
+      <text class="s" x="36" y="302">cordis.patch.yml</text>
+      <text class="s" x="36" y="320">AGENTS.md</text>
+      <text class="s" x="36" y="338">.credentials.yaml</text>
+      <text class="s a" x="36" y="358">sessions/…/session.v4.jsonl</text>
+    </g>
+    <g id="e-install"><title>make dsh-install copies the committed files into ~/.dsh</title>
+      <path class="ar" d="M135 180 V246" marker-end="url(#m)"/>
+      <text class="lbl" x="145" y="218">make dsh-install</text>
+    </g>
+
+    <g id="n-dsh"><title>The dsh process with the dsh-TUI plugin, started by make dsh-tui, dsh-web or dsh-run</title>
+      <rect class="bx acc" x="330" y="120" width="300" height="170" rx="10"/>
+      <text class="t" x="348" y="150">dsh 0.2.2-rc.2 + dsh-TUI</text>
+      <text class="s" x="348" y="174">make dsh-tui | dsh-web  DIR=…</text>
+      <text class="s" x="348" y="194">env -i · telemetry DISABLED</text>
+      <text class="s" x="348" y="214">guard: refuse if an upload is on</text>
+      <text class="s a" x="348" y="242">reads AGENTS.md</text>
+      <text class="s a" x="348" y="260">+ .agents/skills from the repo</text>
+    </g>
+    <g id="e-config"><title>dsh composes ~/.dsh/cordis.patch.yml over its bundles at start</title>
+      <path class="ar" d="M250 300 C 290 300, 300 240, 326 236" marker-end="url(#m)"/>
+      <text class="lbl" x="256" y="252">config</text>
+    </g>
+    <g id="e-write"><title>dsh appends every event to its session log</title>
+      <path class="ar" d="M400 290 C 400 340, 320 352, 254 352" marker-end="url(#m)"/>
+      <text class="lbl" x="330" y="330">writes</text>
+    </g>
+
+    <g id="n-api"><title>DeepSeek API: model calls and web search only</title>
+      <rect class="bx" x="740" y="40" width="240" height="80" rx="10"/>
+      <text class="t" x="758" y="70">api.deepseek.com</text>
+      <text class="s" x="758" y="94">model calls · web search</text>
+    </g>
+    <g id="e-model"><title>Model calls: the only flow to DeepSeek that stays on</title>
+      <path class="ar acc" d="M630 150 C 680 150, 690 85, 736 82" marker-end="url(#ma)"/>
+      <text class="lbl" x="694" y="142">model calls</text>
+    </g>
+
+    <g id="n-collect"><title>Uploads to DeepSeek that the home patch turns off</title>
+      <rect class="bx bad" x="740" y="170" width="240" height="110" rx="10"/>
+      <text class="t" x="758" y="198">uploads to DeepSeek</text>
+      <text class="s r" x="758" y="222">session-log field   off</text>
+      <text class="s r" x="758" y="242">OTel on feedback    off</text>
+      <text class="s r" x="758" y="262">plugin inventory    off</text>
+    </g>
+    <g id="e-blocked"><title>Blocked by the home patch and the launcher guard</title>
+      <path class="ar bad" d="M630 225 H 736"/>
+      <line class="x" x1="673" y1="213" x2="693" y2="237"/><line class="x" x1="693" y1="213" x2="673" y2="237"/>
+      <text class="lbl r" x="648" y="206">blocked</text>
+    </g>
+
+    <g id="n-log"><title>make dsh-log: scripts/dsh_log.py</title>
+      <rect class="bx" x="330" y="360" width="300" height="94" rx="10"/>
+      <text class="t" x="348" y="388">make dsh-log</text>
+      <text class="s" x="348" y="410">portfolio repos only · redact · trim</text>
+      <text class="s" x="348" y="430">resume from last event logged</text>
+    </g>
+    <g id="e-read"><title>The logger reads new events from the session logs</title>
+      <path class="ar" d="M250 368 C 285 380, 300 400, 326 402" marker-end="url(#m)"/>
+      <text class="lbl" x="262" y="414">reads</text>
+    </g>
+
+    <g id="n-mlflow"><title>Central MLflow, experiment dsh/sessions</title>
+      <rect class="bx acc" x="740" y="330" width="240" height="94" rx="10"/>
+      <text class="t" x="758" y="358">MLflow :5000</text>
+      <text class="s a" x="758" y="380">dsh/sessions</text>
+      <text class="s" x="758" y="400">run per session</text>
+      <text class="s" x="758" y="416">trace per turn</text>
+    </g>
+    <g id="e-mlflow"><title>Runs and traces go to the central MLflow</title>
+      <path class="ar acc" d="M630 400 H 736" marker-end="url(#ma)"/>
+      <text class="lbl" x="646" y="392">runs + traces</text>
+    </g>
+    <g id="n-langfuse"><title>Later: Langfuse as well, once it runs (D34)</title>
+      <rect class="bx later" x="770" y="436" width="180" height="28" rx="8"/>
+      <text class="s" x="784" y="455">later: Langfuse (both)</text>
+    </g>
+  </svg>
+  </div>
+
+  <div class="cards two" style="margin-top:var(--s4)">
+    <div class="card" id="piece-patch"><h3>1 &middot; The home patch</h3>
+      <p><code>agent/dsh/home.cordis.patch.yml</code>, committed. <code>make dsh-install</code> copies it to
+      <code>~/.dsh/cordis.patch.yml</code> and refuses to overwrite a copy you have edited unless <code>FORCE=1</code>,
+      the same rule <code>install-agent-context</code> follows. It turns off all three uploads and stores sessions uncompressed.</p></div>
+    <div class="card" id="piece-launch"><h3>2 &middot; The launcher</h3>
+      <p><code>make dsh-tui DIR=…</code> is the one you'll use. <code>make dsh-web</code> (browser) and
+      <code>make dsh-run TASK="…"</code> (one-shot) are there when needed. Each runs the pinned dsh under <code>env -i</code>, with
+      the update switches off. First a guard reads <code>dsh --dump-config</code>, and it refuses to launch if any upload row would be on.</p></div>
+    <div class="card" id="piece-doctor"><h3>3 &middot; The doctor</h3>
+      <p><code>make dsh-doctor</code> checks five things: Node is 24.9 or newer, dsh is the pinned version, a key is
+      stored (it checks the credentials file exists without reading it), all three uploads are off, and MLflow is up. It also
+      checks for pnpm, which dsh-TUI needs, and reports any session in a format the logger can't read.</p></div>
+    <div class="card" id="piece-logger"><h3>4 &middot; The logger</h3>
+      <p><code>scripts/dsh_log.py</code> (uv, Ruff, mypy strict, pytest on a fixture) reads only new events and writes
+      them to MLflow as shown below. It skips sessions outside the portfolio and replaces secrets with a placeholder. Each
+      span is cut to 4 KB, and reasoning text is never logged.</p></div>
+  </div>
+</section>
+
+<section id="mapping">
+  <p class="eyebrow">What lands in MLflow</p>
+  <h2>A session becomes a run; each turn becomes a trace</h2>
+  <p class="sub">The run is the ledger: one row per session to sort by cost or tokens. Each trace is one turn: your
+  message, the model calls and the tool calls made to answer it. Token counts come from the provider usage dsh records
+  on each model call, not an estimate.</p>
+  <div class="tablewrap">
+    <table class="wide">
+      <thead><tr><th>In the dsh session log</th><th>In MLflow (<code>dsh/sessions</code>)</th><th>Kept</th><th>Never logged</th></tr></thead>
+      <tbody>
+        <tr><td><span class="what">Session header</span><span class="why">id, working directory, format version</span></td>
+          <td>One <b>run</b>, named after the session title. Tags: <code>project=dsh</code>, <code>workspace=&lt;repo&gt;</code>, <code>dsh.session_id</code>, <code>git_sha</code>, <code>env=local</code>, <code>billing=deepseek-api</code></td>
+          <td>repo name, models used, permission mode</td><td>absolute paths outside the repo</td></tr>
+        <tr><td><span class="what">A turn</span><span class="why">your message to the agent's final reply</span></td>
+          <td>One <b>trace</b>; the root span is <i>turn N</i></td><td>your message and the final reply, each cut to 4 KB</td><td>attachments and image bytes</td></tr>
+        <tr><td><span class="what">A model call</span><span class="why"><code>assistant/message</code> with provider usage</span></td>
+          <td><b>LLM span</b> with model, uncached, cache-read and output tokens, and a cost estimate</td><td>visible reply text, stop reason, retries as span events</td><td>reasoning text</td></tr>
+        <tr><td><span class="what">A tool call</span><span class="why"><code>tool/call</code> and its <code>tool/result</code></span></td>
+          <td><b>TOOL span</b> named after the tool; errors flagged</td><td>arguments and result, redacted and cut to 4 KB</td><td>the contents of <code>.env*</code>, <code>*.pem</code> or credential files, which become <code>[withheld]</code></td></tr>
+        <tr><td><span class="what">The whole session</span></td>
+          <td><b>Run metrics:</b> turns, steps, tool calls, tool errors, tokens by kind, <code>cost_usd_est</code>, model time, tool time</td><td>&mdash;</td><td>&mdash;</td></tr>
+        <tr><td><span class="what">Re-runs</span></td>
+          <td>Picks up after the last event already logged, read from the run tag <code>dsh.through_seq</code>. Repeats are matched on (session id, format, event number), the key dsh's own docs give for de-duplicating</td><td>&mdash;</td><td>&mdash;</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="sub" style="margin-top:var(--s3)">The cost estimate uses a dated price table in the logger, checked against DeepSeek's pricing page on
+  2026-11-14. Peak hours are 01:00 to 04:00 and 06:00 to 10:00 UTC on weekdays, which is <b>12&ndash;3 pm and 5&ndash;9 pm
+  in Sydney</b> while daylight saving runs. Off-peak is half price.</p>
+</section>
+
+<section id="options">
+  <p class="eyebrow">How to capture the sessions</p>
+  <h2>Three ways to log, and why the simplest wins for now</h2>
+  <div class="split opts">
+    <div class="card opt rec" id="opt-a"><h3>A &middot; Read the session logs after each session <span class="badge rec">recommended</span></h3>
+      <p>Python in this repo reads dsh's session files and writes MLflow runs and traces.</p>
+      <ul class="pro"><li>Covers dsh-TUI, the web UI and headless equally</li><li>Adds no code inside the agent</li>
+        <li>Tested with pytest on a committed sample session, like the rest of <code>scripts/</code></li></ul>
+      <ul class="con"><li>Not live: run <code>make dsh-log</code>, or a timer later</li>
+        <li>Depends on dsh's file format, which DeepSeek treats as internal and has changed four times since August.
+        The logger is pinned to v4 and stops with a clear error on anything else</li></ul></div>
+    <div class="card opt" id="opt-b"><h3>B &middot; A dsh plugin for its telemetry hook</h3>
+      <p>A small Cordis plugin takes the place of the OTel uploader and sends spans to MLflow as the agent works.</p>
+      <ul class="pro"><li>Live</li><li>A documented hook, with a de-duplication key and a redaction step</li></ul>
+      <ul class="con"><li>TypeScript and pnpm in a Python repo</li><li>The plugin API is a developer preview too</li>
+        <li>A bug in it runs inside the agent process</li></ul></div>
+    <div class="card opt no" id="opt-c"><h3>C &middot; Wrap headless runs only</h3>
+      <p><code>dsh --profile headless --json</code> into a trace.</p>
+      <ul class="pro"><li>A few dozen lines</li></ul>
+      <ul class="con"><li>Misses every dsh-TUI session, which is nearly all of your use</li></ul></div>
+  </div>
+  <p class="sub" style="margin-top:var(--s3)">If dsh changes its file format often enough to hurt, B is the way out. It turns the same session events into the same
+  MLflow shape, so the runs and traces don't change.</p>
+</section>
+
+<section id="files">
+  <p class="eyebrow">What gets committed</p>
+  <h2>The files, in the repo's own idiom</h2>
+  <p class="sub">All new, on branch <code>dsh</code>. Nothing here touches a sibling repo or AWS.</p>
+  <div class="tablewrap">
+    <table class="mid">
+      <thead><tr><th>Path</th><th>What it is</th></tr></thead>
+      <tbody>
+        <tr><td class="nw"><code>agent/dsh/home.cordis.patch.yml</code></td><td>the home patch, below</td></tr>
+        <tr><td class="nw"><code>agent/dsh/AGENTS.md</code></td><td>a short pointer to <code>PLATFORM.md</code> for repos under the portfolio, installed as <code>~/.dsh/AGENTS.md</code> (Q6)</td></tr>
+        <tr><td class="nw"><code>Makefile</code></td><td><code>dsh-install</code>, <code>dsh-doctor</code>, <code>dsh-tui</code>, <code>dsh-web</code>, <code>dsh-run</code>, <code>dsh-log</code></td></tr>
+        <tr><td class="nw"><code>scripts/dsh_doctor.py</code></td><td>install, check and guard (the dump-config parse)</td></tr>
+        <tr><td class="nw"><code>scripts/dsh_log.py</code></td><td>the logger</td></tr>
+        <tr><td class="nw"><code>tests/test_dsh_*.py</code> + <code>tests/fixtures/dsh/</code></td><td>a hand-checked sample session with planted fake secrets; the tests assert they never reach a span</td></tr>
+        <tr><td class="nw"><code>registry/projects.yaml</code></td><td>entry <code>DSH</code>, experiment <code>dsh/sessions</code>, below</td></tr>
+        <tr><td class="nw"><code>docs/runbooks/dsh.md</code></td><td>install, launch, log, upgrade, uninstall</td></tr>
+        <tr><td class="nw"><code>AGENTS.md</code>, <code>PLATFORM.md</code></td><td>decision D39 and a "Coding agents" section in the contract</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="codehead"><b>agent/dsh/home.cordis.patch.yml</b> &middot; row ids are from dsh's base bundle; Phase 0 confirms the composed result with <code>--dump-config</code>, for the dsh-TUI profile too</p>
+  <div class="code" data-src="src-patch" id="code-patch"></div>
+<script type="text/plain" id="src-patch" data-name="agent/dsh/home.cordis.patch.yml">
+# Installed to ~/.dsh/cordis.patch.yml by `make dsh-install` (D39).
+# The home layer outranks every profile's own patch and the Web settings page.
+# A patch replaces a row's WHOLE config, so each row restates every field.
+
+# 1. Never attach the session log to DeepSeek API requests (on by default).
+- id: session-log-deepseek
+  config:
+    enabled: false
+    maxBytes: 8388608
+
+# 2. Never upload sessions to DeepSeek's OTel collector on feedback.
+- id: session-telemetry-otel
+  config:
+    mode: DISABLED
+
+# 3. Never list installed plugins (dsh-TUI among them) on DeepSeek requests.
+- id: plugin-package-inventory-deepseek
+  config:
+    enabled: false
+
+# 4. Plain JSONL sessions, so `make dsh-log` reads them without zstd.
+- id: session-persistence-jsonl
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
+</script>
+
+  <p class="codehead"><b>Makefile</b> &middot; as built: pinned global install; each launch goes through <code>scripts/dsh_doctor.py launch</code>, which runs the guard and then replaces itself with dsh under an empty environment</p>
+  <div class="code" data-src="src-make" id="code-make"></div>
+<script type="text/plain" id="src-make" data-name="Makefile">
+# ---- DeepSeek Harness (D39) -------------------------------------------------
+# dsh is pinned like the MLflow server: bump these deliberately, then `make dsh-install`.
+# Every launch starts from an empty environment and refuses to run if any profile would
+# upload to DeepSeek; DIR (default: this repo) must sit inside the portfolio.
+DSH_VERSION ?= 0.2.2-rc.2
+TUI_VERSION ?= 0.20.0
+DIR ?= .
+DSH_PIN = --dsh $(DSH_VERSION) --tui $(TUI_VERSION)
+
+dsh-install: ## install pinned dsh + dsh-TUI and the home patch into ~/.dsh (FORCE=1 replaces an edited copy)
+	uv run scripts/dsh_doctor.py install $(if $(FORCE),--force)
+	npm install -g @deepseek-ai/dsh@$(DSH_VERSION)
+	dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui@$(TUI_VERSION)
+
+dsh-doctor: ## versions, pnpm, key stored, every DeepSeek upload off, MLflow up
+	@uv run scripts/dsh_doctor.py check $(DSH_PIN)
+
+dsh-tui: ## the terminal UI (dsh-TUI) working in DIR — the everyday one
+	@uv run scripts/dsh_doctor.py launch $(DSH_PIN) --dir $(DIR) dsh-tui
+
+dsh-web: ## the browser UI on 127.0.0.1:3080 working in DIR
+	@uv run scripts/dsh_doctor.py launch $(DSH_PIN) --dir $(DIR) web
+
+dsh-run: ## one headless task: make dsh-run DIR=../tau2-loop TASK="…"
+	@uv run scripts/dsh_doctor.py launch $(DSH_PIN) --dir $(DIR) headless -- "$(TASK)"
+
+dsh-log: ## copy new dsh sessions into MLflow dsh/sessions (ARGS="--dry-run")
+	uv run scripts/dsh_log.py $(ARGS)
+</script>
+
+  <p class="codehead"><b>registry/projects.yaml</b> &middot; not a sibling repo, so no <code>ui</code> hue and no database; <code>make check</code> proves it with a sample session</p>
+  <div class="code" data-src="src-reg" id="code-reg"></div>
+<script type="text/plain" id="src-reg" data-name="registry/projects.yaml">
+  - id: DSH
+    name: deepseek-harness
+    path: .                      # the logger lives here; the sessions come from ~/.dsh
+    status: migrated
+    observability:
+      backend: mlflow            # D33; `both` once Langfuse runs (D34)
+    mlflow:
+      client: python
+      experiments: [dsh/sessions]
+      env_ids: { DSH_EXPERIMENT_ID: dsh/sessions }
+      verify: both               # one run per session, one trace per turn
+      smoke: uv run scripts/dsh_log.py --fixture tests/fixtures/dsh   # zero model calls
+    notes: DeepSeek Harness coding sessions (D39). Logged by `make dsh-log`.
+</script>
+</section>
+
+<section id="plan">
+  <p class="eyebrow">Order of work</p>
+  <h2>Three phases, about two days</h2>
+  <div class="steps">
+    <div class="step" id="ph0"><b>Phase 0 &middot; install it and lock it down (half a day)</b>
+      Write the home patch, <code>dsh-install</code>, the launchers, the guard and the doctor. Then walk steps 1&ndash;7 of
+      <a href="#tui-setup">getting dsh-TUI working</a>. Two checks along the way: whether the sandbox policy can block reading
+      <code>.env</code> files, and whether the <code>Shift+Tab</code> mode cycle can leave out full-access.
+      <span class="tag">done when <code>make dsh-doctor</code> is green, the context panel shows AGENTS.md and the skills, and the first session's file is on disk, uncompressed</span></div>
+    <div class="step" id="ph1"><b>Phase 1 &middot; log it (one day)</b>
+      Add the registry entry and run <code>make mlflow-init</code> to create <code>dsh/sessions</code>. Write
+      <code>dsh_log.py</code>, the sample session and its tests. Add <code>make dsh-log</code>. The registry smoke puts it
+      under <code>make check</code>.
+      <span class="tag">done when <code>make check</code> shows DSH PASS and the Phase 0 session appears as a run with traces</span></div>
+    <div class="step" id="ph2"><b>Phase 2 &middot; use it for real, then write it down (first week)</b>
+      Do a few real tasks in this repo through dsh, and one small task in both dsh and Claude Code, then compare
+      time, tokens and cost in MLflow. Write the runbook, D39 and the <code>PLATFORM.md</code> section, then open a PR through no-mistakes.
+      <span class="tag">done when the PR is merged and the comparison sits in the runbook</span></div>
+    <div class="step" id="ph3"><b>Afterwards, only if wanted</b>
+      Send traces to Langfuse too (<code>backend: both</code>) once the Docker VM can hold it (D34). Switch to option B if the file format
+      changes often. Try dsh as the no-mistakes pipeline agent through its ACP mode; this is untested here. Use it in the sibling repos.</div>
+  </div>
+</section>
+
+<section id="risks">
+  <p class="eyebrow">What could go wrong</p>
+  <h2>Risks and what covers each one</h2>
+  <div class="tablewrap">
+    <table class="mid">
+      <thead><tr><th>Risk</th><th>Covered by</th></tr></thead>
+      <tbody>
+        <tr><td><span class="what">An upgrade turns an upload back on</span><span class="why">for example by renaming a row so the home patch no longer matches it</span></td>
+          <td>The guard runs before every launch, reads the composed config and refuses to start. Upgrades are deliberate: bump <code>DSH_VERSION</code>, then run <code>make dsh-doctor</code>.</td></tr>
+        <tr><td><span class="what">Breaking changes in a developer preview</span></td>
+          <td>dsh and dsh-TUI are pinned to exact versions. The logger handles only session format v4 and refuses others with a clear message.</td></tr>
+        <tr><td><span class="what">The agent damages files</span><span class="why">SAFETY.md: not audited; the sandbox is not isolation</span></td>
+          <td><code>workspace-write</code> with approval prompts, never <code>danger-full-access</code>. Only in git repos, so every change can be reverted. You push, not the agent.</td></tr>
+        <tr><td><span class="what"><code>/update</code> moves the pins</span><span class="why">it upgrades dsh-TUI and dsh together</span></td>
+          <td>The launcher sets <code>DSH_TUI_UPDATE_ENGINE=0</code> and <code>DSH_TUI_UPDATE_LAUNCHER=0</code>, and the guard checks the versions before each launch. Upgrades go through step 9.</td></tr>
+        <tr><td><span class="what">Full-access mode is one key away</span><span class="why"><code>Shift+Tab</code> in the TUI</span></td>
+          <td>Phase 0 checks whether the mode cycle can leave it out. If it can't, it's a habit: stay in default or plan mode.</td></tr>
+        <tr><td><span class="what">Third-party code inside the agent</span><span class="why">dsh-TUI, and any plugin you add later</span></td>
+          <td>dsh-TUI is pinned to an exact version and bumped only after reading its changelog. No other plugins without a look at their source, and none that offer free models.</td></tr>
+        <tr><td><span class="what">A secret reaches DeepSeek</span><span class="why">the agent reads a <code>.env</code></span></td>
+          <td>Keys are kept out of its environment with <code>env -i</code>. Use it only in portfolio repos (Q3). Phase 0 checks whether the sandbox can block reading <code>.env*</code>; if it can't, add a rule in <code>AGENTS.md</code>, which is weaker.</td></tr>
+        <tr><td><span class="what">A secret or client data reaches MLflow</span></td>
+          <td>Only portfolio repos are logged. Values found in <code>~/.env</code> and common key shapes are replaced with a placeholder, and credential files are withheld. The tests plant fake secrets in the sample and fail if any reach a span. MLflow stays on localhost.</td></tr>
+        <tr><td><span class="what">Trace volume</span><span class="why">platform rule 4</span></td>
+          <td>Spans are cut to 4 KB, no reasoning text is logged, and one trace per turn rather than per event.</td></tr>
+        <tr><td><span class="what">Unexpected spend</span></td>
+          <td>Cost is a run metric, so a costly session stands out in MLflow. dsh-TUI defaults to maximum reasoning; step 6 lowers it. Flash is a quarter of the V4-Pro price (Q5).</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="decide">
+  <p class="eyebrow">Your decisions</p>
+  <h2>Six choices before Phase 0 starts</h2>
+  <p class="sub">The recommended answer is pre-selected in each form. Queue the forms you want to send, or use "Copy all answers" at the bottom.</p>
+  <div class="qgrid">
+    <form class="q" data-lavish-question="Q1 logging" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('log'); const n=this.querySelector('textarea').value.trim();
+      if(c){ window.lavish?.queuePrompt('DeepSeek Harness plan (s07), Q1 logging: '+c+(n?(' — note: '+n):''),{tag:'choice',text:'Q1: '+c,element:this,data:{question:'Q1',answer:c,note:n}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q1 &middot; How sessions get logged <span class="badge">options above</span></h3>
+      <fieldset>
+        <label><input type="radio" name="log" value="A read the session logs with make dsh-log" checked><span><b>A &middot; Read the session logs</b><span class="d">Python here, after each session</span></span></label>
+        <label><input type="radio" name="log" value="B a dsh telemetry plugin, live"><span>B &middot; A dsh plugin, live<span class="d">TypeScript inside the agent</span></span></label>
+        <label><input type="radio" name="log" value="C headless runs only"><span>C &middot; Headless runs only<span class="d">misses the web UI</span></span></label>
+      </fieldset>
+      <textarea rows="2" name="log-note" placeholder="anything to change about the choice (optional)"></textarea>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q2 trace content" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('content'); if(c){ window.lavish?.queuePrompt('DeepSeek Harness plan (s07), Q2 what traces hold: '+c,{tag:'choice',text:'Q2: '+c,element:this,data:{question:'Q2',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q2 &middot; What the traces hold</h3>
+      <p class="hint">Runs always get the numbers. This decides whether traces also hold text.</p>
+      <fieldset>
+        <label><input type="radio" name="content" value="text, redacted and cut to 4 KB per span" checked><span><b>Text, redacted, 4 KB per span</b><span class="d">enough to see what happened in a turn</span></span></label>
+        <label><input type="radio" name="content" value="metadata only: tool names, tokens, timings, no text"><span>Metadata only<span class="d">tool names, tokens, timings; no message or tool text</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q3 where" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('where'); if(c){ window.lavish?.queuePrompt('DeepSeek Harness plan (s07), Q3 where dsh is used and logged: '+c,{tag:'choice',text:'Q3: '+c,element:this,data:{question:'Q3',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q3 &middot; Where you use it</h3>
+      <p class="hint">Everything the agent reads goes to DeepSeek. Your consulting repos hold client material.</p>
+      <fieldset>
+        <label><input type="radio" name="where" value="portfolio repos only; log all of them" checked><span><b>Portfolio repos only, all logged</b><span class="d"><code>~/git/nmp-ai-portfolio/*</code>; the launcher refuses other directories</span></span></label>
+        <label><input type="radio" name="where" value="anywhere, but log portfolio repos only"><span>Anywhere, log only the portfolio<span class="d">the launcher warns outside the portfolio</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q4 api key" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('key'); if(c){ window.lavish?.queuePrompt('DeepSeek Harness plan (s07), Q4 API key: '+c,{tag:'choice',text:'Q4: '+c,element:this,data:{question:'Q4',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q4 &middot; Where the DeepSeek key lives</h3>
+      <p class="hint"><code>DEEPSEEK_API_KEY</code> is already in <code>~/.env</code>.</p>
+      <fieldset>
+        <label><input type="radio" name="key" value="save it once through /provider in dsh-TUI; the launcher passes no keys" checked><span><b>Saved once, through <code>/provider</code></b><span class="d">stored in <code>~/.dsh/.credentials.yaml</code>; not in the agent's environment</span></span></label>
+        <label><input type="radio" name="key" value="launcher passes DEEPSEEK_API_KEY from ~/.env"><span>Launcher passes it from <code>~/.env</code><span class="d">no UI step; any command the agent runs can read it</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q5 model" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('model'); if(c){ window.lavish?.queuePrompt('DeepSeek Harness plan (s07), Q5 default model: '+c,{tag:'choice',text:'Q5: '+c,element:this,data:{question:'Q5',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q5 &middot; Default model</h3>
+      <p class="hint">Per million tokens, off-peak, in / out. Either can be picked per session.</p>
+      <fieldset>
+        <label><input type="radio" name="model" value="deepseek-v4-pro" checked><span><b>deepseek-v4-pro</b><span class="d">$0.66 / $1.98; the stronger model for coding</span></span></label>
+        <label><input type="radio" name="model" value="deepseek-flash"><span>deepseek-flash<span class="d">$0.15 / $0.60; reads images; about a quarter of the cost</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+
+    <form class="q" data-lavish-question="Q6 sibling rules" onsubmit="event.preventDefault();
+      const c=new FormData(this).get('sib'); if(c){ window.lavish?.queuePrompt('DeepSeek Harness plan (s07), Q6 portfolio rules in sibling repos: '+c,{tag:'choice',text:'Q6: '+c,element:this,data:{question:'Q6',answer:c}}); this.querySelector('.queued').textContent='queued'; }">
+      <h3>Q6 &middot; Portfolio rules in the sibling repos</h3>
+      <p class="hint">dsh doesn't load <code>~/git/nmp-ai-portfolio/AGENTS.md</code>, because it sits above each repo's git root.</p>
+      <fieldset>
+        <label><input type="radio" name="sib" value="install a short pointer as ~/.dsh/AGENTS.md via make dsh-install" checked><span><b>A short pointer in <code>~/.dsh/AGENTS.md</code></b><span class="d">"under ~/git/nmp-ai-portfolio, read PLATFORM.md"; dsh loads it in every repo</span></span></label>
+        <label><input type="radio" name="sib" value="nmp-central-ai only for now; decide siblings later"><span>Only this repo for now<span class="d">its own AGENTS.md already carries the rules</span></span></label>
+      </fieldset>
+      <div class="row"><button type="submit">Queue answer</button><span class="queued" aria-live="polite"></span></div>
+    </form>
+  </div>
+
+  <div class="copyrow" style="margin-top:var(--s4)">
+    <button type="button" class="btn" onclick="(async (btn) => {
+      const copyRun = btn._lavishCopyRun = (btn._lavishCopyRun || 0) + 1;
+      const qs = [...document.querySelectorAll('[data-lavish-question]')];
+      const status = btn.parentElement.querySelector('[data-lavish-copy-all-status]');
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const out = [];
+      for (const q of qs) {
+        const key = q.getAttribute('data-lavish-question')?.trim() || 'Question';
+        const lines = [];
+        for (const el of q.querySelectorAll('input, select, textarea')) {
+          if (el.matches(':disabled')) continue;
+          if (el.closest('[data-lavish-question]') !== q) continue;
+          const isChoice = el.matches('input[type=checkbox], input[type=radio]');
+          if (isChoice && !el.checked) continue;
+          if (el.matches('input[type=button], input[type=submit], input[type=reset], input[type=image], input[type=hidden], input[type=file], input[type=range], input[type=color]')) continue;
+          let vals;
+          if (el instanceof HTMLSelectElement) {
+            vals = [...el.selectedOptions].filter((o) => !o.disabled && !o.closest('optgroup[disabled]')).map((o) => o.value.trim()).filter(Boolean);
+          } else {
+            const v = isChoice && (!el.hasAttribute('value') || !el.value.trim())
+              ? el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.name || ''
+              : el.value.trim();
+            vals = v ? [v] : [];
+          }
+          const label = el.name || el.labels?.[0]?.textContent?.trim() || el.getAttribute('aria-label')?.trim() || el.getAttribute('placeholder')?.trim() || el.tagName.toLowerCase();
+          for (const v of vals) lines.push('  ' + label + ': ' + v.split('\n').join('\n    '));
+        }
+        if (lines.length) out.push(key + ':\n' + lines.join('\n'));
+      }
+      const text = out.join('\n\n');
+      if (!text) {
+        status.textContent = qs.length ? 'No answers to copy yet.' : 'No questions or answers to copy.';
+        return;
+      }
+      status.textContent = '';
+      try {
+        if (typeof navigator.clipboard?.writeText !== 'function') throw new Error('Clipboard API unavailable');
+        await navigator.clipboard.writeText(text);
+        if (copyRun !== btn._lavishCopyRun) return;
+        status.textContent = 'Answers copied.';
+        return;
+      } catch {}
+      if (copyRun !== btn._lavishCopyRun) return;
+      const tmp = document.createElement('textarea');
+      tmp.value = text;
+      tmp.readOnly = true;
+      tmp.setAttribute('aria-hidden', 'true');
+      tmp.style.position = 'fixed';
+      tmp.style.left = '-10000px';
+      document.body.append(tmp);
+      tmp.focus();
+      tmp.select();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {}
+      tmp.remove();
+      if (ok) {
+        status.textContent = 'Answers copied.';
+        return;
+      }
+      btn.parentElement.querySelector('[data-lavish-copy-all-manual]')?.remove();
+      const man = document.createElement('textarea');
+      man.value = text;
+      man.readOnly = true;
+      man.rows = Math.min(12, Math.max(3, text.split('\n').length));
+      man.setAttribute('aria-label', 'Answers to copy manually');
+      man.dataset.lavishCopyAllManual = '';
+      btn.insertAdjacentElement('afterend', man);
+      man.focus();
+      man.select();
+      status.textContent = 'Clipboard unavailable. Copy the answers below manually.';
+    })(this)">Copy all answers</button>
+    <span data-lavish-copy-all-status role="status" aria-live="polite"></span>
+  </div>
+</section>
+
+<section id="sources">
+  <p class="eyebrow">Sources</p>
+  <h2>Where each fact comes from</h2>
+  <ul class="src">
+    <li>Repository, licence, push date, release status: <a href="https://github.com/deepseek-ai/deepseek-harness">github.com/deepseek-ai/deepseek-harness</a>, <code>README.md</code>, <code>SAFETY.md</code></li>
+    <li>Modes, flags and config layers: <code>docs/cli-help.md</code>, <code>apps/cli/README.md</code>, <code>apps/cli/reference/README.md</code></li>
+    <li>Both uploads and their switches: <code>packages/session/session-log-deepseek/README.md</code>, <code>packages/session/session-telemetry-otel/README.md</code>, row defaults in <code>packages/bundle/base/cordis.patch.yml</code></li>
+    <li>Instruction files and skill folders: <code>packages/context/agent-instructions/README.md</code>, <code>packages/skill/skill-filesystem/README.md</code>, <code>packages/util/home-paths/README.md</code></li>
+    <li>Session files, compression and token usage: <code>packages/session/session-persistence-jsonl/README.md</code>, <code>docs/config-catalog.md</code>, <code>packages/llm/token-meter/README.md</code>, <code>docs/subsystems/session-telemetry.md</code></li>
+    <li>Shell environment: <code>packages/shell/shell-env/README.md</code>. Key variable and models: <code>packages/llm/llm-deepseek-api-key/README.md</code>, <code>docs/user/guide/providers.md</code></li>
+    <li>Version and Node requirement: <code>npm view @deepseek-ai/dsh</code> on 2026-11-14 (<code>0.2.2-rc.2</code> published 2026-11-12; node <code>&gt;=24.9.0</code>)</li>
+    <li>dsh-TUI: <a href="https://github.com/ccch1mneyyy/dsh-TUI">github.com/ccch1mneyyy/dsh-TUI</a> (README; <code>docs/getting-started.en.md</code> for install, profile and updates; <code>docs/interaction.en.md</code> for keys; <code>docs/configuration.en.md</code> for the reporting defaults; <code>cordis.patch.yml</code> for what its profile changes), <code>npm view @deepseek-harness-tui/dsh-tui</code>; the <code>turtle-ui</code> example in <code>apps/cli/reference/README.md</code></li>
+    <li>Session format: <code>docs/session-format-status.md</code> (v4 released since <code>dsh-v0.2.0-rc.2</code>)</li>
+    <li>Prices and peak hours: <a href="https://api-docs.deepseek.com/quick_start/pricing">api-docs.deepseek.com/quick_start/pricing</a>, read 2026-11-14</li>
+    <li>This repo: commit <code>7827006</code>, <code>scripts/agent_check.py</code>, <code>scripts/_registry.py</code>, <code>registry/projects.yaml</code>, PLATFORM.md rules 3 and 4</li>
+  </ul>
+</section>
+
+</main>
+
+<script>
+  // Plain fallback first, so the code reads even if the renderer below cannot load.
+  for (const el of document.querySelectorAll('.code[data-src]')) {
+    const src = document.getElementById(el.dataset.src);
+    const pre = document.createElement('pre'); pre.className = 'fallback';
+    pre.textContent = src.textContent.replace(/^\n/, '');
+    el.replaceChildren(pre);
+  }
+</script>
+<script type="module">
+  import { File } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+  const root = document.documentElement;
+  const dark = root.dataset.theme === 'dark' ||
+    (root.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  for (const el of document.querySelectorAll('.code[data-src]')) {
+    const src = document.getElementById(el.dataset.src);
+    const file = { name: src.dataset.name, contents: src.textContent.replace(/^\n/, '') };
+    try {
+      el.replaceChildren();
+      new File({ theme: { light: 'github-light', dark: 'github-dark' }, themeType: dark ? 'dark' : 'light', overflow: 'wrap' })
+        .render({ containerWrapper: el, file });
+    } catch (e) {
+      const pre = document.createElement('pre'); pre.className = 'fallback'; pre.textContent = file.contents;
+      el.replaceChildren(pre);
+    }
+  }
+</script>
+</body>
+</html>

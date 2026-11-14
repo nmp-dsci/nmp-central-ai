@@ -1,0 +1,29 @@
+# DeepSeek Harness home patch (D39). `make dsh-install` copies this file to
+# ~/.dsh/cordis.patch.yml. Do not edit that copy; edit this one and re-run the target.
+#
+# The home layer is applied after every bundle and every profile's own patch, so it
+# outranks dsh-TUI's patch and the Web settings page. A patch replaces a row's WHOLE
+# config, so each row below restates every field it needs. `make dsh-doctor` checks
+# the composed result of the dsh-tui, web and headless profiles.
+
+# 1. Never attach the session log to DeepSeek API requests (on by default).
+- id: session-log-deepseek
+  config:
+    enabled: false
+    maxBytes: 8388608
+
+# 2. Never upload sessions to DeepSeek's OTel collector on feedback (FEEDBACK_ONLY by default).
+- id: session-telemetry-otel
+  config:
+    mode: DISABLED
+
+# 3. Never list installed plugins (dsh-TUI among them) on DeepSeek requests (on by default).
+- id: plugin-package-inventory-deepseek
+  config:
+    enabled: false
+
+# 4. Plain JSONL sessions, so `make dsh-log` reads them without zstd.
+- id: session-persistence-jsonl
+  config:
+    root: !!js dshHomePath('sessions')
+    compression: none
