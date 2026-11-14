@@ -269,7 +269,7 @@ def read_session(path: Path, redact: Redactor, workspace: str | None = None) -> 
     turn: dict[str, Any] | None = None
     step_start = 0
     calls: dict[str, tuple[int, str, str]] = {}  # callId -> (time, name, raw arguments)
-    for ev in events:
+    for index, ev in enumerate(events):
         kind, t, data = ev.get("type"), int(ev.get("time", 0)), ev.get("data") or {}
         s.last_ms = max(s.last_ms, t)
         if kind == "session/title":
@@ -374,7 +374,7 @@ def read_session(path: Path, redact: Redactor, workspace: str | None = None) -> 
                     number=turn["n"],
                     start_ms=turn["start"],
                     end_ms=t,
-                    end_seq=int(ev.get("seq", -1)),
+                    end_seq=int(ev.get("seq", index)),
                     status=str(reason.get("kind", "unknown")),
                     message=redact("\n\n".join(m for m in turn["msgs"] if m)),
                     reply=redact(turn["reply"]),

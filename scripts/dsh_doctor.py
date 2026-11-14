@@ -171,22 +171,24 @@ def tui_version() -> str:
     return str(json.loads(pkg.read_text()).get("version", "unknown"))
 
 
-def profile_findings(profile: str) -> list[str]:
+def profile_findings(profile: str, cwd: Path = ROOT) -> list[str]:
     try:
-        text = _out(["dsh", "--profile", profile, "--dump-config"], env=clean_env(), cwd=ROOT)
+        text = _out(["dsh", "--profile", profile, "--dump-config"], env=clean_env(), cwd=cwd)
     except (subprocess.CalledProcessError, FileNotFoundError) as e:
         return [f"could not compose the {profile} profile: {e}"]
     return upload_findings(parse_dump(text))
 
 
-def guard(dsh_pin: str, tui_pin: str, profiles: tuple[str, ...]) -> list[str]:
+def guard(
+    dsh_pin: str, tui_pin: str, profiles: tuple[str, ...], cwd: Path = ROOT
+) -> list[str]:
     problems = []
     if (v := dsh_version()) != dsh_pin:
         problems.append(f"dsh is {v}, pinned {dsh_pin}: run `make dsh-install`")
     if "dsh-tui" in profiles and (v := tui_version()) != tui_pin:
         problems.append(f"dsh-TUI is {v}, pinned {tui_pin}: run `make dsh-install`")
     for p in profiles:
-        problems += [f"{p}: {f}" for f in profile_findings(p)]
+        problems += [f"{p}: {f}" for f in profile_findings(p, cwd)]
     return problems
 
 
@@ -283,7 +285,7 @@ def cmd_launch(profile: str, workdir: Path, dsh_pin: str, tui_pin: str, app_args
     if not in_portfolio(workdir):
         print(f"refusing {workdir}: dsh runs only inside {PORTFOLIO} (D39)", file=sys.stderr)
         return 1
-    problems = guard(dsh_pin, tui_pin, (profile,))
+    problems = guard(dsh_pin, tui_pin, (profile,), workdir)
     if problems:
         for p in problems:
             print(f"FAIL {p}", file=sys.stderr)
